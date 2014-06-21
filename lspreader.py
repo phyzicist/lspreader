@@ -32,7 +32,6 @@ class LazyIter(object):
         return out;
 
 def make_points(d):
-    #reading points first
     d['x']=[]; d['y']=[]; d['z']=[];
     tmp1 = len(d['xp']);
     tmp2 = tmp1 * len(d['yp']);
@@ -85,16 +84,6 @@ class LspOutput(file):
         self._get_header();
     def get_chunk(self, n):
         return self.read(n);
-        #bad hack, make it better!
-        return ''.join([self.get_four() for i in range(n/4)]);
-        # r='';
-        # if self.i+n > self._mi:
-        #     r = self.buf[self.i : self.i-self._mi];
-        #     n -= self.i-self._mi;
-        #     self._get_more();
-        # r += self.buf[self.i:self.i+n];
-        # self.i+=n;
-        # return r;
     def get_int(self):
         return xdr.Unpacker(self.read(4)).unpack_int();
     def get_uint(self):
