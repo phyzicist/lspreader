@@ -13,7 +13,6 @@ def main():
         print(f.header);
         print("reading in data");
         data = f.get_data(pool_size=24,lazy=False);
-    print("selecting data");
     print("dumping");
     with open(sys.argv[2],"wb") as f:
         cPickle.dump(data,f,2);
