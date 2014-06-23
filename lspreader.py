@@ -48,16 +48,18 @@ def read_fields(d):
         d[quantity+'y']=[];
         d[quantity+'z']=[];
         for k in range(d['nAll']):
-            d[quantity+'x'].append(d['xdr'].unpack_float());
-            d[quantity+'y'].append(d['xdr'].unpack_float());
-            d[quantity+'z'].append(d['xdr'].unpack_float());
-    del d['xdr'],d['qs'],d['nAll'];
+            d[quantity+'x'].append(d['x'+quantity].unpack_float());
+            d[quantity+'y'].append(d['x'+quantity].unpack_float());
+            d[quantity+'z'].append(d['x'+quantity].unpack_float());
+        del d['x'+quantity];
+    del d['qs'],d['nAll'];
     return d;
 
 def read_scalars(d):
-    for quantity in d['qs']:
-        d[quantity]=[ d['xdr'].unpack_float() for k in range(d['nAll'])];
-    del d['xdr'],d['qs'],d['nAll'];
+    for quantity in d['dqs']:
+        d[quantity]=[ d['x'+quantity].unpack_float() for k in range(d['nAll'])];
+        del d['x'+quantity];
+    del d['dqs'],d['nAll'];
     return d;
 
 def convert_frame(d):
@@ -90,7 +92,6 @@ class LspOutput(file):
         return xdr.Unpacker(self.read(4)).unpack_uint();
     def get_float(self):
         return xdr.Unpacker(self.read(4)).unpack_float();
-    
     def get_str(self):
         l1 = self.get_int();
         l2 = self.get_int();
@@ -157,36 +158,44 @@ class LspOutput(file):
         return;
     ###################
     #data processing    
-    def _getfields(self,pool_size,lazy,vector=True):
+    def _getfields(self, var, pool_size,lazy,vector=True):
         if vector:
             size=3; call=read_fields;
+            readin = set();
+            for i in var:#we assume none of the fields end in x
+                if i[-1] == 'x' or i[-1] == 'y' or i[-1] == 'z':
+                    readin.add(i[:-1]);
+                else:
+                    readin.add(i);
         else:
             size=1; call=read_scalars;
+            readin = set(var);
         doms = [];
         qs = [i[0] for i in self.header['quantities']];
         pool=multiprocessing.Pool(pool_size);
-        print('reading positions and scanning');
+        print('reading positions and making buffers');
         for i in range(self.header['domains']):
             iR, jR, kR = self.get_int(),self.get_int(),self.get_int();
             #getting grid parameters (real coordinates)
-            #nI = f.get_int(); f.seek(nI*4,1); #skip grid parameters, they are floats
             nI = self.get_int(); Ip = [self.get_float() for i in range(nI)];
             nJ = self.get_int(); Jp = [self.get_float() for i in range(nJ)];
             nK = self.get_int(); Kp = [self.get_float() for i in range(nK)];
             nAll = nI*nJ*nK;
-            doms.append({'filepos':self.tell(),'nAll':nAll,'xp':Ip,'yp':Jp,'zp':Kp});
-            
-            self.seek(nAll*4*size*len(qs),1);
+            d={}
+            dqs=[];
+            for quantity in qs:
+                if quantity not in readin:
+                    self.seek(nAll*4*size,1);
+                else:
+                    d.update({'x'+quantity : xdr.Unpacker(self.read(nAll*4*size))})
+                    dqs.append(quantity);
+            d.update({'nAll':nAll,'dqs': dqs,
+                      'xp':Ip,'yp':Jp,'zp':Kp});
+            doms.append(d);
         print('making points');
         if not lazy:
             #making points
             doms[:] = pool.map(make_points,doms);
-        print('making buffers');
-        #making buffers
-        for dom in doms:
-            self.seek(dom['filepos']);
-            del dom['filepos'];
-            dom.update( {'xdr':xdr.Unpacker(self.read(dom['nAll']*4*size*len(qs))),'qs':qs} );
         print('converting buffers');
         doms[:] = pool.map(call,doms);
         pool.close();
@@ -221,12 +230,14 @@ class LspOutput(file):
         frames[:] = pool.map(convert_frame,frames);
         pool.close();
         return frames;
-
-    def get_data(self, pool_size=16,lazy=True):
+    
+    def get_data(self,var=None,pool_size=16,lazy=False):
+        if not var:
+            var=[i[0] for i in self.header['quantities']];
         if self.header['dump_type'] == 2:
-            return self._getfields(pool_size,lazy,vector=True);
+            return self._getfields(var,pool_size,lazy,vector=True);
         elif self.header['dump_type'] == 3:
-            return self._getfields(pool_size,lazy,vector=False);
+            return self._getfields(var,pool_size,lazy,vector=False);
         elif self.header['dump_type'] == 6:
             return self._getmovie(pool);
     pass;
