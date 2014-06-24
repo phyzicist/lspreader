@@ -78,9 +78,10 @@ def convert_frame(d):
 class LspOutput(file):
     '''represents an lsp output file on call,
        reads the header on open'''
-    #globals
+    #static variables
+    ip=['xi','yi','zi'];
     movie_labels=['q','x','y','z','vx','vy','vz','E']
-    movie_labels_w_ip=movie_labels+['xi','yi','zi'];
+    movie_labels_w_ip=movie_labels+ip;
     def __init__(self,filename):
         file.__init__(self,filename,"rb");
         self._get_header();
@@ -153,6 +154,12 @@ class LspOutput(file):
             else:
                 raise ValueError('Incorrect number of parameters: {}'.format(n));
             self.header['params'] = [(i[0],i[1]) for i in zip(labels,units,flags) if i[2]];
+        elif self.header['dump_type'] == 10:
+            #this is a particle extraction file:
+            self.header['geometry'] = self.get_int();
+            #reading quantities
+            n = self.get_int();
+            units = [self.get_str() for i in range(n)];
         else:
             raise ValueError('Unknown dump_type: {}'.format(self.header['dump_type']));
         return;
@@ -231,6 +238,27 @@ class LspOutput(file):
         pool.close();
         return frames;
     
+    def _getpext(self):
+        nparams = len(self.header['quantities']);
+        params = ['t','q','x','y','z','vx','vy','vz'];
+        if nparams == 9:
+            params+=['E'];
+        elif nparams == 11:
+            params+=['xi','yi','zi'];
+        elif nparams == 12:
+            params+=['E','xi','yi','zi'];
+        #it's just floats here on out
+        buf = self.read();
+        nfloats = len(buf)/4;
+        x = xdr.Unpacker(buf);
+        del buf;
+        data = x.unpack_farray(nfloats,x.unpack_float);
+        del x;
+        out={};
+        for i,key in enumerate(params):
+            out[key] = [j for j in data[i::nparams]];
+        return out;
+        
     def get_data(self,var=None,pool_size=16,lazy=False):
         if not var:
             var=[i[0] for i in self.header['quantities']];
@@ -240,4 +268,8 @@ class LspOutput(file):
             return self._getfields(var,pool_size,lazy,vector=False);
         elif self.header['dump_type'] == 6:
             return self._getmovie(pool);
+        elif self.header['dump_type'] == 10:
+            return self._getpext();
+        else:
+            return None;
     pass;
