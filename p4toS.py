@@ -21,7 +21,7 @@ def interpolate_scalar(x,y,z,s,res=100j):
     return S;
 
 def main():
-    usage="usage: p4toS.py <var> <take> <input> <output-pickle>"
+    usage="usage: ./p4toS.py <var> <take> <input> <output-pickle>"
     if len(sys.argv) != 5:
         print(usage);
         exit();

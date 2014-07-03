@@ -80,7 +80,7 @@ class LspOutput(file):
        reads the header on open'''
     #static variables
     ip=['xi','yi','zi'];
-    movie_labels=['q','x','y','z','vx','vy','vz','E']
+    movie_labels=['q','x','y','z','ux','uy','uz','E']
     movie_labels_w_ip=movie_labels+ip;
     def __init__(self,filename):
         file.__init__(self,filename,"rb");
@@ -159,7 +159,7 @@ class LspOutput(file):
             self.header['geometry'] = self.get_int();
             #reading quantities
             n = self.get_int();
-            units = [self.get_str() for i in range(n)];
+            self.header['quantities'] = [self.get_str() for i in range(n)];
         else:
             raise ValueError('Unknown dump_type: {}'.format(self.header['dump_type']));
         return;
@@ -240,7 +240,7 @@ class LspOutput(file):
     
     def _getpext(self):
         nparams = len(self.header['quantities']);
-        params = ['t','q','x','y','z','vx','vy','vz'];
+        params = ['t','q','x','y','z','ux','uy','uz'];
         if nparams == 9:
             params+=['E'];
         elif nparams == 11:

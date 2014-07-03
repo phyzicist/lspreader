@@ -52,10 +52,10 @@ def main():
         d=dict(zip(keys,dl));
         del dl;
     logprint('making arrays for interpolating scalar field {}'.format(var));
-    x=np.array(d['x']);
-    y=np.array(d['y']);
-    z=np.array(d['z']);
-    s=np.array(d[var]);#to avoid 0.0
+    x=np.array(d['x'])*10000;
+    y=np.array(d['y'])*10000;
+    z=np.array(d['z'])*10000;
+    s=np.array(d[var])*-1e7;#to avoid 0.0
     logprint('interpolating');
     S = interpolate_scalar(x,y,z,s);
     del x,y,z,s,d;
