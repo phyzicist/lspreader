@@ -14,6 +14,7 @@ def plot(S,outname):
     import mayavi.mlab as mlab;
     mlab.options.offscreen = True;
     print("plotting");
+    mlab.figure(size=(1280,1024));
     src=mlab.pipeline.scalar_field(S);
     vmin=20;vmax=24;
     v=mlab.pipeline.volume(src,vmin=vmin,vmax=vmax);    
@@ -26,7 +27,7 @@ def plot(S,outname):
     module_manager.scalar_lut_manager.use_default_range = False;
     module_manager.scalar_lut_manager.data_range = np.array([vmin, vmax]);
     mlab.text(0.075,0.875,name);
-    mlab.savefig(outname);
+    mlab.savefig(outname,size=(1280,1024));
 
 if __name__=="__main__":
     usage="usage: ./plot3d.py <input> <output.png>";
