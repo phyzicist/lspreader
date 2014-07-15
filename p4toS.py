@@ -4,7 +4,7 @@ import lspreader as rd;
 import cPickle;
 import numpy as np;
 import scipy.interpolate as interpol;
-import sys;
+from docopt import docopt;
 import random;
 
 
@@ -21,32 +21,23 @@ def interpolate_scalar(x,y,z,s,res=100j):
     return S;
 
 def main():
-    usage="usage: ./p4toS.py <var> <take> <input> <output-pickle>"
-    if len(sys.argv) != 5:
-        print(usage);
-        exit();
-    var=sys.argv[1];
-    take=int(sys.argv[2]);
-    inname=sys.argv[3];
+    usage="usage: ./p4toS.py <var> <rnd-pickle> <input> <output-pickle>"
+    opts=docopt(usage,help=True);
+    var=opts['<var>'];
+    rndname=opts['<rnd-pickle>'];
+    inname=opts['<input>'];
     global name;
     name = inname;
-    outname=sys.argv[4];
+    outname=opts['<output-pickle>'];
     logprint('reading in {}'.format(inname));
     with rd.LspOutput(inname) as f:
         d = f.get_data(var=[var],pool_size=24,lazy=False);
-    logprint("preparing to prune, zipping");
-    keys = [i for i in d];
-    data = [data for k,data in d.items()];
-    del d;
-    data = zip(*data);
-    logprint('will take {} elements out of {}'.format(take,len(data)));
-    logprint('sampling');
-    rm=random.sample(data, take);
-    logprint('unzipping');
-    del data;
-    dl=zip(*rm);
-    d=dict(zip(keys,dl));
-    del dl;
+    logprint("preparing to prune, reading in {}".format(rndname));
+    with open(rndname,'rb') as f:
+        rnd = cPickle.load(f);
+    logprint("pruning...");
+    for k in d:
+        d[k] = [d[k][i] for i in rnd];
     logprint('making arrays for interpolating scalar field {}'.format(var));
     x=np.array(d['x'])*10000;
     y=np.array(d['y'])*10000;
