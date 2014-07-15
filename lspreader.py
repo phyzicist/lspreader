@@ -78,10 +78,6 @@ def convert_frame(d):
 class LspOutput(file):
     '''represents an lsp output file on call,
        reads the header on open'''
-    #static variables
-    ip=['xi','yi','zi'];
-    movie_labels=['q','x','y','z','ux','uy','uz','E']
-    movie_labels_w_ip=movie_labels+ip;
     def __init__(self,filename):
         file.__init__(self,filename,"rb");
         self._get_header();
@@ -146,11 +142,11 @@ class LspOutput(file):
             n = self.get_int();
             flags=[bool(self.get_int()) for i in range(n)];
             units=[self.get_str() for i in range(n)];
-            print(units);
-            if n == len(LspOutput.movie_labels):
-                labels=LspOutput.movie_labels
-            elif n == len(LspOutput.movie_labels_w_ip):
-                labels=LspOutput.movie_labels_w_ip;
+            labels=['q','x','y','z','ux','uy','uz','E']
+            if n == 8:
+                pass;
+            elif n == 11:
+                labels+=['xi','yi','zi'];
             else:
                 raise ValueError('Incorrect number of parameters: {}'.format(n));
             self.header['params'] = [(i[0],i[1]) for i in zip(labels,units,flags) if i[2]];
