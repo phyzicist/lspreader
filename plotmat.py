@@ -30,15 +30,14 @@ def zero_nan(S):
 
 def main():
     opts=docopt(usage,help=True);
-    if opts['min']:
-        vmin = float(opts['min']);
+    if opts['--min']:
+        vmin = float(opts['--min']);
     else:
         vmin = -1.0;
-    if opts['max']:
-        vmax = float(opts['max']);
+    if opts['--max']:
+        vmax = float(opts['--max']);
     else:
         vmax = 23.5;
-        
     S = read_file(opts['<infile>']);
     S = zero_nan(S);
     X,Y = np.mgrid[-20:20:100j,-30:5:100j];
