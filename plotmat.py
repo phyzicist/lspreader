@@ -31,7 +31,7 @@ def main():
     S = read_file(opts['<infile>']);
     S = zero_nan(S);
     X,Y = np.mgrid[-20:20:100j,-30:5:100j];
-    plt.pcolormesh(X,Y,S[:,50,:]);
+    plt.pcolormesh(X,Y,S[:,50,:],vmin=-1.0,vmax=23.5);
     plt.xlabel('x ($\mu m$)');
     plt.ylabel('z ($\mu m$)');
     plt.annotate('t = {} fs'.format(opts['<time>']),(-19,3),color='w');
