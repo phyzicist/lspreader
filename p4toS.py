@@ -1,4 +1,15 @@
 #!/usr/bin/env python2
+'''
+Convert an lsp fields or scalars into a 3d numpy array.
+
+Usage:
+  p4toS.py [options] <var> <randompickle> <input> <output>
+
+Options:
+  -h --help         Show this help.
+  -v --verbose      Turn on verbosity.
+  --pool_size=PS    Choose a pool size PS.
+'''
 
 import lspreader as rd;
 import cPickle;
@@ -7,9 +18,11 @@ import scipy.interpolate as interpol;
 from docopt import docopt;
 import random;
 
-
 def logprint(s):
-    print("{}: {}".format(name,s));
+    global verbose;
+    if verbose:
+        print("{}: {}".format(name,s));
+    pass;
 
 def interpolate_scalar(x,y,z,s,res=100j):
     '''Interpolates the scalar s on the grid x,y,z
@@ -21,17 +34,20 @@ def interpolate_scalar(x,y,z,s,res=100j):
     return S;
 
 def main():
-    usage="usage: ./p4toS.py <var> <rnd-pickle> <input> <output-pickle>"
-    opts=docopt(usage,help=True);
+    global name,verbose;
+    opts=docopt(__doc__,help=True);
     var=opts['<var>'];
-    rndname=opts['<rnd-pickle>'];
-    inname=opts['<input>'];
-    global name;
-    name = inname;
-    outname=opts['<output-pickle>'];
+    rndname=opts['<randompickle>'];
+    name = inname = opts['<input>'];
+    outname = opts['<output>'];
+    verbose = opts['--verbose'];
+    if opts['--pool_size']:
+        pool_size=int(opts['--pool_size']);
+    else:
+        pool_size=24;
     logprint('reading in {}'.format(inname));
     with rd.LspOutput(inname) as f:
-        d = f.get_data(var=[var],pool_size=24,lazy=False);
+        d = f.get_data(var=[var],pool_size=pool_size,lazy=False);
     logprint("preparing to prune, reading in {}".format(rndname));
     with open(rndname,'rb') as f:
         rnd = cPickle.load(f);
@@ -39,10 +55,10 @@ def main():
     for k in d:
         d[k] = [d[k][i] for i in rnd];
     logprint('making arrays for interpolating scalar field {}'.format(var));
-    x=np.array(d['x'])*10000;
-    y=np.array(d['y'])*10000;
-    z=np.array(d['z'])*10000;
-    s=np.log10(np.array(d[var])+0.1)#to avoid 0.0
+    x=np.array(d['x']);
+    y=np.array(d['y']);
+    z=np.array(d['z']);
+    s=np.array(d[var]);
     logprint('interpolating');
     S = interpolate_scalar(x,y,z,s);
     del x,y,z,s,d;

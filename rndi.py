@@ -1,17 +1,25 @@
 #!/usr/bin/env python2
+'''
+Generate random indices for use with p4toS.py.
+
+Usage:
+  ./rndi.py <number> <input> <output>
+  ./rndi.py --count-only <input>
+'''
 
 import lspreader as rd;
 import random;
 import sys;
 import cPickle;
-
-usage="usage: ./rndi.py <number> <input> <output>"
-if len(sys.argv) != 4:
-    print(usage);
-    exit();
-take=int(sys.argv[1]);
-inname=sys.argv[2];
-outname=sys.argv[3];
+from docopt import docopt;
+opts=docopt(__doc__,help=True);
+if opts['--count-only']:
+    count=True;
+else:
+    outname=opts['<output>'];
+    take=int(opts['<number>']);
+    count=False;
+inname=opts['<input>'];
 print('counting points');
 with rd.LspOutput(inname) as f:
     if f.header['dump_type'] == 2 or f.header['dump_type'] == 3:
@@ -36,6 +44,8 @@ with rd.LspOutput(inname) as f:
         raise ValueError('incorrect file type {}'.format(f.header['type']));
     pass;
 print('got {}'.format(total));
+if count:
+    quit();
 print('generating {} random numbers'.format(take));
 out = [random.randint(0,total) for i in range(take)];
 out.sort();
