@@ -9,11 +9,15 @@ Options:
   -h --help         Show this help.
   -v --verbose      Turn on verbosity.
   --pool_size=PS    Choose a pool size PS.
+  -x --X            Use X in interpolation
+  -y --Y            Use Y in interpolation
+  -z --Z            Use Z in interpolation
 '''
 
 import lspreader as rd;
 import cPickle;
 import numpy as np;
+import matplotlib.pyplot as plt;
 import scipy.interpolate as interpol;
 from docopt import docopt;
 import random;
@@ -24,7 +28,7 @@ def logprint(s):
         print("{}: {}".format(name,s));
     pass;
 
-def interpolate_scalar(x,y,z,s,res=100j):
+def interpolate_scalar_3d(x,y,z,s,res=100j):
     '''Interpolates the scalar s on the grid x,y,z
        with the resolution res.'''
     Z,Y,X = np.mgrid[ min(z) : max(z) : res,
@@ -33,8 +37,22 @@ def interpolate_scalar(x,y,z,s,res=100j):
     S = interpol.griddata((x,y,z),s,(X,Y,Z));
     return S;
 
-def main():
-    global name,verbose;
+def interpolate_scalar_2d(x,y,s,res=100j):
+    '''Interpolates the scalar s on the grid x,y
+       with the resolution res.'''
+    Y,X = np.mgrid[min(y) : max(y) : res,
+                   min(x) : max(x) : res];
+    S = interpol.griddata((x,y),s,(X,Y));
+    return S;
+
+def interpolate_scalar_1d(x,s,res=100j):
+    '''Interpolates the scalar s on the grid x
+       with the resolution res.'''
+    X = np.mgrid[min(x) : max(x) : res];
+    S = interpol.griddata((x,),s,(X,));
+    return S;
+
+def process_args():
     opts=docopt(__doc__,help=True);
     var=opts['<var>'];
     rndname=opts['<randompickle>'];
@@ -45,8 +63,27 @@ def main():
         pool_size=int(opts['--pool_size']);
     else:
         pool_size=24;
-    logprint('reading in {}'.format(inname));
-    with rd.LspOutput(inname) as f:
+    if opts['--X']:
+        useX=True;
+    else:
+        useX=False;
+    if opts['--Y']:
+        useY=True;
+    else:
+        useY=False;
+    if opts['--Z']:
+        useZ=True;
+    else:
+        useZ=False;
+    if not useX and  not useY and not useZ:
+        useX=useY=useZ=True;
+    return var,rndname,name,verbose,outname,pool_size,useX,useY,useZ;
+
+def main():
+    global name,verbose;
+    var,rndname,name,verbose,outname,pool_size,useX,useY,useZ=process_args();
+    logprint('reading in {}'.format(name));
+    with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
         d = f.get_data(var=[var],pool_size=pool_size,lazy=False);
     logprint("preparing to prune, reading in {}".format(rndname));
     with open(rndname,'rb') as f:
@@ -60,7 +97,21 @@ def main():
     z=np.array(d['z']);
     s=np.array(d[var]);
     logprint('interpolating');
-    S = interpolate_scalar(x,y,z,s);
+    if useX and useY and useZ:
+        print('derp');
+        S = interpolate_scalar_3d(x,y,z,s);
+    elif useX and useY:
+        S = interpolate_scalar_2d(x,y,s);
+    elif useX and useZ:
+        S = interpolate_scalar_2d(x,z,s);
+    elif useY and useZ:
+        S = interpolate_scalar_2d(y,z,s);
+    elif useX:
+        S = interpolate_scalar_1d(x,s);
+    elif useY:
+        S = interpolate_scalar_1d(y,s);
+    elif useZ:
+        S = interpolate_scalar_1d(z,s);
     del x,y,z,s,d;
     logprint("dumping");
     with open(outname,"wb") as f:

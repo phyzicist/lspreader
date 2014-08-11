@@ -8,7 +8,8 @@ class LazyIter(object):
     def _next_dom(self):
         self.dom = self.domsi.next();#should throw StopIteration at the last dom
         self.curi = 0;
-        self.keys = [i for i in self.dom if  (i != 'xp' and i != 'yp' and i != 'zp')];
+        self.keys = [i for i in self.dom
+                     if  (i != 'xp' and i != 'yp' and i != 'zp')];
         self.l = len(self.dom[self.keys[0]]);
         self.tmp1 = len(self.dom['xp']);
         self.tmp2 = self.tmp1*len(self.dom['yp']);
@@ -43,7 +44,7 @@ def make_points(d):
     return d;
     
 def read_fields(d):
-    for quantity in d['qs']:
+    for quantity in d['dqs']:
         d[quantity+'x']=[];
         d[quantity+'y']=[];
         d[quantity+'z']=[];
@@ -52,7 +53,7 @@ def read_fields(d):
             d[quantity+'y'].append(d['x'+quantity].unpack_float());
             d[quantity+'z'].append(d['x'+quantity].unpack_float());
         del d['x'+quantity];
-    del d['qs'],d['nAll'];
+    del d['dqs'],d['nAll'];
     return d;
 
 def read_scalars(d):
@@ -78,9 +79,17 @@ def convert_frame(d):
 class LspOutput(file):
     '''represents an lsp output file on call,
        reads the header on open'''
-    def __init__(self,filename):
+    def __init__(self,filename,verbose=False,prefix=''):
         file.__init__(self,filename,"rb");
         self._get_header();
+        self.verbose = verbose;
+        self.prefix = prefix;
+    def logprint(self,s):
+        if self.verbose:
+            if self.prefix == '':
+                print('{}'.format(s));
+            else:
+                print('{}: {}'.format(self.prefix,s));
     def get_chunk(self, n):
         return self.read(n);
     def get_int(self):
@@ -149,7 +158,8 @@ class LspOutput(file):
                 labels+=['xi','yi','zi'];
             else:
                 raise ValueError('Incorrect number of parameters: {}'.format(n));
-            self.header['params'] = [(i[0],i[1]) for i in zip(labels,units,flags) if i[2]];
+            self.header['params'] = [(i[0],i[1]) for i in zip(labels,units,flags)
+                                     if i[2]];
         elif self.header['dump_type'] == 10:
             #this is a particle extraction file:
             self.header['geometry'] = self.get_int();
@@ -176,13 +186,15 @@ class LspOutput(file):
         doms = [];
         qs = [i[0] for i in self.header['quantities']];
         pool=multiprocessing.Pool(pool_size);
-        print('reading positions and making buffers');
+        self.logprint('reading positions and making buffers');
         for i in range(self.header['domains']):
+            self.logprint('reading domain {}'.format(i));
             iR, jR, kR = self.get_int(),self.get_int(),self.get_int();
             #getting grid parameters (real coordinates)
             nI = self.get_int(); Ip = [self.get_float() for i in range(nI)];
             nJ = self.get_int(); Jp = [self.get_float() for i in range(nJ)];
             nK = self.get_int(); Kp = [self.get_float() for i in range(nK)];
+            self.logprint((nI,nJ,nK));
             nAll = nI*nJ*nK;
             d={}
             dqs=[];
@@ -190,19 +202,19 @@ class LspOutput(file):
                 if quantity not in readin:
                     self.seek(nAll*4*size,1);
                 else:
-                    d.update({'x'+quantity : xdr.Unpacker(self.read(nAll*4*size))})
+                    d.update({'x'+quantity:xdr.Unpacker(self.read(nAll*4*size))})
                     dqs.append(quantity);
             d.update({'nAll':nAll,'dqs': dqs,
                       'xp':Ip,'yp':Jp,'zp':Kp});
             doms.append(d);
-        print('making points');
+        self.logprint('making points');
         if not lazy:
             #making points
             doms[:] = pool.map(make_points,doms);
-        print('converting buffers');
+        self.logprint('converting buffers');
         doms[:] = pool.map(call,doms);
         pool.close();
-        print('done! stringing together');
+        self.logprint('done! stringing together');
         if lazy:
             return LazyIter(doms);
         else:
