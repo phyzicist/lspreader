@@ -98,7 +98,6 @@ def main():
     s=np.array(d[var]);
     logprint('interpolating');
     if useX and useY and useZ:
-        print('derp');
         S = interpolate_scalar_3d(x,y,z,s);
     elif useX and useY:
         S = interpolate_scalar_2d(x,y,s);

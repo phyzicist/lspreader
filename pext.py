@@ -1,17 +1,19 @@
 #!/usr/bin/env python2
+'''
+Make generate the pext.
 
+Usage:
+  pext.py <output-pickle> (<input>...)
+'''
 import lspreader as rd;
 import cPickle;
 import numpy as np;
-import sys;
-
+from docopt import docopt;
+massE = 0.511e6;
 def main():
-    usage="usage: ./p4toS.py <output-pickle> <input>..."
-    if len(sys.argv) <= 2:
-        print(usage);
-        exit();
-    outname=sys.argv[1];
-    names = sys.argv[2:];
+    opts = docopt(__doc__,help=True);
+    outname = opts['<output-pickle>']
+    names = opts['<input>'];
     d=[]
     for name in names:
         print('reading in {}'.format(name));
@@ -26,20 +28,16 @@ def main():
     for k in d:
         d[k] = np.array(d[k]);
     print('calculating kinetic energy');
-    d['KE'] = d['ux']**2+d['uy']**2+d['uz']**2;
-    
-    print('calculating azimuth');
-    d['phi'] = np.arctan(d['y'] / d['x']);
-    
+    d['KE'] = (np.sqrt(d['ux']**2+d['uy']**2+d['uz']**2+1)-1)*massE;
+    r = np.sqrt(d['x']**2+d['y']**2+d['z']**2);    
     print('calculating polar angle ("zenith")');
-    r = np.sqrt(d['x']**2+d['y']**2+d['z']**2);
-    d['theta'] = d['z']/r;
-    print('calculating scatter plot');
-    #this implicitly deletes the positions.
-    d['x'] = np.array(d['KE'] * np.sin(d['theta']) * np.cos(d['phi']));
-    d['y'] = np.array(d['KE'] * np.sin(d['theta']) * np.sin(d['phi']));
-    d['z'] = np.array(d['KE'] * np.cos(d['theta']));
-    del d['theta'], d['phi'];
+    d['theta'] = np.arccos(d['z']/r);
+    print('calculating azimuth');
+    d['phi'] = np.arccos(d['x']/(r*np.sin(d['theta'])));
+    for i,y in enumerate(d['y']):
+        if y < 0.0:
+            d['phi'][i] = 2*np.pi - d['phi'][i];
+        pass;
     print('outputting');  
     with open(outname,"wb") as f:
         cPickle.dump(d,f,2);
