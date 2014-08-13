@@ -28,11 +28,14 @@ def plot(names):
     src=mlab.pipeline.scalar_field(S);
     vmin=18;vmax=24;
     #volume rendering
+    print("volume rendering");
     v=mlab.pipeline.volume(src,vmin=vmin,vmax=vmax);
     #cut plane 1
-    zp=mlab.pipeline.image_plane_widget(src,plane_orientation="x_axes",
-                                        slice_index=50,vmin=vmin,vmax=vmax);
+    #zp=mlab.pipeline.image_plane_widget(src,plane_orientation="x_axes",
+    #                                    slice_index=50,vmin=vmin,vmax=vmax);
+    print("setting view");
     mlab.view(azimuth=0,elevation=100,focalpoint='auto',distance='auto');
+    print("colorbar");
     mlab.scalarbar(object=v,title="log10 of number density");
     #Unfortunately, the volume renderer doesn't work out of the box.
     #The main issue is the colorbar. So, we do this instead.
@@ -40,8 +43,10 @@ def plot(names):
     module_manager = e.scenes[0].children[0].children[0];
     module_manager.scalar_lut_manager.use_default_range = False;
     module_manager.scalar_lut_manager.data_range = np.array([vmin, vmax]);
+    print("label");
     t=mlab.text(0.075,0.875,label,width=0.1);
     fig.scene.disable_render=False;
+    print("saving");
     mlab.savefig(outname,size=(1280,1024));
     for outname,inname,label in names:
         print("processing {}...".format(inname))
