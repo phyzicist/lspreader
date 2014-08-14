@@ -42,7 +42,8 @@ def main():
     for p in frames[0]['particles']:
         pos = (p['xi'],p['zi']);
         if  xlim[0] <= pos[0] <= xlim[1] and \
-            zlim[0] <= pos[1] <= zlim[1]:#ylim[0] <= pos[1] <= ylim[1] and 
+            ylim[0] <= pos[1] <= ylim[1] and \
+            zlim[0] <= pos[2] <= zlim[1]:
             pos=str(pos);
             data[pos]=[[p['x']],[p['z']]];
     print('reading frames');
@@ -50,11 +51,12 @@ def main():
         for p in frame['particles']:
             pos = (p['xi'],p['zi']);
             if  xlim[0] <= pos[0] <= xlim[1] and \
-                zlim[0] <= pos[1] <= zlim[1]:#ylim[0] <= pos[1] <= ylim[1] and \
+                ylim[0] <= pos[1] <= ylim[1] and \
+                zlim[0] <= pos[2] <= zlim[1]:
                 pos=str(pos);
                 data[pos][0].append(p['x']);
-                #data[pos][1].append(p['y']);
-                data[pos][1].append(p['z']);
+                data[pos][1].append(p['y']);
+                data[pos][2].append(p['z']);
         del frame['particles'];
     pass;
     del frames;

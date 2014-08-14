@@ -1,4 +1,5 @@
 import xdrlib as xdr;
+import itertools as itools;
 import multiprocessing;
 
 class LazyIter(object):
@@ -65,12 +66,13 @@ def read_scalars(d):
 
 def convert_frame(d):
     particles=[];
+    d['ip']=[];
+    for param,units in d['params']:
+        d[param] = [];
     for i in range(d['pnum']):
-        p={}
-        p['ip']=d['xdr'].unpack_int();
-        for i in d['params']:
-            p[i[0]] = d['xdr'].unpack_float();
-        particles.append(p);
+        d['ip'].append(d['xdr'].unpack_int())
+        for param,units in d['params']:
+            d[param].append(d['xdr'].unpack_float());
     del d['xdr'];
     d['particles']=particles;
     return d;
@@ -78,8 +80,8 @@ def convert_frame(d):
 class LspOutput(file):
     '''represents an lsp output file on call,
        reads the header on open'''
-    def __init__(self,filename,verbose=False,prefix=''):
-        file.__init__(self,filename,"rb");
+    def __init__(self,filename,verbose=False,prefix='',buffering=-1):
+        file.__init__(self,filename,"rb",buffering);
         self._get_header();
         self.verbose = verbose;
         self.prefix = prefix;
@@ -153,6 +155,8 @@ class LspOutput(file):
             labels=['q','x','y','z','ux','uy','uz','E']
             if n == 8:
                 pass;
+            elif n == 7:
+                labels = labels[:-1];
             elif n == 11:
                 labels+=['xi','yi','zi'];
             else:
@@ -247,7 +251,6 @@ class LspOutput(file):
         frames[:] = pool.map(convert_frame,frames);
         pool.close();
         return frames;
-    
     def _getpext(self):
         nparams = len(self.header['quantities']);
         params = ['t','q','x','y','z','ux','uy','uz'];
@@ -282,4 +285,28 @@ class LspOutput(file):
             return self._getpext();
         else:
             return None;
+    pass;
+def burst_pmovie(f,outfmt,skip=1):
+    if f.header['dump_type'] != 6:
+        raise ValueError("Can't burst non-pmovie type dump");
+    nparams=len(f.header['params']);
+    p_bytes = (nparams+1)*4;
+    for i in itools.count():
+        c=f.tell();
+        f.read(1); #python, y u no eof?
+        if f.tell() == c:
+            break;
+        f.seek(c);
+        d=f.get_dict('fii',['time','step','pnum']);
+        if (i % skip) != 0:
+            f.seek(d['pnum']*p_bytes,1);
+            continue;
+        d['xdr']=xdr.Unpacker(f.read(d['pnum']*p_bytes));
+        d['params']=f.header['params'];
+        print('converting {} for {} bytes'.format(i,d['pnum']*p_bytes));
+        d=convert_frame(d);
+        outname = outfmt.format(i);
+        print('outputting to {}'.format(outname));
+        with open(outname,'w') as f:
+            cPickle.dump(d,f,2);
     pass;
