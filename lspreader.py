@@ -73,7 +73,6 @@ def convert_frame(d):
         particles.append(p);
     del d['xdr'];
     d['particles']=particles;
-    #print('.');
     return d;
 
 class LspOutput(file):
@@ -226,10 +225,11 @@ class LspOutput(file):
             return doms[0];
         pass;
     
-    def _getmovie(self,pool_size):    
+    def _getmovie(self,pool_size,skip=1):    
         nparams=len(self.header['params']);
         p_bytes = (nparams+1)*4;
         frames=[];
+        cur = 0;
         while True:
             c=self.tell();
             self.read(1); #python, y u no eof?
@@ -237,10 +237,12 @@ class LspOutput(file):
                 break;
             self.seek(c);
             d=self.get_dict('fii',['time','step','pnum']);
-            d['filepos']=self.tell();
-            d['xdr']=xdr.Unpacker(self.read(d['pnum']*p_bytes));
-            d['params']=self.header['params'];
-            frames.append(d);
+            if (cur % skip) == 0:
+                d['xdr']=xdr.Unpacker(self.read(d['pnum']*p_bytes));
+                d['params']=self.header['params'];
+                frames.append(d);
+            else:
+                self.seek(d['pnum']*p_bytes,1);
         pool=multiprocessing.Pool(pool_size);
         frames[:] = pool.map(convert_frame,frames);
         pool.close();
@@ -268,14 +270,14 @@ class LspOutput(file):
         return out;
         
     def get_data(self,var=None,pool_size=16,lazy=False):
-        if not var:
+        if not var and (self.header['dump_type']== 2 or self.header['dump_type']== 3):
             var=[i[0] for i in self.header['quantities']];
         if self.header['dump_type'] == 2:
             return self._getfields(var,pool_size,lazy,vector=True);
         elif self.header['dump_type'] == 3:
             return self._getfields(var,pool_size,lazy,vector=False);
         elif self.header['dump_type'] == 6:
-            return self._getmovie(pool);
+            return self._getmovie(pool_size);
         elif self.header['dump_type'] == 10:
             return self._getpext();
         else:
