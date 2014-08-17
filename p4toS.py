@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 '''
-Convert an lsp fields or scalars into a 3d numpy array.
+Convert an lsp fields or scalars into a 3d interpolated numpy array.
 
 Usage:
   p4toS.py [options] <randompickle> <input> (<var> <output>)...

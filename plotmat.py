@@ -40,6 +40,7 @@ def main():
         vmax = 23.5;
     S = read_file(opts['<infile>']);
     S = zero_nan(S);
+    S = np.log10(S+0.1);
     X,Y = np.mgrid[-20:20:100j,-30:5:100j];
     plt.pcolormesh(X,Y,S[:,50,:],vmin=vmin,vmax=vmax);
     plt.xlabel('z ($\mu m$)');
