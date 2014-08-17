@@ -23,24 +23,24 @@ massE = 0.511e6;
 
 def calculate2d(x,y,d):
     print('calculating kinetic energy');
-    d['KE'] = (np.sqrt(d['u'+x]**2+d['u'+y]**2+1)-1)*massE;
-    r = np.sqrt(d[x]**2+d[y]**2);    
+    r = np.sqrt(d['u'+x]**2+d['u'+y]**2);    
+    d['KE'] = (r**2+1)-1)*massE;
     print('calculating azimuth');
-    d['phi'] = np.arccos(-d[x]/r);
-    for i,zi in enumerate(d[y]):
+    d['phi'] = np.arccos(-d['u'+x]/r);
+    for i,zi in enumerate(d['u'+y]):
         if zi < 0.0:
             d['phi'][i] = -d['phi'][i];
         pass;
     return d;
 def calculate3d(d):
     print('calculating kinetic energy');
-    d['KE'] = (np.sqrt(d['ux']**2+d['uy']**2+d['uz']**2+1)-1)*massE;
-    r = np.sqrt(d['x']**2+d['y']**2+d['z']**2);    
+    r = np.sqrt(d['ux']**2+d['uy']**2+d['uz']**2);    
+    d['KE'] = (np.sqrt(r**2+1)-1)*massE;
     print('calculating polar angle ("zenith")');
-    d['theta'] = np.arccos(d['z']/r);
+    d['theta'] = np.arccos(d['uz']/r);
     print('calculating azimuth');
-    d['phi'] = np.arccos(-d['x']/(r*np.sin(d['theta'])));
-    for i,z in enumerate(d['z']):
+    d['phi'] = np.arccos(-d['ux']/(r*np.sin(d['theta'])));
+    for i,z in enumerate(d['uz']):
         if z < 0.0:
             d['phi'][i] = -d['phi'][i];
         pass;
