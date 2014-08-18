@@ -10,9 +10,10 @@ Usage:
   pext.py [options] <output> <names>...
 
 Options:
-  --X -x                  Use X.
-  --Y -y                  Use Y.
-  --Z -z                  Use Z.
+  --X -x                    Use X.
+  --Y -y                    Use Y.
+  --Z -z                    Use Z.
+  --late-time=TIME -l TIME  Cut out after this time.
 '''
 import lspreader as rd;
 import cPickle;
@@ -24,7 +25,7 @@ massE = 0.511e6;
 def calculate2d(x,y,d):
     print('calculating kinetic energy');
     r = np.sqrt(d['u'+x]**2+d['u'+y]**2);    
-    d['KE'] = (r**2+1)-1)*massE;
+    d['KE'] = (np.sqrt(r**2+1)-1)*massE;
     print('calculating azimuth');
     d['phi'] = np.arccos(-d['u'+x]/r);
     for i,zi in enumerate(d['u'+y]):
@@ -52,6 +53,7 @@ def main():
     names = opts['<names>'];
     coords = {'x':opts['--X'],'y':opts['--Y'],'z':opts['--Z']};
     num_of_coords = len([k for k in coords if coords[k]]);
+    latetime = float(opts['--late-time']) if opts['--late-time'] else None;
     if num_of_coords==0:
         num_of_coords=3;
     d=[];
@@ -59,27 +61,29 @@ def main():
         print('reading in {}'.format(name));
         with rd.LspOutput(name) as f:
             d.append(f.get_data());
-    print('cutting out duplicate times');
-    for first,second in itools.izip(d[::2],d[1::2]):
-        try:
-            tp = first['t'][-1];
-        except IndexError:
-            continue;
-        pass;
-        #this assumes that the times are saved sequentially
-        try:
-            i=second['t'].index(tp);
-        except ValueError:
-            i=0;
-        #cutting off overrun
-        for k in second:
-            second[k]=second[k][i:];
+    print('stringing together');
     data=d[0];
-    print('stringing together and removing');
     for i in d[1:]:
         for k in data:
             data[k].extend(i[k]);
     d=data;
+    del data;
+    print('cutting out duplicate times');
+    #ugly c-like loop
+    i = 0;
+    while i<len(d['t'])-1:
+        if d['t'][i] > d['t'][i+1]:
+            cuti = d['t'][i+1:].index(d['t'][i])+i+2;
+            for k in d:
+                del d[k][i+1:cuti];
+        i+=1;
+    if latetime:
+        print('cutting out times greater than {}'.format(latetime));
+        for i,t in enumerate(d['t']):
+            if t > latetime:
+                for k in d:
+                    del d[k][i:];
+                break;
     for k in d:
         d[k] = np.array(d[k]);
     if num_of_coords == 2:
