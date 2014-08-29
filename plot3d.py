@@ -14,6 +14,7 @@ Options:
    --min=MIN -n MIN             Set vmin in the volumetric plot to MIN.
    --max=MAX -x MAX             Set vmax in the volumetric plot to MAX.
    --plot-single -s             Just show, don't output, single scalar.
+   --cutplane                   Make cutplane along z.
 '''
 
 def read_file(filename):
@@ -31,7 +32,7 @@ def tozero(v):
 def zero_nan(S):
     return np.array([[[tozero(k) for k in j] for j in i] for i in S]);
 
-def plot(names,vmin,vmax):
+def plot(names,vmin,vmax,cutplane):
     print("loading mlab");
     import mayavi.mlab as mlab;
     mlab.options.offscreen = True;
@@ -46,10 +47,11 @@ def plot(names,vmin,vmax):
     #volume rendering
     v=mlab.pipeline.volume(src,vmin=vmin,vmax=vmax);
     #cut plane 1
-    #zp=mlab.pipeline.image_plane_widget(src,plane_orientation="x_axes",
-    #                                    slice_index=50,vmin=vmin,vmax=vmax);
-    mlab.view(azimuth=0,elevation=150,focalpoint='auto',distance='auto');
-    mlab.scalarbar(object=v,title="log10 of number density");
+    if cutplane:
+        zp=mlab.pipeline.image_plane_widget(src,plane_orientation="z_axes",
+                                            slice_index=50,vmin=vmin,vmax=vmax);
+    mlab.view(azimuth=150,elevation=45,focalpoint='auto',distance='auto');
+    mlab.scalarbar(object=v,title="log10 of electron number density");
     #Unfortunately, the volume renderer doesn't work out of the box.
     #The main issue is the colorbar. So, we do this instead.
     e=mlab.get_engine();
@@ -66,14 +68,15 @@ def plot(names,vmin,vmax):
         S=np.log10(zero_nan(S)+0.1);
         fig.scene.disable_render=True;
         v.mlab_source.set(scalars=S);
-        #zp.mlab_source.set(scalars=S);
+        if cutplane:
+            zp.mlab_source.set(scalars=S);
         t.text=label;
         fig.scene.disable_render=False;
         print("saving {}".format(outname));
         mlab.savefig(outname,size=(1280,1024));
     pass
 
-def plot_single(inname,vmin,vmax):
+def plot_single(inname,vmin,vmax,cutplane):
     print("loading mlab");
     import mayavi.mlab as mlab;
     #mlab.options.offscreen = True;
@@ -85,10 +88,11 @@ def plot_single(inname,vmin,vmax):
     #volume rendering
     v=mlab.pipeline.volume(src,vmin=vmin,vmax=vmax);
     #cut plane 1
-    #zp=mlab.pipeline.image_plane_widget(src,plane_orientation="x_axes",
-    #                                    slice_index=50,vmin=vmin,vmax=vmax);
-    mlab.view(azimuth=0,elevation=150,focalpoint='auto',distance='auto');
-    mlab.scalarbar(object=v,title="log10 of number density");
+    if cutplane:
+        zp=mlab.pipeline.image_plane_widget(src,plane_orientation="z_axes",
+                                            slice_index=50,vmin=vmin,vmax=vmax);
+    mlab.view(azimuth=150,elevation=45,focalpoint='auto',distance='auto');
+    mlab.scalarbar(object=v,title="log10 of electron number density");
     #Unfortunately, the volume renderer doesn't work out of the box.
     #The main issue is the colorbar. So, we do this instead.
     e=mlab.get_engine();
@@ -121,8 +125,8 @@ if __name__=="__main__":
         innames = [in_fmt.format(i) for i in numrange];
         labels = [label_fmt.format(i) for i in numrange];
         files = zip(outnames,innames,labels);
-        plot(files,vmin,vmax);
+        plot(files,vmin,vmax,opts['--cutplane']);
     else:
-        plot_single(opts['INFILE'],vmin,vmax);
+        plot_single(opts['INFILE'],vmin,vmax,opts['--cutplane']);
     pass;
 pass;
