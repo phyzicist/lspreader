@@ -1,36 +1,10 @@
+'''
+Reader for LSP output xdr files (.p4's)
+
+'''
 import xdrlib as xdr;
 import itertools as itools;
 import multiprocessing;
-
-class LazyIter(object):
-    def __init__(self,doms):
-        self.doms = doms;
-        pass;
-    def _next_dom(self):
-        self.dom = self.domsi.next();#should throw StopIteration at the last dom
-        self.curi = 0;
-        self.keys = [i for i in self.dom
-                     if  (i != 'xp' and i != 'yp' and i != 'zp')];
-        self.l = len(self.dom[self.keys[0]]);
-        self.tmp1 = len(self.dom['xp']);
-        self.tmp2 = self.tmp1*len(self.dom['yp']);
-        pass;
-    def __iter__(self):
-        self.domsi = self.doms.__iter__();
-        self._next_dom();
-        return self;
-    def next(self):      
-        if self.curi == self.l:
-            self._next_dom();
-        out={};
-        for k in self.keys:
-            out[k] = self.dom[k][self.curi];
-        #lazy evaluate point
-        out['z']=self.dom['zp'][self.curi/self.tmp2];
-        out['y']=self.dom['yp'][self.curi%self.tmp2/self.tmp1];
-        out['x']=self.dom['xp'][self.curi%self.tmp1];
-        self.curi+=1;
-        return out;
 
 class Callable(object):
     def __init__(self,d,call_func):
@@ -40,6 +14,7 @@ class Callable(object):
         c=self.call;
         return c(self.d,i);
     pass;
+
 def make_points(d):
     d['x']=[]; d['y']=[]; d['z']=[];
     tmp1 = len(d['xp']);
@@ -76,18 +51,23 @@ def convert_frame(d):
     for param,units in d['params']:
         d[param] = [];
     for i in range(d['pnum']):
-        d['ip'].append(d['xdr'].unpack_int())
+        d['ip'].append(d['xdr'].unpack_int());
         for param,units in d['params']:
             d[param].append(d['xdr'].unpack_float());
     del d['xdr'];
     return d;
 
-def convert_particles(d,i):
+def convert_particles(d,pair):
+    i,e = pair;
     d['xdr'].set_position(d['pbytes']*i);
     p={};
-    p['ip'] = d['xdr'].unpack_int();
+    p['ip']=[];
     for param,units in d['params']:
-        p[param] = d['xdr'].unpack_float();
+        p[param] = [];
+    for j in range(i,e):
+        p['ip'].append(d['xdr'].unpack_int());
+        for param,units in d['params']:
+            p[param].append(d['xdr'].unpack_float());
     return p;
 
 class LspOutput(file):
@@ -231,16 +211,11 @@ class LspOutput(file):
         doms[:] = pool.map(call,doms);
         pool.close();
         self.logprint('done! stringing together');
-        if lazy:
-            return LazyIter(doms);
-        else:
-            #string together the domains;
-            for dom in doms[1:]:
-                for k in doms[0]:
-                    doms[0][k].extend(dom[k]);
-                del dom;
-            return doms[0];
-        pass;
+        for dom in doms[1:]:
+            for k in doms[0]:
+                doms[0][k].extend(dom[k]);
+            del dom;
+        return doms[0];
     
     def _getmovie(self,pool_size,skip=1):
         params  = self.header['params'];
@@ -254,7 +229,7 @@ class LspOutput(file):
             if self.tell() == c:
                 break;
             self.seek(c);
-            d=self.get_dict('fii',['time','step','pnum']);
+            d=self.get_dict('fii',['t','step','pnum']);
             if (cur % skip) == 0:
                 self.logprint('reading in frame at lsp step {}'.format(d['step']));
                 d['xdr'] = xdr.Unpacker(self.read(pbytes*d['pnum']));
@@ -262,25 +237,31 @@ class LspOutput(file):
                 frames.append(d);
             else:
                 self.seek(d['pnum']*p_bytes,1);
-        pool=multiprocessing.Pool(pool_size);
         self.logprint('converting frames');
         for i,d in enumerate(frames):
             d['params'] = params;
             d['pbytes'] = pbytes;
             f=Callable(d,convert_particles);
             l = range(d['pnum']);
-            particles[:] = pool.map(f,l);
-            del d['xdr'], d['pnum'], d['pbytes'];
-            for k in d['params']:
-                d[k] = [];
-            for i,p in enumerate(particles):
-                self.logprint('doing particle {}'.format(i));
-                for k in frame['params']:
-                    d[k].append(p[k]);
-            del particles;
+            #subdivide l
+            q = len(l)//pool_size; r = len(l) % pool_size
+            ll = [[p*q,(p+1)*q]  for p in range(pool_size)];
+            ll[-1][1]+=r;
+            self.logprint('converting {}'.format(i));
+            pool=multiprocessing.Pool(pool_size);
+            particles = pool.map(f,ll);
+            pool.close();
+            del d['xdr'], d['pnum'], d['pbytes'],d['params'];
+            self.logprint('done! stringing together');
+            data = particles[0];
+            for p in particles[1:]:
+                for k in data:
+                    data[k].extend(p[k]);
+            del particles
+            d.update(data);
             frames[i] = d;
-        pool.close();
         return frames;
+
     def _getpext(self):
         nparams = len(self.header['quantities']);
         params = ['t','q','x','y','z','ux','uy','uz'];
@@ -315,28 +296,4 @@ class LspOutput(file):
             return self._getpext();
         else:
             return None;
-    pass;
-def burst_pmovie(f,outfmt,skip=1):
-    if f.header['dump_type'] != 6:
-        raise ValueError("Can't burst non-pmovie type dump");
-    nparams=len(f.header['params']);
-    p_bytes = (nparams+1)*4;
-    for i in itools.count():
-        c=f.tell();
-        f.read(1); #python, y u no eof?
-        if f.tell() == c:
-            break;
-        f.seek(c);
-        d=f.get_dict('fii',['time','step','pnum']);
-        if (i % skip) != 0:
-            f.seek(d['pnum']*p_bytes,1);
-            continue;
-        d['xdr']=xdr.Unpacker(f.read(d['pnum']*p_bytes));
-        d['params']=f.header['params'];
-        print('converting {} for {} bytes'.format(i,d['pnum']*p_bytes));
-        d=convert_frame(d);
-        outname = outfmt.format(i);
-        print('outputting to {}'.format(outname));
-        with open(outname,'w') as f:
-            cPickle.dump(d,f,2);
     pass;
