@@ -26,13 +26,20 @@ class LazyIter(object):
         for k in self.keys:
             out[k] = self.dom[k][self.curi];
         #lazy evaluate point
-
         out['z']=self.dom['zp'][self.curi/self.tmp2];
         out['y']=self.dom['yp'][self.curi%self.tmp2/self.tmp1];
         out['x']=self.dom['xp'][self.curi%self.tmp1];
         self.curi+=1;
         return out;
 
+class Callable(object):
+    def __init__(self,d,call_func):
+        self.d=d;
+        self.call=call_func
+    def __call__(self,i):
+        c=self.call;
+        return c(self.d,i);
+    pass;
 def make_points(d):
     d['x']=[]; d['y']=[]; d['z']=[];
     tmp1 = len(d['xp']);
@@ -65,7 +72,6 @@ def read_scalars(d):
     return d;
 
 def convert_frame(d):
-    particles=[];
     d['ip']=[];
     for param,units in d['params']:
         d[param] = [];
@@ -74,8 +80,15 @@ def convert_frame(d):
         for param,units in d['params']:
             d[param].append(d['xdr'].unpack_float());
     del d['xdr'];
-    d['particles']=particles;
     return d;
+
+def convert_particles(d,i):
+    d['xdr'].set_position(d['pbytes']*i);
+    p={};
+    p['ip'] = d['xdr'].unpack_int();
+    for param,units in d['params']:
+        p[param] = d['xdr'].unpack_float();
+    return p;
 
 class LspOutput(file):
     '''represents an lsp output file on call,
@@ -229,9 +242,10 @@ class LspOutput(file):
             return doms[0];
         pass;
     
-    def _getmovie(self,pool_size,skip=1):    
-        nparams=len(self.header['params']);
-        p_bytes = (nparams+1)*4;
+    def _getmovie(self,pool_size,skip=1):
+        params  = self.header['params'];
+        nparams = len(params);
+        pbytes = (nparams+1)*4;
         frames=[];
         cur = 0;
         while True:
@@ -242,13 +256,29 @@ class LspOutput(file):
             self.seek(c);
             d=self.get_dict('fii',['time','step','pnum']);
             if (cur % skip) == 0:
-                d['xdr']=xdr.Unpacker(self.read(d['pnum']*p_bytes));
-                d['params']=self.header['params'];
+                self.logprint('reading in frame at lsp step {}'.format(d['step']));
+                d['xdr'] = xdr.Unpacker(self.read(pbytes*d['pnum']));
+                self.logprint('done reading');
                 frames.append(d);
             else:
                 self.seek(d['pnum']*p_bytes,1);
         pool=multiprocessing.Pool(pool_size);
-        frames[:] = pool.map(convert_frame,frames);
+        self.logprint('converting frames');
+        for i,d in enumerate(frames):
+            d['params'] = params;
+            d['pbytes'] = pbytes;
+            f=Callable(d,convert_particles);
+            l = range(d['pnum']);
+            particles[:] = pool.map(f,l);
+            del d['xdr'], d['pnum'], d['pbytes'];
+            for k in d['params']:
+                d[k] = [];
+            for i,p in enumerate(particles):
+                self.logprint('doing particle {}'.format(i));
+                for k in frame['params']:
+                    d[k].append(p[k]);
+            del particles;
+            frames[i] = d;
         pool.close();
         return frames;
     def _getpext(self):
