@@ -2,7 +2,7 @@
 '''Plot a cutplane of a 3D scalar file.
 
 Usage:
-  ./plotmat.py [options] [(--X | --Y | --Z)] [(--half|--index=INDEX)] <infile> <outfile> <time>
+  ./plotcut.py [options] [(--X | --Y | --Z)] [(--half|--index=INDEX)] <infile> <outfile> <time>
 
 Options:
   --min=MIN -n MIN            Plot with a minimum MIN.
