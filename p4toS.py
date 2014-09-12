@@ -83,7 +83,7 @@ def main():
         useX=useY=useZ=True;
     logprint('reading in {}'.format(name));
     with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
-        d = f.get_data(var=var,pool_size=pool_size,lazy=False);
+        d = f.get_data(var=var,pool_size=pool_size);
     logprint("preparing to prune, reading in {}".format(rndname));
     with open(rndname,'rb') as f:
         rnd = cPickle.load(f);

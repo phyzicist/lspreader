@@ -5,6 +5,8 @@ Reader for LSP output xdr files (.p4's)
 import xdrlib as xdr;
 import itertools as itools;
 import multiprocessing;
+import struct;
+import numpy as np;
 
 class Callable(object):
     def __init__(self,d,call_func):
@@ -31,7 +33,7 @@ def read_fields(d):
         d[quantity+'x']=[];
         d[quantity+'y']=[];
         d[quantity+'z']=[];
-        for k in range(d['nAll']):
+        for k in xrange(d['nAll']):
             d[quantity+'x'].append(d['x'+quantity].unpack_float());
             d[quantity+'y'].append(d['x'+quantity].unpack_float());
             d[quantity+'z'].append(d['x'+quantity].unpack_float());
@@ -45,30 +47,6 @@ def read_scalars(d):
         del d['x'+quantity];
     del d['dqs'],d['nAll'];
     return d;
-
-def convert_frame(d):
-    d['ip']=[];
-    for param,units in d['params']:
-        d[param] = [];
-    for i in range(d['pnum']):
-        d['ip'].append(d['xdr'].unpack_int());
-        for param,units in d['params']:
-            d[param].append(d['xdr'].unpack_float());
-    del d['xdr'];
-    return d;
-
-def convert_particles(d,pair):
-    i,e = pair;
-    d['xdr'].set_position(d['pbytes']*i);
-    p={};
-    p['ip']=[];
-    for param,units in d['params']:
-        p[param] = [];
-    for j in range(i,e):
-        p['ip'].append(d['xdr'].unpack_int());
-        for param,units in d['params']:
-            p[param].append(d['xdr'].unpack_float());
-    return p;
 
 class LspOutput(file):
     '''represents an lsp output file on call,
@@ -167,7 +145,7 @@ class LspOutput(file):
         return;
     ###################
     #data processing    
-    def _getfields(self, var, pool_size,lazy,vector=True):
+    def _getfields(self, var, pool_size,vector=True):
         if vector:
             size=3; call=read_fields;
             readin = set();
@@ -181,7 +159,6 @@ class LspOutput(file):
             readin = set(var);
         doms = [];
         qs = [i[0] for i in self.header['quantities']];
-        pool=multiprocessing.Pool(pool_size);
         self.logprint('reading positions and making buffers');
         for i in range(self.header['domains']):
             self.logprint('reading domain {}'.format(i));
@@ -204,9 +181,9 @@ class LspOutput(file):
                       'xp':Ip,'yp':Jp,'zp':Kp});
             doms.append(d);
         self.logprint('making points');
-        if not lazy:
-            #making points
-            doms[:] = pool.map(make_points,doms);
+        pool=multiprocessing.Pool(pool_size);
+        #making points
+        doms[:] = pool.map(make_points,doms);
         self.logprint('converting buffers');
         doms[:] = pool.map(call,doms);
         pool.close();
@@ -218,7 +195,7 @@ class LspOutput(file):
         return doms[0];
     
     def _getmovie(self,pool_size,skip=1):
-        params  = self.header['params'];
+        params,_  = zip(*self.header['params']);
         nparams = len(params);
         pbytes = (nparams+1)*4;
         frames=[];
@@ -232,33 +209,38 @@ class LspOutput(file):
             d=self.get_dict('fii',['t','step','pnum']);
             if (cur % skip) == 0:
                 self.logprint('reading in frame at lsp step {}'.format(d['step']));
-                d['xdr'] = xdr.Unpacker(self.read(pbytes*d['pnum']));
+                d['pos']=self.tell();
+                self.seek(d['pnum']*pbytes,1);
                 self.logprint('done reading');
                 frames.append(d);
             else:
-                self.seek(d['pnum']*p_bytes,1);
+                self.seek(d['pnum']*pbytes,1);
         self.logprint('converting frames');
         for i,d in enumerate(frames):
-            d['params'] = params;
-            d['pbytes'] = pbytes;
-            f=Callable(d,convert_particles);
-            l = range(d['pnum']);
-            #subdivide l
-            q = len(l)//pool_size; r = len(l) % pool_size
-            ll = [[p*q,(p+1)*q]  for p in range(pool_size)];
-            ll[-1][1]+=r;
-            self.logprint('converting {}'.format(i));
-            pool=multiprocessing.Pool(pool_size);
-            particles = pool.map(f,ll);
-            pool.close();
-            del d['xdr'], d['pnum'], d['pbytes'],d['params'];
-            self.logprint('done! stringing together');
-            data = particles[0];
-            for p in particles[1:]:
-                for k in data:
-                    data[k].extend(p[k]);
-            del particles
-            d.update(data);
+            N = d['pnum']
+            spaces = [N/pool_size]*(pool_size-1)+[N/pool_size + N % pool_size];#not as bad
+            d['ip'] = np.ndarray((N,),int);
+            for param in params:
+                d[param] = np.ndarray((N,),float);
+            index = 0;
+            for length in spaces:
+                self.logprint('reading in {} particles'.format(length));
+                self.seek(d['pos']);
+                buf = self.read(pbytes*length);
+                fmt = '>'+('i'+'f'*nparams)*length;
+                self.logprint('converting {} bytes'.format((len(fmt)-1)*4));
+                data = struct.unpack(fmt,buf);
+                del buf;
+                self.logprint('done converting, adding to arrays');
+                for p in xrange(length):
+                    #not the most pythonic, it's ok.
+                    d['ip'][index] = data[p*(nparams+1)];
+                    for j,param in enumerate(params):
+                        d[param][index]= data[p*(nparams+1)+j+1];
+                    index+=1;
+                del data;
+            del d['pos'];
+            self.logprint('done!');
             frames[i] = d;
         return frames;
 
@@ -283,13 +265,13 @@ class LspOutput(file):
             out[key] = [j for j in data[i::nparams]];
         return out;
         
-    def get_data(self,var=None,pool_size=16,lazy=False):
+    def get_data(self,var=None,pool_size=16):
         if not var and (self.header['dump_type']== 2 or self.header['dump_type']== 3):
             var=[i[0] for i in self.header['quantities']];
         if self.header['dump_type'] == 2:
-            return self._getfields(var,pool_size,lazy,vector=True);
+            return self._getfields(var,pool_size,vector=True);
         elif self.header['dump_type'] == 3:
-            return self._getfields(var,pool_size,lazy,vector=False);
+            return self._getfields(var,pool_size,vector=False);
         elif self.header['dump_type'] == 6:
             return self._getmovie(pool_size);
         elif self.header['dump_type'] == 10:

@@ -86,7 +86,7 @@ def main():
         useX=useY=useZ=True;
     logprint('reading in {}'.format(name));
     with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
-        d = f.get_data(var=var,pool_size=pool_size,lazy=False);
+        d = f.get_data(var=var,pool_size=pool_size);
     for v,outname in vopairs:
         logprint('making arrays for interpolating scalar field {}'.format(v));
         x=np.array(d['x']);
