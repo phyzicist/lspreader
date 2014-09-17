@@ -9,9 +9,12 @@ Options:
   -h --help               Show this help.
   -v --verbose            Turn on verbosity.
   -p PS --pool_size=PS    Choose a pool size PS.
-  -x --X                  Use X in interpolation
-  -y --Y                  Use Y in interpolation
-  -z --Z                  Use Z in interpolation
+  -x --X                  Use X in interpolation.
+  -y --Y                  Use Y in interpolation.
+  -z --Z                  Use Z in interpolation.
+  --xres=XRES             Set the resolution along the x direction [default: 100].
+  --yres=XRES             Set the resolution along the y direction [default: 100].
+  --zres=XRES             Set the resolution along the z direction [default: 100].
 '''
 
 import lspreader as rd;
@@ -21,6 +24,7 @@ import matplotlib.pyplot as plt;
 import scipy.interpolate as interpol;
 from docopt import docopt;
 import random;
+from misc import conv;
 
 def logprint(s):
     global verbose;
@@ -28,33 +32,36 @@ def logprint(s):
         print("{}: {}".format(name,s));
     pass;
 
-def histogram_scalar_3d(x,y,z,s,res=100):
+def histogram_scalar_3d(x,y,z,s,
+                        xres=100,yres=100,zres=100):
     '''Histograms the scalar s on the grid x,y,z
-       with the resolution res.'''
-    #Z,Y,X = np.mgrid[ min(z) : max(z) : res*1j,
-    #                  min(y) : max(y) : res*1j,
-    #                  min(x) : max(x) : res*1j];
-    xbins = np.linspace(min(x),max(x),res+1);
-    ybins = np.linspace(min(y),max(y),res+1);
-    zbins = np.linspace(min(z),max(z),res+1);
+       with the resolutions *res along each axis.'''
+    xbins = np.linspace(min(x),max(x),xres+1);
+    ybins = np.linspace(min(y),max(y),yres+1);
+    zbins = np.linspace(min(z),max(z),zres+1);
     H,_= np.histogramdd([x,y,z],bins=[xbins,ybins,zbins],weights=s);
-    return H;
+    #divide to get the average
+    norm=float(len(s))/float(xres*yres*zres);
+    return H/norm;
 
-def histogram_scalar_2d(x,y,s,res=100):
+def histogram_scalar_2d(x,y,s,
+                        xres=100,yres=100):
     '''Histograms the scalar s on the grid x,y
-       with the resolution res.'''
-    xbins = np.linspace(min(x),max(x),res+1);
-    ybins = np.linspace(min(y),max(y),res+1);
+       with the resolutions *res along each axis.'''
+    xbins = np.linspace(min(x),max(x),xres+1);
+    ybins = np.linspace(min(y),max(y),yres+1);
     
     H,_,_ = np.histogram2d(x,y,bins=(xbins,ybins),weights=s);
-    return H;
+    norm=float(len(s))/float(xres*yres);
+    return H/norm;
 
 def histogram_scalar_1d(x,s,res=100):
     '''Histograms the scalar s on the grid x
        with the resolution res.'''
     xbins = np.linspace(min(x),max(x),res+1);
     H,_ = np.histogram(x,bins=xbins,weights=s);
-    return H;
+    norm=float(len(s))/float(res);
+    return H/norm;
 
 def main():
     global name,verbose;
@@ -63,51 +70,47 @@ def main():
     var=opts['<var>'];
     outnames= opts['<output>'];
     vopairs = zip(var,outnames);
-    name = inname = opts['<input>'];
+    name = opts['<input>'];
 
     verbose = opts['--verbose'];
     if opts['--pool_size']:
         pool_size=int(opts['--pool_size']);
     else:
         pool_size=24;
+    use = [];
     if opts['--X']:
-        useX=True;
-    else:
-        useX=False;
+        use.append('x');
     if opts['--Y']:
-        useY=True;
-    else:
-        useY=False;
+        use.append('y');
     if opts['--Z']:
-        useZ=True;
-    else:
-        useZ=False;
-    if not useX and  not useY and not useZ:
-        useX=useY=useZ=True;
+        use.append('z');
+    if use == []:
+        use = ['x','y','z'];
+    # A couple of things to note; written in this way, whatever
+    # this list (and thus, what is read) becomes, it is ordered
+    # alphabetically. This is important, as this determines what
+    # each resulting row and column and breadth in the output
+    # array corresponds to from the actual simulation.
+    #
+    # It is probably worth mentioning that the xz in simulation
+    # axes will be [0,1] in numpy axes, that is, it will be left-handed.
+    # Using xz leads to this anyway, but it's worth reminding the reader.
     logprint('reading in {}'.format(name));
     with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
         d = f.get_data(var=var,pool_size=pool_size);
     for v,outname in vopairs:
-        logprint('making arrays for interpolating scalar field {}'.format(v));
-        x=np.array(d['x']);
-        y=np.array(d['y']);
-        z=np.array(d['z']);
-        s=np.array(d[v]);
+        logprint('making arrays into numpy arrays');
+        d['x']=np.array(d['x']);
+        d['y']=np.array(d['y']);
+        d['z']=np.array(d['z']);
+        d[v]  =np.array(d[v]);
         logprint('histogramming');
-        if useX and useY and useZ:
-            S = histogram_scalar_3d(x,y,z,s);
-        elif useX and useY:
-            S = histogram_scalar_2d(x,y,s);
-        elif useX and useZ:
-            S = histogram_scalar_2d(x,z,s);
-        elif useY and useZ:
-            S = histogram_scalar_2d(y,z,s);
-        elif useX:
-            S = histogram_scalar_1d(x,s);
-        elif useY:
-            S = histogram_scalar_1d(y,s);
-        elif useZ:
-            S = interpolate_scalar_1d(z,s);
+        if len(use) == 3:
+            S = histogram_scalar_3d(d['x'],d['y'],d['z'],s);
+        elif len(use) == 2:
+            S = histogram_scalar_2d(d[use[0]],d[use[1]],s);
+        else:
+            S = histogram_scalar_1d(d[use[0]],s);
         logprint("dumping");
         with open(outname,"wb") as f:
             cPickle.dump(S,f,2);
