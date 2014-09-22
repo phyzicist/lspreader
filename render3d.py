@@ -8,7 +8,7 @@ from misc import conv;
 usage='''Render volumetric render of a scalar field.
 
 Usage:
-  render3d.py [options] IN_FORMAT OUT_FORMAT LABEL_FORMAT <lownum> <highnum>
+  render3d.py [options] IN_FORMAT OUT_FORMAT LABEL_FORMAT <lownum> <highnum> [<step>]
   render3d.py [options] (--plot-single | -s) INFILE
 
 Options:
@@ -22,6 +22,8 @@ Options:
    --zero-z=ZRANGE              Set a range of z to zero, as a python tuple.
    --azimuth=AZIMUTH            Set the azimuth.
    --polar=POLAR                Set the polar angle.
+   --roll=ROLL                  Roll after setting the angle.
+   --trajectories               Look for trajectories of the form *.pts
 '''
 
 def logprint(s):
@@ -65,6 +67,14 @@ def initial_plot(mlab,fname,vlim,angle,
     src=mlab.pipeline.scalar_field(S);
     #volume rendering
     v=mlab.pipeline.volume(src,vmin=vlim[0],vmax=vlim[1]);
+    #creating custom opacity transfer function
+    from tvtk.util.ctf import PiecewiseFunction;
+    otf = PiecewiseFunction();
+    otf.add_point(vlim[0],    0.0);
+    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*0.9,0.1);
+    otf.add_point(vlim[1],    0.5);
+    v._otf = otf;
+    v._volume_property.set_scalar_opacity(otf);
     ret['v']=v;
     #cut plane 1
     if cutplane is not None:
@@ -72,8 +82,10 @@ def initial_plot(mlab,fname,vlim,angle,
                                             slice_index=cutplane,
                                             vmin=vlim[0],vmax=vlim[1]);
         ret['zp'] = zp;
-        
-    mlab.view(elevation=angle[0],azimuth=angle[1],focalpoint='auto',distance='auto');
+    mlab.view(elevation=angle[0],azimuth=angle[1],
+              focalpoint='auto',distance='auto');
+    
+    mlab.roll(angle[2]);
     mlab.scalarbar(object=v,title=clabel);
     #Unfortunately, the volume renderer doesn't work out of the box.
     #The main issue is the colorbar. So, we do this instead.
@@ -84,13 +96,18 @@ def initial_plot(mlab,fname,vlim,angle,
     if label is not None:
         t=mlab.text(0.075,0.875,label,width=0.1);
         ret['t'] = t;
+    #show the nubs
+    oa=mlab.orientation_axes();
+    oa.marker.set_viewport(0,0,0.4,0.4);
     #begin rendering
     fig.scene.disable_render=False;
+    fig.scene.camera.zoom(1.3);
     return ret;
 
 def plot(names,vlim,angle,
-         clabel=None,cutplane=None,zeros=[None,None,None]):
-    print("loading mlab");
+         clabel=None,cutplane=None,
+         zeros=[None,None,None],traj=False):
+    print("loading mayavi");
     import mayavi.mlab as mlab;
     mlab.options.offscreen = True;
     outname,inname,label = names[0];
@@ -98,6 +115,8 @@ def plot(names,vlim,angle,
     print("processing first file {}...".format(inname));
     d=initial_plot(mlab,inname,vlim,angle,
                    clabel=clabel,cutplane=cutplane,label=label,zeros=zeros);
+    if traj:
+        #scan to 
     print("saving {}".format(outname));
     mlab.savefig(outname,size=(1280,1024));
     for outname,inname,label in names:
@@ -135,26 +154,35 @@ if __name__=="__main__":
              conv(opts['--zero-y'],func=eval,default=None),
              conv(opts['--zero-z'],func=eval,default=None)];
     angle = [conv(opts['--polar'],func=float,default=45),
-             conv(opts['--azimuth'],func=float,default=160)]
+             conv(opts['--azimuth'],func=float,default=160),
+             conv(opts['--roll'],func=float,default=0)];
     clabel = opts['--clabel'] if opts['--clabel'] else 'log10 of electron density';
+    traj = opts['--trajectories'];
     if not opts['--plot-single']:
         if '*' not in opts['IN_FORMAT'] or '*' not in opts['OUT_FORMAT']:
             print(usage);
             quit(1);
         lownum=int(opts['<lownum>']);
         highnum=int(opts['<highnum>']);
+        numrange = range(lownum,highnum+1);
+        if opts['<step>']:
+            numrange = numrange[::float(opts['<step>'])];
         fmt='{{:0>{}}}'.format(len(opts['<highnum>']))
         out_fmt=re.sub(r'\*',fmt,opts['OUT_FORMAT']);
         in_fmt =re.sub(r'\*',fmt,opts['IN_FORMAT']);
         label_fmt=re.sub(r'\*',fmt,opts['LABEL_FORMAT']);
-        numrange = range(lownum,highnum+1);
-        outnames = [out_fmt.format(i) for i in numrange];
-        innames = [in_fmt.format(i) for i in numrange];
-        labels = [label_fmt.format(i) for i in numrange];
-        files = zip(outnames,innames,labels);
+        outnames = [out_fmt.format(i) for i in numrange];#this so I don't need to check for None
+        innames  = [in_fmt.format(i) for i in numrange];
+        labels   = [label_fmt.format(i) for i in numrange];
+        stuff = [outnames,innames,labels];
+        if traj:
+            points_fmt='{{:0>{}}}'.format(len(opts['<highnum>']));
+            points = [points_fmt.format(i) for i numrange];
+            stuff.append(points);
+        files = zip(*stuff);
         plot(files,(vmin,vmax),
              cutplane=opts['--cutplane'],clabel=clabel,
-             zeros=zeros,angle=angle);
+             zeros=zeros,angle=angle,traj=traj);
     else:
         plot_single(opts['INFILE'],(vmin,vmax),angle,
                     cutplane=opts['--cutplane'],clabel=clabel,

@@ -33,6 +33,7 @@ def calculate2d(x,y,d):
             d['phi'][i] = -d['phi'][i];
         pass;
     return d;
+
 def calculate3d(d):
     print('calculating kinetic energy');
     r = np.sqrt(d['ux']**2+d['uy']**2+d['uz']**2);    
