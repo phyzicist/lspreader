@@ -12,18 +12,18 @@ Usage:
   render3d.py [options] (--plot-single | -s) INFILE
 
 Options:
-   --min=MIN -n MIN             Set vmin in the volumetric plot to MIN.
-   --max=MAX -x MAX             Set vmax in the volumetric plot to MAX.
-   --plot-single -s             Just show, don't output, single scalar.
-   --cutplane=Z                 Make cutplane along z at Z.
-   --clabel=CLABEL              Set the colorbar label.
-   --zero-x=XRANGE              Set a range of x to zero, as a python tuple.
-   --zero-y=YRANGE              Set a range of y to zero, as a python tuple.
-   --zero-z=ZRANGE              Set a range of z to zero, as a python tuple.
-   --azimuth=AZIMUTH            Set the azimuth.
-   --polar=POLAR                Set the polar angle.
-   --roll=ROLL                  Roll after setting the angle.
-   --trajectories               Look for trajectories of the form *.pts
+   --min=MIN -n MIN              Set vmin in the volumetric plot to MIN.
+   --max=MAX -x MAX              Set vmax in the volumetric plot to MAX.
+   --plot-single -s              Just show, don't output, single scalar.
+   --cutplane=Z                  Make cutplane along z at Z.
+   --clabel=CLABEL               Set the colorbar label. [default: log10 of electron density (cm^-3)]
+   --zero-x=XRANGE               Set a range of x to zero, as a python tuple.
+   --zero-y=YRANGE               Set a range of y to zero, as a python tuple.
+   --zero-z=ZRANGE               Set a range of z to zero, as a python tuple.
+   --azimuth=AZIMUTH             Set the azimuth [default: 160].
+   --polar=POLAR                 Set the polar angle [default: 45].
+   --roll=ROLL                   Roll after setting the angle [default: 0].
+   --trajectories=TRAJ_FORMAT    Look for trajectories files.
 '''
 
 def logprint(s):
@@ -35,31 +35,19 @@ def read_file(filename):
         d=cPickle.load(f);
     return d;
 
-def tozero(v):
-    if math.isnan(v):
-        return 0;
-    else:
-        return v;
-
-def zero_nan(S):
-    return np.array([[[tozero(k) for k in j] for j in i] for i in S]);
-
 def zero_range(S,zeros):
-    if zeros == [None,None,None]:
-        print('doing nothing');
-        return S;
-    zeros[:] =[ (None,None) if i is None else i for i in zeros];
     S[zeros[0][0]:zeros[0][1],zeros[1][0]:zeros[1][1],zeros[2][0]:zeros[2][1]]=0.0;
     return S;
 
-def initial_plot(mlab,fname,vlim,angle,
-                 clabel=None,cutplane=None,label=None,zeros=[None,None,None]):
+def initial_plot(mlab,fname,vlim,angle,**kwargs):
     '''
     Creates the first plot.
     '''
     ret = {};
     S=read_file(fname);
-    S=zero_range(zero_nan(S),zeros)
+    S=np.nan_to_num(S);
+    if 'zeros' in kwargs and kwargs['zeros'] is not None:
+        S=zero_range(S,kwargs['zeros'])
     S=np.log10(S+0.1);
     fig=mlab.figure(size=(1280,1024));
     ret['fig']=fig;
@@ -77,67 +65,113 @@ def initial_plot(mlab,fname,vlim,angle,
     v._volume_property.set_scalar_opacity(otf);
     ret['v']=v;
     #cut plane 1
-    if cutplane is not None:
+    if 'cutplane' in kwargs:
+        print('it is {}'.format(kwargs['cutplane']));
         zp=mlab.pipeline.image_plane_widget(src,plane_orientation="z_axes",
-                                            slice_index=cutplane,
+                                            slice_index=kwargs['cutplane'],
                                             vmin=vlim[0],vmax=vlim[1]);
         ret['zp'] = zp;
     mlab.view(elevation=angle[0],azimuth=angle[1],
               focalpoint='auto',distance='auto');
     
     mlab.roll(angle[2]);
-    mlab.scalarbar(object=v,title=clabel);
+    if 'clabel' in kwargs:
+        mlab.scalarbar(object=v,title=kwargs['clabel']);
+    else:
+        mlab.scalarbar(object=v);
     #Unfortunately, the volume renderer doesn't work out of the box.
     #The main issue is the colorbar. So, we do this instead.
     e=mlab.get_engine();
     module_manager = e.scenes[0].children[0].children[0];
     module_manager.scalar_lut_manager.use_default_range = False;
     module_manager.scalar_lut_manager.data_range = np.array([vmin, vmax]);
-    if label is not None:
-        t=mlab.text(0.075,0.875,label,width=0.1);
+    if 'label' in kwargs:
+        t=mlab.text(0.075,0.875,kwargs['label'],width=0.1);
         ret['t'] = t;
     #show the nubs
     oa=mlab.orientation_axes();
     oa.marker.set_viewport(0,0,0.4,0.4);
     #begin rendering
-    fig.scene.disable_render=False;
+    if 'render' not in kwargs or not kwargs['render']:
+        fig.scene.disable_render=False;
+    else:
+        fig.scene.disable_render=False;
     fig.scene.camera.zoom(1.3);
     return ret;
 
-def plot(names,vlim,angle,
-         clabel=None,cutplane=None,
-         zeros=[None,None,None],traj=False):
+def mk_trajectories(mlab,traj_name):
+    with open(traj_name,'r') as f:
+        traj = cPickle.load(f);#getting x,y,z arrays.
+    #the shape of each dimension is d[x|y|z,particle,step]
+    steps = len(traj[0,0,:]);
+    N = len(traj[0,:,0]);
+    sarray=np.arange(steps);
+    conn_1 = np.array(zip(sarray[:-1],sarray[1:]));
+    conn = np.vstack([conn_1+steps*i for i in range(N)])
+    return (traj,conn);
+
+def plot(names_list,vlim,angle,
+         **kwargs):
     print("loading mayavi");
     import mayavi.mlab as mlab;
     mlab.options.offscreen = True;
-    outname,inname,label = names[0];
-    names = names[1:];
-    print("processing first file {}...".format(inname));
-    d=initial_plot(mlab,inname,vlim,angle,
-                   clabel=clabel,cutplane=cutplane,label=label,zeros=zeros);
-    if traj:
-        #scan to 
-    print("saving {}".format(outname));
-    mlab.savefig(outname,size=(1280,1024));
-    for outname,inname,label in names:
-        print("processing {}...".format(inname))
-        S=read_file(inname);
-        S=zero_range(zero_nan(S),zeros)
+    first = names_list[0];
+    names_list = names_list[1:];
+    print("processing first file {}...".format(first['in']));
+    d=initial_plot(mlab,first['in'],vlim,angle,
+                   label=first['label'],render='traj' in first,
+                   **kwargs);
+    if 'traj-files' in kwargs:
+        firsttr,lasttr = kwargs['traj-files'];
+        #reading the full files
+        traj,con = mk_trajectories(mlab,lasttr);
+        #getting starting length
+        with open(firsttr,'r') as f:
+            d=cPickle.load(f);
+            starti = len(d[0,0,:]);
+        #making current part of the tracks.
+        tr_cur = np.zeros(traj.shape);
+        tr_cur.fill(np.nan);
+        #setting up first parts
+        tr_cur[:,:,:starti] = traj[:,:,:starti];
+        x = np.hstack(tr_cur[0,:,:]);
+        y = np.hstack(tr_cur[1,:,:]);
+        z = np.hstack(tr_cur[2,:,:]);
+        tracks_src=mlab.pipeline.scalar_scatter(x,y,z,
+                                                np.ones(x.shape));
+        tracks_src.mlab_source.dataset.lines = con;
+        lines = mlab.pipeline.stripper(tracks_src);
+        tracks = mlab.pipeline.surface(lines,line_width=2,opacity=1.0);
+        starti+=1;
+        d['fig'].scene.disable_render = False;
+    print("saving {}".format(first['out']));
+    mlab.savefig(first['out'],size=(1280,1024));
+    for i,names in enumerate(names_list):
+        print("processing {}...".format(names['in']))
+        S=read_file(names['in']);
+        S=np.nan_to_num(S)
+        if 'zeros' in kwargs and kwargs['zeros'] is not None:
+            S=zero_range(S,kwargs['zeros']);
         S=np.log10(S+0.1);
-        S=zero_range(S,zeros);
         d['fig'].scene.disable_render=True;
         d['v'].mlab_source.set(scalars=S);
-        if cutplane:
+        if 'cutplane' in kwargs:
             d['zp'].mlab_source.set(scalars=S);
-        d['t'].text=label;
+        d['t'].text=names['label'];
+        if 'traj-files' in kwargs:
+            tr_cur[:,:,:starti+i] = traj[:,:,:starti+i];
+            x = np.hstack(tr_cur[0,:,:])
+            y = np.hstack(tr_cur[1,:,:])
+            z = np.hstack(tr_cur[2,:,:])
+            tracks.mlab_source.set(x=x,y=y,z=z);
         d['fig'].scene.disable_render=False;
-        print("saving {}".format(outname));
-        mlab.savefig(outname,size=(1280,1024));
+        print("saving {}".format(names['out']));
+        mlab.savefig(names['out'],size=(1280,1024));
     pass
 
 def plot_single(inname,vlim,angle,
                 clabel=None,cutplane=None,
-                zeros=[None,None,None],):
+                zeros=[None,None,None]):
     print("loading mlab");
     import mayavi.mlab as mlab;
     initial_plot(mlab,inname,vlim,angle,
@@ -150,23 +184,28 @@ if __name__=="__main__":
     opts=docopt(usage,help=True);
     vmin = float(opts['--min']) if opts['--min'] else -1;
     vmax = float(opts['--max']) if opts['--max'] else 23.5;
-    zeros = [conv(opts['--zero-x'],func=eval,default=None),
-             conv(opts['--zero-y'],func=eval,default=None),
-             conv(opts['--zero-z'],func=eval,default=None)];
-    angle = [conv(opts['--polar'],func=float,default=45),
-             conv(opts['--azimuth'],func=float,default=160),
-             conv(opts['--roll'],func=float,default=0)];
-    clabel = opts['--clabel'] if opts['--clabel'] else 'log10 of electron density';
+    kwargs = {};
+    kwargs['zeros']=[conv(opts['--zero-x'],func=eval,default=(None,None)),
+                     conv(opts['--zero-y'],func=eval,default=(None,None)),
+                     conv(opts['--zero-z'],func=eval,default=(None,None))];
+    kwargs['zeros'] = None if kwargs['zeros'] == [(None,None)]*3 else kwargs['zeros'];
+    angle = [ float(opts['--polar']),
+              float(opts['--azimuth']),
+              float(opts['--roll']) ];
+    kwargs['clabel'] = opts['--clabel'];
     traj = opts['--trajectories'];
+    if  opts['--cutplane']:
+        kwargs['cutplane'] = int(opts['--cutplane']);
     if not opts['--plot-single']:
         if '*' not in opts['IN_FORMAT'] or '*' not in opts['OUT_FORMAT']:
+            print('point format should contain \'*\'');
             print(usage);
             quit(1);
         lownum=int(opts['<lownum>']);
         highnum=int(opts['<highnum>']);
         numrange = range(lownum,highnum+1);
         if opts['<step>']:
-            numrange = numrange[::float(opts['<step>'])];
+            numrange = numrange[::int(opts['<step>'])];
         fmt='{{:0>{}}}'.format(len(opts['<highnum>']))
         out_fmt=re.sub(r'\*',fmt,opts['OUT_FORMAT']);
         in_fmt =re.sub(r'\*',fmt,opts['IN_FORMAT']);
@@ -174,18 +213,25 @@ if __name__=="__main__":
         outnames = [out_fmt.format(i) for i in numrange];#this so I don't need to check for None
         innames  = [in_fmt.format(i) for i in numrange];
         labels   = [label_fmt.format(i) for i in numrange];
-        stuff = [outnames,innames,labels];
+        stuff = {'out':outnames,'in':innames,'label':labels};
         if traj:
-            points_fmt='{{:0>{}}}'.format(len(opts['<highnum>']));
-            points = [points_fmt.format(i) for i numrange];
-            stuff.append(points);
-        files = zip(*stuff);
-        plot(files,(vmin,vmax),
-             cutplane=opts['--cutplane'],clabel=clabel,
-             zeros=zeros,angle=angle,traj=traj);
+            if type(traj) is str:
+                if '*' not in traj:
+                    print('point format should contain \'*\'');
+                    print(usage)
+                    quit(1);
+            else:
+                points_fmt = 'points*.pt'
+            points_fmt=re.sub(r'\*',fmt,traj);
+            points_files = (points_fmt.format(numrange[0]),
+                            points_fmt.format(numrange[-1]));
+            kwargs.update({'traj-files':points_files});
+            print kwargs;
+            # points = [points_fmt.format(i) for i in numrange];
+            # stuff.update({'traj':points});
+        files = [ dict(zip(stuff.keys(),d)) for d in zip(*stuff.values())];
+        plot(files,(vmin,vmax),angle,**kwargs);
     else:
-        plot_single(opts['INFILE'],(vmin,vmax),angle,
-                    cutplane=opts['--cutplane'],clabel=clabel,
-                    zeros=zeros);
+        plot_single(opts['INFILE'],(vmin,vmax),angle,**kwargs);
     pass;
 pass;
