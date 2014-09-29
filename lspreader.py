@@ -208,10 +208,9 @@ class LspOutput(file):
             self.seek(c);
             d=self.get_dict('fii',['t','step','pnum']);
             if (cur % skip) == 0:
-                self.logprint('reading in frame at lsp step {}'.format(d['step']));
+                self.logprint('scanning frame at lsp step {}'.format(d['step']));
                 d['pos']=self.tell();
                 self.seek(d['pnum']*pbytes,1);
-                self.logprint('done reading');
                 frames.append(d);
             else:
                 self.seek(d['pnum']*pbytes,1);
@@ -241,6 +240,11 @@ class LspOutput(file):
                 del data;
             del d['pos'];
             self.logprint('done!');
+            #checking eof
+            c=self.tell();
+            self.read(1); #python, y u no eof?
+            self.logprint("Do we have eof? {}".format(self.tell() == c));
+            
             frames[i] = d;
         return frames;
 
