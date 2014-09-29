@@ -222,9 +222,9 @@ class LspOutput(file):
             for param in params:
                 d[param] = np.ndarray((N,),float);
             index = 0;
+            self.seek(d['pos']);
             for length in spaces:
                 self.logprint('reading in {} particles'.format(length));
-                self.seek(d['pos']);
                 buf = self.read(pbytes*length);
                 fmt = '>'+('i'+'f'*nparams)*length;
                 self.logprint('converting {} bytes'.format((len(fmt)-1)*4));
