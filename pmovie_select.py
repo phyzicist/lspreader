@@ -9,9 +9,9 @@ Usage:
 
 Options:
   --pool-size PS -p  PS      Set the size of the processor pool [default: 8].
-  --xilim=XILIM              Set initial X limits, using a python list as a string.
-  --yilim=YILIM              Set initial Y limits, using a python list as a string.
-  --zilim=ZILIM              Set initial Z limits, using a python list as a string.
+  --xilim=XILIM              Set initial X limits, using a tuple [default: (float('-inf'),float('inf'))].
+  --yilim=YILIM              Set initial Y limits, using a tuple [default: (float('-inf'),float('inf'))].
+  --zilim=ZILIM              Set initial Z limits, using a tuple [default: (float('-inf'),float('inf'))].
   --select=N                 Randomly select N initial particle positions [default: 100].
   --verbose -v               Allow verbose output.
 '''
@@ -19,76 +19,77 @@ from docopt import docopt;
 import lspreader as rd;
 import numpy as np;
 import random as rnd;
-from misc import conv;
 import cPickle;
+import itertools as it;
+import sys;
 
 def logprint(s):
     print(s);
+opts = docopt(__doc__,help=True);
+outname = opts['<output>'];
+name = opts['<input>'];
+ps = int(opts['--pool-size']);
+xlim = eval(opts['--xilim']);
+ylim = eval(opts['--yilim']);
+zlim = eval(opts['--zilim']);
+select = int(opts['--select']);
+if opts['--verbose']:
+    vprint = logprint;
+else:
+    vprint = lambda s: None;
+vprint('reading in {}'.format(name));
+with rd.LspOutput(name,verbose=True) as f:
+    d=f._getmovie();
+frame = d[0];
+del d;
+d=frame['data'];
+N = frame['pnum'];
+if opts['--count-only']:
+    print('There are {} particles.'.format(N));
+    exit(0);
+elif opts['--histograms']:
+    import matplotlib;
+    matplotlib.use('Agg');
+    import matplotlib.pyplot as plt;
+    plt.subplot(311);
+    plt.title('xi');
+    plt.hist(d['xi'],bins=100);
+    plt.subplot(312);
+    plt.title('yi');
+    plt.hist(d['yi'],bins=100);
+    plt.subplot(313);
+    plt.title('zi');
+    plt.hist(d['zi'],bins=100);
+    plt.savefig(outname);
+    exit(0);
+out = {};
 
-def main():
-    opts = docopt(__doc__,help=True);
-    outname = opts['<output>'];
-    name = opts['<input>'];
-    ps = conv(opts['--pool-size'],default=8,func=int);
-    inflim = (float('-inf'),float('inf'));
-    xlim = conv(opts['--xilim'],default=inflim,func=eval);
-    ylim = conv(opts['--yilim'],default=inflim,func=eval);
-    zlim = conv(opts['--zilim'],default=inflim,func=eval);
-    select = conv(opts['--select'],default=100,func=int);
-    if opts['--verbose']:
-        vprint = logprint;
-    else:
-        vprint = lambda s: None;
-    vprint('reading in {}'.format(name));
-    with rd.LspOutput(name,verbose=True) as f:
-        d=f._getmovie(ps);
-    frame = d[0];
-    del d[:1];
-    N = frame['pnum'];
-    if opts['--count-only']:
-        print('There are {} particles.'.format(N));
-        exit(0);
-    elif opts['--histograms']:
-        import matplotlib;
-        matplotlib.use('Agg');
-        import matplotlib.pyplot as plt;
-        plt.subplot(311);
-        plt.title('xi');
-        plt.hist(frame['xi'],bins=100);
-        plt.subplot(312);
-        plt.title('yi');
-        plt.hist(frame['yi'],bins=100);
-        plt.subplot(313);
-        plt.title('zi');
-        plt.hist(frame['zi'],bins=100);
-        plt.savefig(outname);
-        exit(0);
-    #here we play a little :) We randomly choose indices, and see if they fall inside.
-    #The main assumption here is that there are only a few ipp that are being selected.
-    #that there are only a few ipp's that we are selecting
-    keys = [k for k in frame if k not in ['t','step','pnum']];
-    out = { k:[] for k in keys}
-    ns = [];
-    while len(out['x']) < select:
-        i=rnd.randint(0,N-1);
-        if i in ns:
-            continue;
-        ns.append(i);
-        if  xlim[0] <= frame['xi'][i] <= xlim[1] and \
-            ylim[0] <= frame['yi'][i] <= ylim[1] and \
-            zlim[0] <= frame['zi'][i] <= zlim[1]:
-            for k in out:
-                out[k].append(frame[k][i]);
-            vprint('now, we have {} particles'.format(len(out['x'])));
-        pass;
-    vprint('found {} points out of {} trials'.format(len(out['x']),
-                                                     len(ns)));
-    #making indices
-    out['i'] = range(len(out['x']));
-    vprint('outputting to {}'.format(outname));
-    with open(outname,'wb') as f:
-        cPickle.dump(out,f,2);
-    pass;
+vprint('beginning selection');
+vprint('xlim:{}; ylim:{}; zlim:{};'.format(xlim,ylim,zlim));
+sys.stdout.flush();
 
-if __name__ == '__main__':
-    main();
+goods = (xlim[0] <= d['xi']) & (d['xi'] <= xlim[1]) & \
+        (ylim[0] <= d['yi']) & (d['yi'] <= ylim[1]) & \
+        (zlim[0] <= d['zi']) & (d['zi'] <= zlim[1]);
+
+vprint('we have {} matches.'.format(goods.astype(int).sum()));
+vprint('selecting {}'.format(select));
+for k in ['xi','yi','zi']:
+    out[k] = d[k][goods];
+del frame,d;
+keys = [k for k in out];
+d = np.array([out[k] for k in out]).T;
+np.random.shuffle(d);
+d=(d[:select]).T
+for k,di in it.izip(keys,d):
+    out[k]=di;
+out['xlim']=xlim;
+out['ylim']=ylim;
+out['zlim']=zlim;
+#making indices
+out['i'] = np.arange(len(out['xi']));
+vprint('outputting to {}'.format(outname));
+with open(outname,'wb') as f:
+    cPickle.dump(out,f,2);
+pass;
+

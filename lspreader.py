@@ -8,15 +8,6 @@ import multiprocessing;
 import struct;
 import numpy as np;
 
-class Callable(object):
-    def __init__(self,d,call_func):
-        self.d=d;
-        self.call=call_func
-    def __call__(self,i):
-        c=self.call;
-        return c(self.d,i);
-    pass;
-
 def make_points(d):
     d['x']=[]; d['y']=[]; d['z']=[];
     tmp1 = len(d['xp']);
@@ -194,7 +185,7 @@ class LspOutput(file):
             del dom;
         return doms[0];
     
-    def _getmovie(self,pool_size,skip=1):
+    def _get_old_movie(self,pool_size,skip=1):
         params,_  = zip(*self.header['params']);
         nparams = len(params);
         pbytes = (nparams+1)*4;
@@ -227,6 +218,7 @@ class LspOutput(file):
                 self.logprint('reading in {} particles'.format(length));
                 buf = self.read(pbytes*length);
                 fmt = '>'+('i'+'f'*nparams)*length;
+                fmt = '>'+('xxxx'+'f'*nparams)*length; #testing ip less reading
                 self.logprint('converting {} bytes'.format((len(fmt)-1)*4));
                 data = struct.unpack(fmt,buf);
                 del buf;
@@ -247,6 +239,40 @@ class LspOutput(file):
             
             frames[i] = d;
         return frames;
+
+    def _getmovie(self):
+        params,_  = zip(*self.header['params']);
+        nparams = len(params);
+        pbytes = (nparams+1)*4;
+        frames=[];
+        while True:
+            c=self.tell();
+            self.read(1); #python, y u no eof?
+            if self.tell() == c:
+                break;
+            self.seek(c);
+            d=self.get_dict('fii',['t','step','pnum']);
+            self.logprint('scanning frame at lsp step {}'.format(d['step']));
+            d['pos']=self.tell();
+            self.seek(d['pnum']*pbytes,1);
+            frames.append(d);
+        self.logprint('converting frames');
+        for i,d in enumerate(frames):
+            N = d['pnum'];
+            lt=[('ip','>i4')]+zip(params,['>f4']*nparams);
+            dt=np.dtype(lt);
+            self.seek(d['pos']);
+            arr=np.fromfile(self,dtype=dt,count=N);
+            d['data']=arr;
+            del d['pos'];
+            self.logprint('done!');
+            #checking eof
+            c=self.tell();
+            self.read(1); #python, y u no eof?
+            self.logprint("Do we have eof? {}".format(self.tell() == c));            
+            frames[i] = d;
+        return frames;
+
 
     def _getpext(self):
         nparams = len(self.header['quantities']);
