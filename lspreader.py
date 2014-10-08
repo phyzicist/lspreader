@@ -91,6 +91,7 @@ class LspOutput(file):
     def get_dict(self,fmt,keys):
         l=self.get_list(fmt);
         return dict(zip(keys,l));
+    
     def _get_header(self):
         '''gets the header for the .p4 file'''
         self.header = self.get_dict('iiss',
@@ -185,61 +186,6 @@ class LspOutput(file):
             del dom;
         return doms[0];
     
-    def _get_old_movie(self,pool_size,skip=1):
-        params,_  = zip(*self.header['params']);
-        nparams = len(params);
-        pbytes = (nparams+1)*4;
-        frames=[];
-        cur = 0;
-        while True:
-            c=self.tell();
-            self.read(1); #python, y u no eof?
-            if self.tell() == c:
-                break;
-            self.seek(c);
-            d=self.get_dict('fii',['t','step','pnum']);
-            if (cur % skip) == 0:
-                self.logprint('scanning frame at lsp step {}'.format(d['step']));
-                d['pos']=self.tell();
-                self.seek(d['pnum']*pbytes,1);
-                frames.append(d);
-            else:
-                self.seek(d['pnum']*pbytes,1);
-        self.logprint('converting frames');
-        for i,d in enumerate(frames):
-            N = d['pnum']
-            spaces = [N/pool_size]*(pool_size-1)+[N/pool_size + N % pool_size];#not as bad
-            d['ip'] = np.ndarray((N,),int);
-            for param in params:
-                d[param] = np.ndarray((N,),float);
-            index = 0;
-            self.seek(d['pos']);
-            for length in spaces:
-                self.logprint('reading in {} particles'.format(length));
-                buf = self.read(pbytes*length);
-                fmt = '>'+('i'+'f'*nparams)*length;
-                fmt = '>'+('xxxx'+'f'*nparams)*length; #testing ip less reading
-                self.logprint('converting {} bytes'.format((len(fmt)-1)*4));
-                data = struct.unpack(fmt,buf);
-                del buf;
-                self.logprint('done converting, adding to arrays');
-                for p in xrange(length):
-                    #not the most pythonic, it's ok.
-                    d['ip'][index] = data[p*(nparams+1)];
-                    for j,param in enumerate(params):
-                        d[param][index]= data[p*(nparams+1)+j+1];
-                    index+=1;
-                del data;
-            del d['pos'];
-            self.logprint('done!');
-            #checking eof
-            c=self.tell();
-            self.read(1); #python, y u no eof?
-            self.logprint("Do we have eof? {}".format(self.tell() == c));
-            
-            frames[i] = d;
-        return frames;
-
     def _getmovie(self):
         params,_  = zip(*self.header['params']);
         nparams = len(params);

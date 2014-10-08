@@ -74,8 +74,9 @@ def main():
     #surf=ax.pcolormesh(PHI,R,S,vmin=s.min(),vmax=s.max(),cmap=mk_cmap());
     surf=plt.pcolormesh(PHI,R,S,cmap=mk_cmap());
     #making radial guides. rgrids only works for plt.polar calls
+    full_phi = np.linspace(0.0,2*np.pi,100);
     for i in np.arange(0.0,maxE,rstep)[1:]:
-        plt.plot(PHI,np.ones(PHI.shape)*i,c='gray', lw=1, ls='--');
+        plt.plot(full_phi,np.ones(full_phi.shape)*i,c='gray', lw=1, ls='--');
     ax.set_theta_zero_location('S');
     unit = 'KeV' if opts['--KeV'] else 'MeV';
     label_str = '{} '+unit;
