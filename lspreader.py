@@ -206,7 +206,7 @@ class LspOutput(file):
             #getting grid parameters (real coordinates)
             nI = self.get_int(); Ip = np.fromfile(self,dtype='>f4',count=nI);
             nJ = self.get_int(); Jp = np.fromfile(self,dtype='>f4',count=nJ);
-            nK = self.get_int(); Lp = np.fromfile(self,dtype='>f4',count=nK);
+            nK = self.get_int(); Kp = np.fromfile(self,dtype='>f4',count=nK);
             nAll = nI*nJ*nK;
             self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
             d={}
