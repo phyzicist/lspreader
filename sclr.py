@@ -3,12 +3,11 @@
 Convert an lsp fields or scalars into a 3d numpy array.
 
 Usage:
-  p4toH.py [options] <input> (<var> <output>)...
+  sclr.py [options] <input> (<var> <output>)...
 
 Options:
   -h --help               Show this help.
   -v --verbose            Turn on verbosity.
-  -p PS --pool_size=PS    Choose a pool size PS.
   -x --X                  Use X in interpolation.
   -y --Y                  Use Y in interpolation.
   -z --Z                  Use Z in interpolation.
@@ -42,6 +41,7 @@ def histogram_scalar_3d(x,y,z,s,
     H,_= np.histogramdd([x,y,z],bins=[xbins,ybins,zbins],weights=s);
     #divide to get the average
     norm=float(len(s))/float(xres*yres*zres);
+    logprint('we have a norm of {}'.format(norm));
     return H/norm;
 
 def histogram_scalar_2d(x,y,s,
@@ -53,6 +53,7 @@ def histogram_scalar_2d(x,y,s,
     
     H,_,_ = np.histogram2d(x,y,bins=(xbins,ybins),weights=s);
     norm=float(len(s))/float(xres*yres);
+    logprint('we have a norm of {}'.format(norm));
     return H/norm;
 
 def histogram_scalar_1d(x,s,res=100):
@@ -61,6 +62,7 @@ def histogram_scalar_1d(x,s,res=100):
     xbins = np.linspace(min(x),max(x),res+1);
     H,_ = np.histogram(x,bins=xbins,weights=s);
     norm=float(len(s))/float(res);
+    logprint('we have a norm of {}'.format(norm));
     return H/norm;
 
 def main():
@@ -73,19 +75,20 @@ def main():
     name = opts['<input>'];
 
     verbose = opts['--verbose'];
-    if opts['--pool_size']:
-        pool_size=int(opts['--pool_size']);
-    else:
-        pool_size=24;
     use = [];
+    res = [];
     if opts['--X']:
         use.append('x');
+        res.append(int(opts['--xres']));
     if opts['--Y']:
         use.append('y');
+        res.append(int(opts['--yres']));
     if opts['--Z']:
         use.append('z');
+        res.append(int(opts['--zres']));
     if use == []:
         use = ['x','y','z'];
+        res = map(lambda k: int(opts[k]),['--xres','--yres','--zres']);
     # A couple of things to note; written in this way, whatever
     # this list (and thus, what is read) becomes, it is ordered
     # alphabetically. This is important, as this determines what
@@ -97,20 +100,17 @@ def main():
     # Using xz leads to this anyway, but it's worth reminding the reader.
     logprint('reading in {}'.format(name));
     with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
-        d = f.get_data(var=var,pool_size=pool_size);
+        d = f.get_data(var=var);
     for v,outname in vopairs:
-        logprint('making arrays into numpy arrays');
-        d['x']=np.array(d['x']);
-        d['y']=np.array(d['y']);
-        d['z']=np.array(d['z']);
-        d[v]  =np.array(d[v]);
         logprint('histogramming');
         if len(use) == 3:
-            S = histogram_scalar_3d(d['x'],d['y'],d['z'],s);
+            S = histogram_scalar_3d(d['x'],d['y'],d['z'],s,
+                                    xres=res[0],yres=res[1],zres=res[2]);
         elif len(use) == 2:
-            S = histogram_scalar_2d(d[use[0]],d[use[1]],s);
+            S = histogram_scalar_2d(d[use[0]],d[use[1]],s,
+                                    xres=res[0],yres=res[1]);
         else:
-            S = histogram_scalar_1d(d[use[0]],s);
+            S = histogram_scalar_1d(d[use[0]],s,res=res[0]);
         logprint("dumping");
         with open(outname,"wb") as f:
             cPickle.dump(S,f,2);
