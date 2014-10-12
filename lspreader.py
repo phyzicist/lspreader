@@ -5,7 +5,6 @@ Reader for LSP output xdr files (.p4's)
 import xdrlib as xdr;
 import itertools as itools;
 import multiprocessing;
-import struct;
 import numpy as np;
 
 def make_points(d):
@@ -208,11 +207,11 @@ class LspOutput(file):
             nI = self.get_int(); Ip = np.fromfile(self,dtype='>f4',count=nI);
             nJ = self.get_int(); Jp = np.fromfile(self,dtype='>f4',count=nJ);
             nK = self.get_int(); Lp = np.fromfile(self,dtype='>f4',count=nK);
+            nAll = nI*nJ*nK;
             self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
             d={}
             self.logprint('Making points.');
             d['x'], d['y'], d['z'] = np.vstack(np.meshgrid(Ip,Jp,Kp)).reshape(3,-1);
-            nAll = nI*nJ*nK;
             for quantity in qs:
                 if quantity not in readin:
                     self.seek(nAll*4*size,1);
