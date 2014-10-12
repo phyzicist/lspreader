@@ -1,6 +1,12 @@
 #!/usr/bin/env python2
 '''
-Convert an lsp fields or scalars into a 3d numpy array.
+Parse a lsp fields or scalar file and output a 3D array sampling the
+given variables. The scheme used here is reading the data in, histogramming
+the scalar based on position and using the scalar value as a histogram
+weight, and then dividing by the number of points to obtain an average
+over each point. The input to this script should be a .p4 output from lsp.
+
+There are currently no known limitations of this script. It is sequential.
 
 Usage:
   sclr.py [options] <input> (<var> <output>)...
