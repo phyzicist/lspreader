@@ -26,10 +26,8 @@ import lspreader as rd;
 import cPickle;
 import numpy as np;
 import matplotlib.pyplot as plt;
-import scipy.interpolate as interpol;
 from docopt import docopt;
-import random;
-from misc import conv;
+from time import time;
 
 def logprint(s):
     global verbose;
@@ -44,7 +42,9 @@ def histogram_scalar_3d(x,y,z,s,
     xbins = np.linspace(min(x),max(x),xres+1);
     ybins = np.linspace(min(y),max(y),yres+1);
     zbins = np.linspace(min(z),max(z),zres+1);
+    t=time();
     H,_= np.histogramdd([x,y,z],bins=[xbins,ybins,zbins],weights=s);
+    logprint('It took {} seconds'.format(time()-t));
     #divide to get the average
     norm=float(len(s))/float(xres*yres*zres);
     logprint('we have a norm of {}'.format(norm));
@@ -110,13 +110,13 @@ def main():
     for v,outname in vopairs:
         logprint('histogramming');
         if len(use) == 3:
-            S = histogram_scalar_3d(d['x'],d['y'],d['z'],s,
+            S = histogram_scalar_3d(d['x'],d['y'],d['z'],d[v],
                                     xres=res[0],yres=res[1],zres=res[2]);
         elif len(use) == 2:
-            S = histogram_scalar_2d(d[use[0]],d[use[1]],s,
+            S = histogram_scalar_2d(d[use[0]],d[use[1]],d[v],
                                     xres=res[0],yres=res[1]);
         else:
-            S = histogram_scalar_1d(d[use[0]],s,res=res[0]);
+            S = histogram_scalar_1d(d[use[0]],d[v],res=res[0]);
         logprint("dumping");
         with open(outname,"wb") as f:
             cPickle.dump(S,f,2);

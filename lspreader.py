@@ -211,7 +211,8 @@ class LspOutput(file):
             self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
             d={}
             self.logprint('Making points.');
-            d['x'], d['y'], d['z'] = np.vstack(np.meshgrid(Ip,Jp,Kp)).reshape(3,-1);
+            #the way meshgrid works, it has to be in this order.
+            d['y'], d['z'], d['x'] = np.vstack(np.meshgrid(Jp,Kp,Ip)).reshape(3,-1);
             for quantity in qs:
                 if quantity not in readin:
                     self.seek(nAll*4*size,1);
@@ -219,8 +220,9 @@ class LspOutput(file):
                     self.logprint('Reading in {}'.format(quantity));
                     d[quantity] = np.fromfile(self,dtype='>f4',count=nAll*size);
                     if size==3:
-                        d[quantity]=d[quantity].reshape(nAll,size).T;
-            d['nAll'] = nAll;
+                        data=d[quantity].reshape(nAll,size).T;
+                        d[quantity+'x'],d[quantity+'y'],d[quantity+'z']= data;
+                        del data;
             doms.append(d);
         self.logprint('Done! Stringing together.');
         out = { k : np.concatenate([i[k] for i in doms]) for k in doms[0] };
