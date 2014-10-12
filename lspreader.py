@@ -137,7 +137,7 @@ class LspOutput(file):
         return;
     ###################
     #data processing    
-    def _getfields(self, var, pool_size,vector=True):
+    def _out_getfields(self, var, pool_size,vector=True):
         if vector:
             size=3; call=read_fields;
             readin = set();
@@ -167,7 +167,7 @@ class LspOutput(file):
                 if quantity not in readin:
                     self.seek(nAll*4*size,1);
                 else:
-                    d.update({'x'+quantity:xdr.Unpacker(self.read(nAll*4*size))})
+                    d.update({'x'+quantity:xdr.Unpacker(self.read(nAll*4*size))});
                     dqs.append(quantity);
             d.update({'nAll':nAll,'dqs': dqs,
                       'xp':Ip,'yp':Jp,'zp':Kp});
@@ -185,7 +185,48 @@ class LspOutput(file):
                 doms[0][k].extend(dom[k]);
             del dom;
         return doms[0];
-    
+
+    def _getfields(self, var, vector=True):
+        if vector:
+            size=3;
+            readin = set();
+            for i in var:#we assume none of the fields end in x
+                if i[-1] == 'x' or i[-1] == 'y' or i[-1] == 'z':
+                    readin.add(i[:-1]);
+                else:
+                    readin.add(i);
+        else:
+            size=1; call=read_scalars;
+            readin = set(var);
+        doms = [];
+        qs = [i[0] for i in self.header['quantities']];
+        self.logprint('Reading positions and making buffers');
+        for i in range(self.header['domains']):
+            self.logprint('Reading domain {}.'.format(i));
+            iR, jR, kR = self.get_int(),self.get_int(),self.get_int();
+            #getting grid parameters (real coordinates)
+            nI = self.get_int(); Ip = np.fromfile(self,dtype='>f4',count=nI);
+            nJ = self.get_int(); Jp = np.fromfile(self,dtype='>f4',count=nJ);
+            nK = self.get_int(); Lp = np.fromfile(self,dtype='>f4',count=nK);
+            self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
+            d={}
+            self.logprint('Making points.');
+            d['x'], d['y'], d['z'] = np.vstack(np.meshgrid(Ip,Jp,Kp)).reshape(3,-1);
+            nAll = nI*nJ*nK;
+            for quantity in qs:
+                if quantity not in readin:
+                    self.seek(nAll*4*size,1);
+                else:
+                    self.logprint('Reading in {}'.format(quantity));
+                    d[quantity] = np.fromfile(self,dtype='>f4',count=nAll*size);
+                    if size==3:
+                        d[quantity]=d[quantity].reshape(nAll,size).T;
+            d['nAll'] = nAll;
+            doms.append(d);
+        self.logprint('Done! Stringing together.');
+        out = { k : np.concatenate([i[k] for i in d]) for k in d[0] };
+        return out;
+
     def _getmovie(self):
         params,_  = zip(*self.header['params']);
         nparams = len(params);
@@ -219,7 +260,6 @@ class LspOutput(file):
             frames[i] = d;
         return frames;
 
-
     def _getpext(self):
         nparams = len(self.header['quantities']);
         params = ['t','q','x','y','z','ux','uy','uz'];
@@ -230,26 +270,20 @@ class LspOutput(file):
         elif nparams == 12:
             params+=['E','xi','yi','zi'];
         #it's just floats here on out
-        buf = self.read();
-        nfloats = len(buf)/4;
-        x = xdr.Unpacker(buf);
-        del buf;
-        data = x.unpack_farray(nfloats,x.unpack_float);
-        del x;
-        out={};
-        for i,key in enumerate(params):
-            out[key] = [j for j in data[i::nparams]];
+        dt = zip(params, ['>f4']*len(params));
+        out = np.fromfile(self,dtype=dt,count=-1);
+        out = {k:out[k] for k in params};
         return out;
         
-    def get_data(self,var=None,pool_size=16):
+    def get_data(self,var=None):
         if not var and (self.header['dump_type']== 2 or self.header['dump_type']== 3):
             var=[i[0] for i in self.header['quantities']];
         if self.header['dump_type'] == 2:
-            return self._getfields(var,pool_size,vector=True);
+            return self._getfields(var,vector=True);
         elif self.header['dump_type'] == 3:
-            return self._getfields(var,pool_size,vector=False);
+            return self._getfields(var,vector=False);
         elif self.header['dump_type'] == 6:
-            return self._getmovie(pool_size);
+            return self._getmovie();
         elif self.header['dump_type'] == 10:
             return self._getpext();
         else:
