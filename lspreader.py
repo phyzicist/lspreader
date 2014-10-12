@@ -223,7 +223,7 @@ class LspOutput(file):
             d['nAll'] = nAll;
             doms.append(d);
         self.logprint('Done! Stringing together.');
-        out = { k : np.concatenate([i[k] for i in d]) for k in d[0] };
+        out = { k : np.concatenate([i[k] for i in doms]) for k in doms[0] };
         return out;
 
     def _getmovie(self):
