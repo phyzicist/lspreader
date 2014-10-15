@@ -77,7 +77,7 @@ pool.close();
 results = np.array(results);
 d = d[results];
 frame['data'] = d;
-Frame['valid'] = results == 0;
+frame['valid'] = results == 0;
 frame['valid'][0] = True;
 
 outname = "points{}.pt".format(frame['step']);
