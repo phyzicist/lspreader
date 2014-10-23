@@ -1,11 +1,5 @@
 #!/usr/bin/env python
-import numpy as np;
-import cPickle;
-from docopt import docopt;
-import re;
-import math;
-from misc import conv;
-usage='''Render volumetric render of a scalar field.
+'''Render volumetric render of a scalar field.
 
 Usage:
   render3d.py [options] IN_FORMAT OUT_FORMAT LABEL_FORMAT <lownum> <highnum> [<step>]
@@ -20,11 +14,17 @@ Options:
    --zero-x=XRANGE               Set a range of x to zero, as a python tuple.
    --zero-y=YRANGE               Set a range of y to zero, as a python tuple.
    --zero-z=ZRANGE               Set a range of z to zero, as a python tuple.
-   --azimuth=AZIMUTH             Set the azimuth [default: 160].
-   --polar=POLAR                 Set the polar angle [default: 45].
+   --azimuth=AZIMUTH             Set the azimuth [default: 135].
+   --polar=POLAR                 Set the polar angle [default: 125].
    --roll=ROLL                   Roll after setting the angle [default: 0].
    --trajectories=TRAJ_FORMAT    Look for trajectories files.
 '''
+import numpy as np;
+import cPickle;
+from docopt import docopt;
+import re;
+import math;
+from misc import conv;
 
 def logprint(s):
     print(s);
@@ -59,7 +59,8 @@ def initial_plot(mlab,fname,vlim,angle,**kwargs):
     from tvtk.util.ctf import PiecewiseFunction;
     otf = PiecewiseFunction();
     otf.add_point(vlim[0],    0.0);
-    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*0.9,0.1);
+    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*0.9,0.06);
+#    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*0.99,0.1);
     otf.add_point(vlim[1],    0.5);
     v._otf = otf;
     v._volume_property.set_scalar_opacity(otf);
@@ -127,8 +128,7 @@ def plot(names_list,vlim,angle,
         traj,con = mk_trajectories(mlab,lasttr);
         #getting starting length
         with open(firsttr,'r') as f:
-            d=cPickle.load(f);
-            starti = len(d[0,0,:]);
+            starti = len(cPickle.load(f)[0,0,:]);
         #making current part of the tracks.
         tr_cur = np.zeros(traj.shape);
         tr_cur.fill(np.nan);
@@ -160,9 +160,9 @@ def plot(names_list,vlim,angle,
         d['t'].text=names['label'];
         if 'traj-files' in kwargs:
             tr_cur[:,:,:starti+i] = traj[:,:,:starti+i];
-            x = np.hstack(tr_cur[0,:,:])
-            y = np.hstack(tr_cur[1,:,:])
-            z = np.hstack(tr_cur[2,:,:])
+            x = np.hstack(tr_cur[0,:,:]);
+            y = np.hstack(tr_cur[1,:,:]);
+            z = np.hstack(tr_cur[2,:,:]);
             tracks.mlab_source.set(x=x,y=y,z=z);
         d['fig'].scene.disable_render=False;
         print("saving {}".format(names['out']));
@@ -170,18 +170,17 @@ def plot(names_list,vlim,angle,
     pass
 
 def plot_single(inname,vlim,angle,
-                clabel=None,cutplane=None,
-                zeros=[None,None,None]):
+                **kwargs):
     print("loading mlab");
     import mayavi.mlab as mlab;
     initial_plot(mlab,inname,vlim,angle,
-                 cutplane=cutplane,clabel=clabel,zeros=zeros);
+                 **kwargs);
     print('plotting');
     mlab.show();
 
 if __name__=="__main__":
     #reading in arguments
-    opts=docopt(usage,help=True);
+    opts=docopt(__doc__,help=True);
     vmin = float(opts['--min']) if opts['--min'] else -1;
     vmax = float(opts['--max']) if opts['--max'] else 23.5;
     kwargs = {};

@@ -52,26 +52,29 @@ outnames = [out_fmt.format(i) for i in numrange];
 print('reading first file {}'.format(innames[0]));
 with open(innames[0],'r') as f:
     d = cPickle.load(f);
+    valid = d['valid'];
+    d = d['data'];
 N = len(d['x']);
 
-tms = highnum-lownum;
-data = np.zeros((3,N,highnum-lownum));
-mkpoints = lambda dd: imap(lambda e: (e[0],xconv(e[1]),yconv(e[2]),zconv(e[3])),
-              izip(dd['i'],d['x'],dd['y'],dd['z']));
-for i,x,y,z in mkpoints(d):
-    data[0,i,0] = x;
-    data[1,i,0] = y;
-    data[2,i,0] = z;
+tms = (highnum-lownum)/step;
+data = np.zeros((3,N,tms));
+data.fill(np.nan);
+
+d = np.array([xconv(d['x']),yconv(d['y']),zconv(d['z'])]);
+data[:,:,0] = d;
+data[:,np.logical_not(valid),0] = np.nan;
+
 with open(out_fmt.format(numrange[0]),'w') as f:
     cPickle.dump(data[:,:,:1],f,2);
 for timestep,inname,outname in zip(range(tms),innames,outnames)[1:]:
     print('reading file {}'.format(inname));
     with open(inname,'r') as f:
         d = cPickle.load(f);
-    for i,x,y,z in mkpoints(d):
-        data[0,i,timestep] = x;
-        data[1,i,timestep] = y;
-        data[2,i,timestep] = z;
+        valid = d['valid'];
+        d = d['data'];
+        d = np.array([xconv(d['x']),yconv(d['y']),zconv(d['z'])]);
+    data[:,:,timestep] = d;
+    data[:,np.logical_not(valid),timestep] = np.nan;
     print('outputting to file {}'.format(outname));
     with open(outname,'w') as f:
         cPickle.dump(data[:,:,:timestep+1],f,2);

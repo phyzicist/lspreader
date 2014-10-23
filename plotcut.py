@@ -5,8 +5,8 @@ Usage:
   ./plotcut.py [options] [(--X | --Y | --Z)] [(--half|--index=INDEX)] <infile> <outfile> <time>
 
 Options:
-  --min=MIN -n MIN            Plot with a minimum MIN.
-  --max=MAX -x MAX            Plot with a minimum MAX.
+  --min=MIN -n MIN            Plot with a minimum MIN [default: 16.0].
+  --max=MAX -x MAX            Plot with a minimum MAX [default: 23.5].
   --X                         Plot with X set to the index. Default.
   --Y                         Plot with Y set to the index.
   --Z                         Plot with Z set to the index.
@@ -31,23 +31,14 @@ def read_file(filename):
         d=cPickle.load(f);
     return d;
 
-def tozero(v):
-    if math.isnan(v):
-        return 0;
-    else:
-        return v;
-
-def zero_nan(S):
-    return np.array([[[tozero(k) for k in j] for j in i] for i in S]);
-
 def main():
     opts=docopt(__doc__,help=True);
-    vmin = float(opts['--min']) if opts['--min'] else -1.0;
-    vmax = float(opts['--max']) if opts['--max'] else 23.5;
+    vmin = float(opts['--min']);
+    vmax = float(opts['--max']);
     if not opts['--X'] and not opts['--Y'] and not opts['--Z']:
         opts['--X']=True;
     S = read_file(opts['<infile>']);
-    S = zero_nan(S);
+    S = np.nan_to_num(S);
     S = np.log10(S+0.1);
     if opts['--index']:
         i = int(opts['--index']);
@@ -77,5 +68,6 @@ def main():
     c.set_label('log10 of density');
     plt.savefig(opts['<outfile>']);
 pass;
+
 if __name__ == '__main__':
     main();
