@@ -53,7 +53,7 @@ def histogram_scalar_3d(x,y,z,s,
     logprint('we have a norm of {}'.format(norm));
     return H/norm;
 
-def interpolate_scalar_3d(x,y,s,
+def interpolate_scalar_3d(x,y,z,s,
                           xres=100,yres=100,zres=100):
     '''Interpolates the scalar s on the grid x,y
        with the resolutions *res along each axis.
