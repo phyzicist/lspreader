@@ -17,26 +17,6 @@ def make_points(d):
         d['x'].append(d['xp'][i%tmp1]);
     del d['zp'],d['yp'],d['xp'];
     return d;
-    
-def read_fields(d):
-    for quantity in d['dqs']:
-        d[quantity+'x']=[];
-        d[quantity+'y']=[];
-        d[quantity+'z']=[];
-        for k in xrange(d['nAll']):
-            d[quantity+'x'].append(d['x'+quantity].unpack_float());
-            d[quantity+'y'].append(d['x'+quantity].unpack_float());
-            d[quantity+'z'].append(d['x'+quantity].unpack_float());
-        del d['x'+quantity];
-    del d['dqs'],d['nAll'];
-    return d;
-
-def read_scalars(d):
-    for quantity in d['dqs']:
-        d[quantity]=[ d['x'+quantity].unpack_float() for k in range(d['nAll'])];
-        del d['x'+quantity];
-    del d['dqs'],d['nAll'];
-    return d;
 
 class LspOutput(file):
     '''represents an lsp output file on call,
@@ -136,55 +116,6 @@ class LspOutput(file):
         return;
     ###################
     #data processing    
-    def _out_getfields(self, var, pool_size,vector=True):
-        if vector:
-            size=3; call=read_fields;
-            readin = set();
-            for i in var:#we assume none of the fields end in x
-                if i[-1] == 'x' or i[-1] == 'y' or i[-1] == 'z':
-                    readin.add(i[:-1]);
-                else:
-                    readin.add(i);
-        else:
-            size=1; call=read_scalars;
-            readin = set(var);
-        doms = [];
-        qs = [i[0] for i in self.header['quantities']];
-        self.logprint('reading positions and making buffers');
-        for i in range(self.header['domains']):
-            self.logprint('reading domain {}'.format(i));
-            iR, jR, kR = self.get_int(),self.get_int(),self.get_int();
-            #getting grid parameters (real coordinates)
-            nI = self.get_int(); Ip = [self.get_float() for i in range(nI)];
-            nJ = self.get_int(); Jp = [self.get_float() for i in range(nJ)];
-            nK = self.get_int(); Kp = [self.get_float() for i in range(nK)];
-            self.logprint((nI,nJ,nK));
-            nAll = nI*nJ*nK;
-            d={}
-            dqs=[];
-            for quantity in qs:
-                if quantity not in readin:
-                    self.seek(nAll*4*size,1);
-                else:
-                    d.update({'x'+quantity:xdr.Unpacker(self.read(nAll*4*size))});
-                    dqs.append(quantity);
-            d.update({'nAll':nAll,'dqs': dqs,
-                      'xp':Ip,'yp':Jp,'zp':Kp});
-            doms.append(d);
-        self.logprint('making points');
-        pool=multiprocessing.Pool(pool_size);
-        #making points
-        doms[:] = pool.map(make_points,doms);
-        self.logprint('converting buffers');
-        doms[:] = pool.map(call,doms);
-        pool.close();
-        self.logprint('done! stringing together');
-        for dom in doms[1:]:
-            for k in doms[0]:
-                doms[0][k].extend(dom[k]);
-            del dom;
-        return doms[0];
-
     def _getfields(self, var, vector=True):
         if vector:
             size=3;
