@@ -20,12 +20,15 @@ Options:
   --xres=XRES             Set the resolution along the x direction [default: 100].
   --yres=XRES             Set the resolution along the y direction [default: 100].
   --zres=XRES             Set the resolution along the z direction [default: 100].
+  --use-sort              Use the experimental sorting algorithm.
+  --interpolate -i        Interpolate instead.
 '''
 
 import lspreader as rd;
 import cPickle;
 import numpy as np;
 import matplotlib.pyplot as plt;
+import scipy.interpolate as interp;
 from docopt import docopt;
 from time import time;
 
@@ -50,17 +53,41 @@ def histogram_scalar_3d(x,y,z,s,
     logprint('we have a norm of {}'.format(norm));
     return H/norm;
 
+def interpolate_scalar_3d(x,y,s,
+                          xres=100,yres=100,zres=100):
+    '''Interpolates the scalar s on the grid x,y
+       with the resolutions *res along each axis.
+       Uses nearest, hopefully this looks right'''
+    X,Y,Z = np.mgrid[ x.min():x.max():xres*1j,
+                      y.min():y.max():yres*1j,
+                      z.min():z.max():zres*1j ];
+    t=time();
+    H = interp.griddata((x,y,z),s,(X,Y,Z),method='nearest');
+    logprint('It took {} seconds'.format(time()-t));
+    return H;
+
+
 def histogram_scalar_2d(x,y,s,
                         xres=100,yres=100):
     '''Histograms the scalar s on the grid x,y
        with the resolutions *res along each axis.'''
     xbins = np.linspace(min(x),max(x),xres+1);
     ybins = np.linspace(min(y),max(y),yres+1);
-    
     H,_,_ = np.histogram2d(x,y,bins=(xbins,ybins),weights=s);
     norm=float(len(s))/float(xres*yres);
     logprint('we have a norm of {}'.format(norm));
     return H/norm;
+
+def interpolate_scalar_2d(x,y,s,
+                          xres=100,yres=100):
+    '''Interpolates the scalar s on the grid x,y
+       with the resolutions *res along each axis.
+       Uses nearest, hopefully this looks right'''
+    X,Y = np.mgrid[ x.min():x.max():xres*1j,
+                    y.min():y.max():yres*1j];
+    H = interp.griddata((x,y),s,(X,Y),method='nearest');
+    return H;
+
 
 def histogram_scalar_1d(x,s,res=100):
     '''Histograms the scalar s on the grid x
@@ -107,14 +134,31 @@ def main():
     logprint('reading in {}'.format(name));
     with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
         d = f.get_data(var=var);
+    # removing stuff that won't be read;
+    vs = [v[0] for v in vopairs] +  ['x','y','z'];
+    d = {k:d[k] for k in d if k in vs};
+
+    if opts['--use-sort']:
+        # making numpy array for sorting
+        l = len(d[d.keys()[0]]);
+        dt = zip(d.keys(),['f32']*len(d));
+        #magic
+        d = np.array(zip(*[iter(np.array(d.values()).T.ravel())]*len(d)),dtype=dt);
+        d.sort(order=['x','y','z'])
+        
     for v,outname in vopairs:
         logprint('histogramming');
         if len(use) == 3:
             S = histogram_scalar_3d(d['x'],d['y'],d['z'],d[v],
                                     xres=res[0],yres=res[1],zres=res[2]);
         elif len(use) == 2:
-            S = histogram_scalar_2d(d[use[0]],d[use[1]],d[v],
-                                    xres=res[0],yres=res[1]);
+            if opts['--interpolate']:
+                S = interpolate_scalar_2d(d[use[0]],d[use[1]],d[v],
+                                          xres=res[0],yres=res[1]);
+
+            else:
+                S = histogram_scalar_2d(d[use[0]],d[use[1]],d[v],
+                                        xres=res[0],yres=res[1]);
         else:
             S = histogram_scalar_1d(d[use[0]],d[v],res=res[0]);
         logprint("dumping");
