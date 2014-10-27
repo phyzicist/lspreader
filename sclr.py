@@ -140,11 +140,13 @@ def main():
 
     if opts['--use-sort']:
         # making numpy array for sorting
+        t = time();
         l = len(d[d.keys()[0]]);
         dt = zip(d.keys(),['f32']*len(d));
         #magic
         d = np.array(zip(*[iter(np.array(d.values()).T.ravel())]*len(d)),dtype=dt);
         d.sort(order=['x','y','z'])
+        logprint("sorting took {} seconds.".format(time()-t));
         
     for v,outname in vopairs:
         logprint('histogramming');
