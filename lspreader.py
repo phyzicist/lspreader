@@ -126,7 +126,7 @@ class LspOutput(file):
                 else:
                     readin.add(i);
         else:
-            size=1; call=read_scalars;
+            size=1;
             readin = set(var);
         doms = [];
         qs = [i[0] for i in self.header['quantities']];
