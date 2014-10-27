@@ -151,8 +151,12 @@ def main():
     for v,outname in vopairs:
         logprint('histogramming');
         if len(use) == 3:
-            S = histogram_scalar_3d(d['x'],d['y'],d['z'],d[v],
-                                    xres=res[0],yres=res[1],zres=res[2]);
+            if opts['--interpolate']:
+                S = interpolate_scalar_3d(d['x'],d['y'],d['z'],d[v],
+                                          xres=res[0],yres=res[1],zres=res[2]);
+            else:
+                S = histogram_scalar_3d(d['x'],d['y'],d['z'],d[v],
+                                        xres=res[0],yres=res[1],zres=res[2]);
         elif len(use) == 2:
             if opts['--interpolate']:
                 S = interpolate_scalar_2d(d[use[0]],d[use[1]],d[v],
