@@ -107,6 +107,9 @@ def mk_trajectories(mlab,traj_name):
     steps = len(traj[0,0,:]);
     N = len(traj[0,:,0]);
     sarray=np.arange(steps);
+    #creating connections between points, this should be an
+    #array of pairs that give indices of coordinates that should
+    #be connected.
     conn_1 = np.array(zip(sarray[:-1],sarray[1:]));
     conn = np.vstack([conn_1+steps*i for i in range(N)])
     return (traj,conn);
@@ -137,13 +140,14 @@ def plot(names_list,vlim,angle,
         x = np.hstack(tr_cur[0,:,:]);
         y = np.hstack(tr_cur[1,:,:]);
         z = np.hstack(tr_cur[2,:,:]);
+        #trajectory source
         tracks_src=mlab.pipeline.scalar_scatter(x,y,z,
                                                 np.ones(x.shape));
         tracks_src.mlab_source.dataset.lines = con;
         lines = mlab.pipeline.stripper(tracks_src);
+        #creating tracks.
         tracks = mlab.pipeline.surface(lines,line_width=2,opacity=1.0);
-        starti+=1;
-        d['fig'].scene.disable_render = False;
+    d['fig'].scene.disable_render = False;
     print("saving {}".format(first['out']));
     mlab.savefig(first['out'],size=(1280,1024));
     for i,names in enumerate(names_list):
@@ -159,7 +163,7 @@ def plot(names_list,vlim,angle,
             d['zp'].mlab_source.set(scalars=S);
         d['t'].text=names['label'];
         if 'traj-files' in kwargs:
-            tr_cur[:,:,:starti+i] = traj[:,:,:starti+i];
+            tr_cur[:,:,starti+i] = traj[:,:,starti+i];
             x = np.hstack(tr_cur[0,:,:]);
             y = np.hstack(tr_cur[1,:,:]);
             z = np.hstack(tr_cur[2,:,:]);
