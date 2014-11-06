@@ -1,10 +1,13 @@
 #!/usr/bin/env python2
 '''
 Parse a lsp fields or scalar file and output a 3D array sampling the
-given variables. The scheme used here is reading the data in, histogramming
-the scalar based on position and using the scalar value as a histogram
+given variables. The scheme used here is reading the data in, either
+interpolating the scalar value (using the "nearest" point in actual data)
+to a have a lower number of samples of the actual data, or performing a
+N-D histogram of the data using the value of the scalar field as a histogram
 weight, and then dividing by the number of points to obtain an average
-over each point. The input to this script should be a .p4 output from lsp.
+over each point. The default is "nearest" interpolation.
+The input to this script should be a .p4 output from lsp.
 
 There are currently no known limitations of this script. It is sequential.
 
@@ -21,7 +24,7 @@ Options:
   --yres=XRES             Set the resolution along the y direction [default: 100].
   --zres=XRES             Set the resolution along the z direction [default: 100].
   --use-sort              Use the experimental sorting algorithm.
-  --interpolate -i        Interpolate instead.
+  --histogram -H          Histogram instead.
 '''
 
 import lspreader as rd;
@@ -57,7 +60,7 @@ def interpolate_scalar_3d(x,y,z,s,
                           xres=100,yres=100,zres=100):
     '''Interpolates the scalar s on the grid x,y
        with the resolutions *res along each axis.
-       Uses nearest, hopefully this looks right'''
+       Uses "nearest" interpolation'''
     X,Y,Z = np.mgrid[ x.min():x.max():xres*1j,
                       y.min():y.max():yres*1j,
                       z.min():z.max():zres*1j ];
@@ -82,12 +85,20 @@ def interpolate_scalar_2d(x,y,s,
                           xres=100,yres=100):
     '''Interpolates the scalar s on the grid x,y
        with the resolutions *res along each axis.
-       Uses nearest, hopefully this looks right'''
+       Uses "nearest" interpolation'''
     X,Y = np.mgrid[ x.min():x.max():xres*1j,
                     y.min():y.max():yres*1j];
     H = interp.griddata((x,y),s,(X,Y),method='nearest');
     return H;
 
+def interpolate_scalar_1d(x,s,
+                          res=100):
+    '''Interpolates the scalar s on the grid x
+       with the resolutions *res along each axis.
+       Uses "nearest" interpolation'''
+    X = np.mgrid[ x.min():x.max():res*1j];
+    H = interp.griddata(x,s,X,method='nearest');
+    return H;
 
 def histogram_scalar_1d(x,s,res=100):
     '''Histograms the scalar s on the grid x
@@ -151,20 +162,25 @@ def main():
     for v,outname in vopairs:
         logprint('histogramming');
         if len(use) == 3:
-            if opts['--interpolate']:
-                S = interpolate_scalar_3d(d['x'],d['y'],d['z'],d[v],xres=res[0],yres=res[1],zres=res[2]);
+            if opts['--histogram']:
+                S = histogram_scalar_3d(d['x'],d['y'],d['z'],d[v],
+                                        xres=res[0],yres=res[1],zres=res[2]);
             else:
-                S = histogram_scalar_3d(d['x'],d['y'],d['z'],d[v],xres=res[0],yres=res[1],zres=res[2]);
+                S = interpolate_scalar_3d(d['x'],d['y'],d['z'],d[v],
+                                          xres=res[0],yres=res[1],zres=res[2]);
         elif len(use) == 2:
-            if opts['--interpolate']:
-                S = interpolate_scalar_2d(d[use[0]],d[use[1]],d[v],
+            if opts['--histogram']:
+                S = histogram_scalar_2d(d[use[0]],d[use[1]],d[v],
                                           xres=res[0],yres=res[1]);
 
             else:
-                S = histogram_scalar_2d(d[use[0]],d[use[1]],d[v],
+                S = interpolate_scalar_2d(d[use[0]],d[use[1]],d[v],
                                         xres=res[0],yres=res[1]);
         else:
-            S = histogram_scalar_1d(d[use[0]],d[v],res=res[0]);
+            if opts['--histogram']:
+                S = histogram_scalar_1d(d[use[0]],d[v],res=res[0]);
+            else:
+                S = interpolate_scalar_1d(d[use[0]],d[v],res=res[0]);
         logprint("dumping");
         with open(outname,"wb") as f:
             cPickle.dump(S,f,2);
