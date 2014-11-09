@@ -13,6 +13,7 @@ There are currently no known limitations of this script. It is sequential.
 
 Usage:
   sclr.py [options] <input> (<var> <output>)...
+  sclr.py --list-var <input>
 
 Options:
   -h --help               Show this help.
@@ -20,6 +21,7 @@ Options:
   -x --X                  Use X in interpolation.
   -y --Y                  Use Y in interpolation.
   -z --Z                  Use Z in interpolation.
+  --list-var              Just list the variable names.
   --xres=XRES             Set the resolution along the x direction [default: 100].
   --yres=XRES             Set the resolution along the y direction [default: 100].
   --zres=XRES             Set the resolution along the z direction [default: 100].
@@ -119,6 +121,12 @@ def main():
     name = opts['<input>'];
 
     verbose = opts['--verbose'];
+    if opts['--list-var']:
+        with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
+            names = zip(*f.header['quantities'])[0];
+        for name in names:
+            print(name);
+        return;
     use = [];
     res = [];
     if opts['--X']:
