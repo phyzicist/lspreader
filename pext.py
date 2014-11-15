@@ -23,29 +23,16 @@ from docopt import docopt;
 massE = 0.511e6;
 
 def calculate2d(x,y,d):
-    print('calculating kinetic energy');
     r = np.sqrt(d['u'+x]**2+d['u'+y]**2);    
     d['KE'] = (np.sqrt(r**2+1)-1)*massE;
-    print('calculating azimuth');
-    d['phi'] = np.arccos(-d['u'+x]/r);
-    for i,zi in enumerate(d['u'+y]):
-        if zi < 0.0:
-            d['phi'][i] = -d['phi'][i];
-        pass;
+    d['phi'] = np.arctan2(d['u'+y],d['u'+x]);
     return d;
 
 def calculate3d(d):
-    print('calculating kinetic energy');
     r = np.sqrt(d['ux']**2+d['uy']**2+d['uz']**2);    
     d['KE'] = (np.sqrt(r**2+1)-1)*massE;
-    print('calculating polar angle ("zenith")');
     d['theta'] = np.arccos(d['uz']/r);
-    print('calculating azimuth');
-    d['phi'] = np.arccos(-d['ux']/(r*np.sin(d['theta'])));
-    for i,z in enumerate(d['uz']):
-        if z < 0.0:
-            d['phi'][i] = -d['phi'][i];
-        pass;
+    d['phi'] = np.arctan2(d['uy'],d['ux']);
     return d;
     
 def main():
@@ -53,7 +40,7 @@ def main():
     outname = opts['<output>']
     names = opts['<names>'];
     coords = {'x':opts['--X'],'y':opts['--Y'],'z':opts['--Z']};
-    num_of_coords = len([k for k in coords if coords[k]]);
+    num_of_coords = len([i for i in coords.values() if i]);
     latetime = float(opts['--late-time']) if opts['--late-time'] else None;
     if num_of_coords==0:
         num_of_coords=3;
@@ -62,32 +49,25 @@ def main():
         print('reading in {}'.format(name));
         with rd.LspOutput(name) as f:
             d.append(f.get_data());
-    print('stringing together');
-    data=d[0];
-    for i in d[1:]:
-        for k in data:
-            data[k].extend(i[k]);
-    d=data;
-    del data;
     print('cutting out duplicate times');
-    #ugly c-like loop
-    i = 0;
-    while i<len(d['t'])-1:
-        if d['t'][i] > d['t'][i+1]:
-            cuti = d['t'][i+1:].index(d['t'][i])+i+2;
-            for k in d:
-                del d[k][i+1:cuti];
-        i+=1;
+    ch = lambda i,j: i[ i['t'] < j['t'][0] ]
+    try:
+        d[:-1] = [ch(i,j) for i,j in zip(d[:-1],d[1:])]
+    except IndexError:
+        #this means that one of the arrays has nothing in it, ie, nothing
+        #exited that plane. Ignore this.
+        pass;
+    #concatenating
+    d = np.concatenate(d);
     if latetime:
         print('cutting out times greater than {}'.format(latetime));
-        for i,t in enumerate(d['t']):
-            if t > latetime:
-                for k in d:
-                    del d[k][i:];
-                break;
-    for k in d:
-        d[k] = np.array(d[k]);
+        good = d['t'] <= latetime;
+        d = d[good];
+    #turn arrays into dict
+    d = {k:d[k] for k in d.dtype.names};
+    #calculating based on the number of dimensions.
     if num_of_coords == 2:
+        print('herp');
         #notice this only does x-y, y-z, and inverts the first.
         x = 'x' if opts['--X'] else 'y';
         y = 'y' if opts['--Y'] else 'z';
@@ -96,10 +76,9 @@ def main():
         d = calculate3d(d);
     else:
         raise RuntimeError, "derp";
-    print('outputting');  
+    print('outputting');
     with open(outname,"wb") as f:
         cPickle.dump(d,f,2);
-    print('scatter plot in 3d with the color function "q"');
     pass;
 
 if __name__ == '__main__':
