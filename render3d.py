@@ -65,6 +65,7 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     #creating custom opacity transfer function and set it
     v._otf = mk_opacity_tf(vlim);
     v._volume_property.set_scalar_opacity(v._otf);
+    v._volume_property.interpolation_type = 'nearest';
     ret['v']=v;
     #mlab.axes();  # make me an option.
     #doing the crazy trajectory stuff.
@@ -99,10 +100,6 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
         ret['tracks'] = tracks;
         ret['cur_traj'] = cur_traj;
         ret['full_traj'] = full_traj;
-    #setting the view
-    mlab.view(elevation=angle[0],azimuth=angle[1],
-              focalpoint='auto',distance='auto');
-    mlab.roll(angle[2]);
     if 'clabel' in kwargs:
         mlab.scalarbar(object=v,title=kwargs['clabel']);
     else:
@@ -114,15 +111,20 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     module_manager.scalar_lut_manager.use_default_range = False;
     module_manager.scalar_lut_manager.data_range = np.array([vmin, vmax]);
     if 'label' in kwargs:
-        t=mlab.text(0.075,0.875,kwargs['label'],width=0.1);
+        l = kwargs['label'];
+        t=mlab.text(0.075,0.875, l, width=len(l)*0.015);
         ret['t'] = t;
     #show the nubs
-    oa=mlab.orientation_axes();
+    oa=mlab.orientation_axes(xlabel='k',ylabel='h',zlabel='w');
     oa.marker.set_viewport(0,0,0.4,0.4);
     #begin rendering
     if 'render' not in kwargs or kwargs['render']:
         fig.scene.disable_render=False;
-    fig.scene.camera.zoom(1.3);
+    #fig.scene.camera.zoom(1.3);
+       #setting the view
+    mlab.view(elevation=angle[0],azimuth=angle[1],
+              focalpoint='auto',distance='auto');
+    mlab.roll(angle[2]);
     return ret;
 
 def plot(names_list,vlim,angle,
