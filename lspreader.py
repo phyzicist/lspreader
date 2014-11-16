@@ -204,7 +204,7 @@ class LspOutput(file):
         #it's just floats here on out
         dt = zip(params, ['>f4']*len(params));
         out = np.fromfile(self,dtype=dt,count=-1);
-        out = {k:out[k] for k in params};
+        #out = {k:out[k] for k in params};
         return out;
         
     def get_data(self,var=None):
