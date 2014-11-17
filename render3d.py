@@ -17,6 +17,9 @@ Options:
    --polar=POLAR                 Set the polar angle [default: 125].
    --roll=ROLL                   Roll after setting the angle [default: 0].
    --trajectories=TRAJ_FORMAT    Look for trajectories files.
+   --xlabel=XLABEL               Label for x axis. [default: k].
+   --ylabel=YLABEL               Label for y axis. [default: h].
+   --zlabel=ZLABEL               Label for x axis. [default: pol.].
 '''
 import numpy as np;
 import cPickle;
@@ -115,7 +118,9 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
         t=mlab.text(0.075,0.875, l, width=len(l)*0.015);
         ret['t'] = t;
     #show the nubs
-    oa=mlab.orientation_axes(xlabel='k',ylabel='h',zlabel='w');
+    oa=mlab.orientation_axes(xlabel=kwargs['xlabel'],
+                             ylabel=kwargs['ylabel'],
+                             zlabel=kwargs['zlabel']);
     oa.marker.set_viewport(0,0,0.4,0.4);
     #begin rendering
     if 'render' not in kwargs or kwargs['render']:
@@ -188,6 +193,9 @@ if __name__=="__main__":
               float(opts['--azimuth']),
               float(opts['--roll']) ];
     kwargs['clabel'] = opts['--clabel'];
+    kwargs['xlabel'] = opts['--xlabel'];
+    kwargs['ylabel'] = opts['--ylabel'];
+    kwargs['zlabel'] = opts['--zlabel'];
     if opts['--trajectories']:
         traj = opts['--trajectories'];
         if not opts['--plot-single']:
