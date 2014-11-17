@@ -14,6 +14,7 @@ Options:
   --Y -y                    Use Y.
   --Z -z                    Use Z.
   --late-time=TIME -l TIME  Cut out after this time.
+  --reverse -r              Reverse Y and Z.
 '''
 import lspreader as rd;
 import cPickle;
@@ -22,17 +23,24 @@ import itertools as itools;
 from docopt import docopt;
 massE = 0.511e6;
 
-def calculate2d(x,y,d):
+def calculate2d(x,y,d,reverse=False):
     r = np.sqrt(d['u'+x]**2+d['u'+y]**2);    
     d['KE'] = (np.sqrt(r**2+1)-1)*massE;
-    d['phi'] = np.arctan2(d['u'+y],d['u'+x]);
+    if reverse:
+        d['phi'] = np.arctan2(d['u'+y],d['u'+x]);
+    else:
+        d['phi'] = np.arctan2(-d['u'+x],d['u'+y]);
     return d;
 
-def calculate3d(d):
+def calculate3d(d,reverse=False):
     r = np.sqrt(d['ux']**2+d['uy']**2+d['uz']**2);    
     d['KE'] = (np.sqrt(r**2+1)-1)*massE;
-    d['theta'] = np.arccos(d['uz']/r);
-    d['phi'] = np.arctan2(d['uy'],d['ux']);
+    if reverse:
+        d['theta'] = np.arccos(d['uy']/r);
+        d['phi'] = np.arctan2(-d['uz'],d['ux']);
+    else:
+        d['theta'] = np.arccos(d['uz']/r);
+        d['phi'] = np.arctan2(d['uy'],d['ux']);
     return d;
     
 def main():
@@ -67,13 +75,12 @@ def main():
     d = {k:d[k] for k in d.dtype.names};
     #calculating based on the number of dimensions.
     if num_of_coords == 2:
-        print('herp');
         #notice this only does x-y, y-z, and inverts the first.
         x = 'x' if opts['--X'] else 'y';
         y = 'y' if opts['--Y'] else 'z';
-        d = calculate2d(x,y,d);
+        d = calculate2d(x,y,d,opts['--reverse']);
     elif num_of_coords ==3:
-        d = calculate3d(d);
+        d = calculate3d(d,opts['--reverse']);
     else:
         raise RuntimeError, "derp";
     print('outputting');

@@ -17,6 +17,7 @@ Options:
   --high-res -H               Output a high resolution plt.
   --max-Q=MAXQ                Set the maximum for the charge (pcolormesh's vmax value).
   --normalize                 Normalize the histogram to 1 *eV^-1 rad^-1 .
+  --factor=F                  Multiply histogram by F. [default: 1.0]
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
@@ -59,6 +60,7 @@ def main():
     maxE = conv(opts['--max-E'],default=(400 if opts['--KeV'] else 4.0),func=float);
     maxQ = float(opts['--max-Q']) if opts['--max-Q'] else None;
     Estep = conv(opts['--E-step'],default=(100 if opts['--KeV'] else 1.0),func=float);
+    F = float(opts['--factor']);
     with open(inname,'r') as f:
         d = cPickle.load(f)
     e = d['KE'];
@@ -66,7 +68,7 @@ def main():
         e/=1e3;
     else:
         e/=1e6;
-    s =-d['q']*1e6;
+    s =-d['q']*1e6*F;
     plt.hist(s,bins=50);
     phi_bins = np.linspace(min(d['phi']),max(d['phi']),phi_spacing+1);
     E_bins   = np.linspace(0, maxE, E_spacing+1);
@@ -74,7 +76,10 @@ def main():
                       0 : maxE : E_spacing*1j];
     S,_,_ = np.histogram2d(d['phi'],e,bins=(phi_bins,E_bins),weights=s);
     if opts['--normalize']:
-        S /= maxE/E_spacing * 2*np.pi/phi_spacing;
+        Efactor = maxE/E_spacing;
+        if opts['--KeV']:
+            Efactor *= 1e-3;
+        S /= Efactor * 2*np.pi/phi_spacing;
     fig = plt.figure(1);
     ax=plt.subplot(projection='polar',axisbg='white');
     surf=plt.pcolormesh(PHI,E,S,cmap=mk_cmap(),vmax=maxQ);

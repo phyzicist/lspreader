@@ -7,17 +7,6 @@ import itertools as itools;
 import multiprocessing;
 import numpy as np;
 
-def make_points(d):
-    d['x']=[]; d['y']=[]; d['z']=[];
-    tmp1 = len(d['xp']);
-    tmp2 = tmp1 * len(d['yp']);
-    for i in range(d['nAll']):
-        d['z'].append(d['zp'][i/tmp2]);
-        d['y'].append(d['yp'][i%tmp2/tmp1]);
-        d['x'].append(d['xp'][i%tmp1]);
-    del d['zp'],d['yp'],d['xp'];
-    return d;
-
 class LspOutput(file):
     '''represents an lsp output file on call,
        reads the header on open'''
