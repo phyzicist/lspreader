@@ -8,7 +8,7 @@ Usage:
 Options:
   -o OUTPUT --output=OUTPUT         Output to OUTPUT instead of stdout.
 '''
-import cPickle;
+import cPickle as pickle;
 import numpy as np;
 from docopt import docopt;
 
@@ -18,26 +18,15 @@ def main():
     d=[]
     for name in names:
         with open(name) as f:
-            d.append(cPickle.load(f))
+            d.append(pickle.load(f));
     #making into lists
-    data=d[0];
-    for k in data:
-        data[k] = list(data[k]);
-    #stringing together
-    for i in d[1:]:
-        for k in data:
-            data[k].extend(list(i[k]));
-    pass;
-    del d;
-    #renumpying
-    for k in data:
-        data[k] = np.array(data[k]);
+    out = {k:np.concatenate([i[k] for i in d]) for k in d[0].keys()};
     if opts['--output']:
         with open(opts['--output'],"wb") as f:
-            cPickle.dump(data,f,2);
+            pickle.dump(out,f,2);
         pass;
     else:
-        print(cPickle.dumps(data,2));
+        print(pickle.dumps(out,2));
     pass;
 if __name__ == '__main__':
     main();

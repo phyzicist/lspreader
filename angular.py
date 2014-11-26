@@ -7,7 +7,7 @@ Usage:
   angular.py [options] <input>
 
 Options:
-  --polar-bins=BINS -p BINS   Set the number of polar bins.  [default: 180]
+  --angle-bins=BINS -a BINS   Set the number of angle bins.  [default: 180]
   --radial-bins=BINS -r BINS  Set the number of radial bins. [default: 40]
   --title=TITLE -t Title      Set the title.
   --clabel=CLABEL             Set colorbar label.
@@ -18,10 +18,11 @@ Options:
   --max-Q=MAXQ                Set the maximum for the charge (pcolormesh's vmax value).
   --normalize                 Normalize the histogram to 1 *eV^-1 rad^-1 .
   --factor=F                  Multiply histogram by F. [default: 1.0]
+  --polar                     Plot polar angles, letting the east direction be forward.
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
-import cPickle;
+import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
 import math as m;
@@ -54,7 +55,7 @@ def main():
     opts = docopt(__doc__,help=True);
     inname = opts['<input>'];
     outname = opts['<output>'];
-    phi_spacing = float(opts['--polar-bins']);
+    phi_spacing = float(opts['--angle-bins']);
     E_spacing = float(opts['--radial-bins']);
     clabel = opts['--clabel'] if opts['--clabel'] else '$p C$';
     maxE = conv(opts['--max-E'],default=(400 if opts['--KeV'] else 4.0),func=float);
@@ -62,19 +63,26 @@ def main():
     Estep = conv(opts['--E-step'],default=(100 if opts['--KeV'] else 1.0),func=float);
     F = float(opts['--factor']);
     with open(inname,'r') as f:
-        d = cPickle.load(f)
+        d = pickle.load(f)
     e = d['KE'];
     if opts['--KeV']:
         e/=1e3;
     else:
         e/=1e6;
     s =-d['q']*1e6*F;
-    plt.hist(s,bins=50);
-    phi_bins = np.linspace(min(d['phi']),max(d['phi']),phi_spacing+1);
+    if opts['--polar']:
+        m = ((-np.pi/2 <= d['phi'] )& (d['phi'] <= np.pi/2)).astype(int)*2 - 1 #black magic
+        phi = m*d['theta'];
+        plt.hist(phi,bins=100,label='foo');
+        plt.legend();
+        plt.show();
+    else:
+        phi = d['phi'];
+    phi_bins = np.linspace(min(phi),max(phi),phi_spacing+1);
     E_bins   = np.linspace(0, maxE, E_spacing+1);
-    PHI,E = np.mgrid[ min(d['phi']) : max(d['phi']) : phi_spacing*1j,
+    PHI,E = np.mgrid[ min(phi) : max(phi) : phi_spacing*1j,
                       0 : maxE : E_spacing*1j];
-    S,_,_ = np.histogram2d(d['phi'],e,bins=(phi_bins,E_bins),weights=s);
+    S,_,_ = np.histogram2d(phi,e,bins=(phi_bins,E_bins),weights=s);
     if opts['--normalize']:
         Efactor = maxE/E_spacing;
         if opts['--KeV']:

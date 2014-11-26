@@ -15,9 +15,10 @@ Options:
   --Z -z                    Use Z.
   --late-time=TIME -l TIME  Cut out after this time.
   --reverse -r              Reverse Y and Z.
+  --massE=ME                Rest energy of the particle.
 '''
 import lspreader as rd;
-import cPickle;
+import cPickle as pickle;
 import numpy as np;
 import itertools as itools;
 from docopt import docopt;
@@ -82,10 +83,10 @@ def main():
     elif num_of_coords ==3:
         d = calculate3d(d,opts['--reverse']);
     else:
-        raise RuntimeError, "derp";
+        raise RuntimeError("derp")
     print('outputting');
     with open(outname,"wb") as f:
-        cPickle.dump(d,f,2);
+        pickle.dump(d,f);
     pass;
 
 if __name__ == '__main__':

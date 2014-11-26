@@ -3,18 +3,31 @@ Reader for LSP output xdr files (.p4's)
 
 '''
 import xdrlib as xdr;
-import itertools as itools;
-import multiprocessing;
 import numpy as np;
 
-class LspOutput(file):
+class LspOutput(object):
     '''represents an lsp output file on call,
        reads the header on open'''
     def __init__(self,filename,verbose=False,prefix='',buffering=-1):
-        file.__init__(self,filename,"rb",buffering);
-        self._get_header();
+        self.filename = filename;
+        self.buffering = buffering;
         self.verbose = verbose;
         self.prefix = prefix;
+    
+    def __enter__(self):
+        self.open();
+        return self;
+    
+    def __exit__(self, type, value, traceback):
+        self.close();
+        
+    def open(self):
+        self.file = open(self.filename, 'rb',self.buffering);
+        self._get_header();
+        
+    def close(self):
+        self.file.close();
+        
     def logprint(self,s):
         if self.verbose:
             if self.prefix == '':
@@ -22,18 +35,19 @@ class LspOutput(file):
             else:
                 print('{}: {}'.format(self.prefix,s));
     def get_chunk(self, n):
-        return self.read(n);
+        return self.file.read(n);
     def get_int(self):
-        return xdr.Unpacker(self.read(4)).unpack_int();
+        return xdr.Unpacker(self.file.read(4)).unpack_int();
     def get_uint(self):
-        return xdr.Unpacker(self.read(4)).unpack_uint();
+        return xdr.Unpacker(self.file.read(4)).unpack_uint();
     def get_float(self):
-        return xdr.Unpacker(self.read(4)).unpack_float();
+        return xdr.Unpacker(self.file.read(4)).unpack_float();
     def get_str(self):
         l1 = self.get_int();
         l2 = self.get_int();
         if l1 != l2:
             print("warning, string prefixes are not equal...");
+            print("{}!={}".format(l1,l2));
         size=l1;
         if l1%4:
             size+=4-l1%4;
@@ -138,7 +152,7 @@ class LspOutput(file):
                     self.seek(nAll*4*size,1);
                 else:
                     self.logprint('Reading in {}'.format(quantity));
-                    d[quantity] = np.fromfile(self,dtype='>f4',count=nAll*size);
+                    d[quantity] = np.fromfile(self.file,dtype='>f4',count=nAll*size);
                     if size==3:
                         data=d[quantity].reshape(nAll,size).T;
                         d[quantity+'x'],d[quantity+'y'],d[quantity+'z']= data;
@@ -170,7 +184,7 @@ class LspOutput(file):
             lt=[('ip','>i4')]+zip(params,['>f4']*nparams);
             dt=np.dtype(lt);
             self.seek(d['pos']);
-            arr=np.fromfile(self,dtype=dt,count=N);
+            arr=np.fromfile(self.file,dtype=dt,count=N);
             d['data']=arr;
             del d['pos'];
             self.logprint('done!');
@@ -191,9 +205,8 @@ class LspOutput(file):
         elif nparams == 12:
             params+=['E','xi','yi','zi'];
         #it's just floats here on out
-        dt = zip(params, ['>f4']*len(params));
-        out = np.fromfile(self,dtype=dt,count=-1);
-        #out = {k:out[k] for k in params};
+        dt = list(zip(params, ['>f4']*len(params)));
+        out = np.fromfile(self.file,dtype=dt,count=-1);
         return out;
         
     def get_data(self,var=None):
