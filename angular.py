@@ -71,16 +71,28 @@ def main():
         e/=1e6;
     s =-d['q']*1e6*F;
     if opts['--polar']:
-        m = ((-np.pi/2 <= d['phi'] )& (d['phi'] <= np.pi/2)).astype(int)*2 - 1 #black magic
-        phi = m*d['theta'];
-        plt.hist(phi,bins=100,label='foo');
-        plt.legend();
-        plt.show();
+        phi = d['phi_n'];
+        phi_labels = ['Forward\n0$^{\circ}$',
+                      '45$^{\circ}$',
+                      'Up\n90$^{\circ}$',
+                      '135$^{\circ}$',
+                      'Backwards\n180$^{\circ}$',
+                      '215$^{\circ}$',
+                      'Down\n270$^{\circ}$',
+                      '315$^{\circ}$'];
     else:
         phi = d['phi'];
-    phi_bins = np.linspace(min(phi),max(phi),phi_spacing+1);
+        phi_labels = ['Forward\n0$^{\circ}$',
+                      '45$^{\circ}$',
+                      'Left\n90$^{\circ}$',
+                      '135$^{\circ}$',
+                      'Backwards\n180$^{\circ}$',
+                      '215$^{\circ}$',
+                      'Right\n270$^{\circ}$',
+                      '315$^{\circ}$'];
+    phi_bins = np.linspace(-np.pi,np.pi,phi_spacing+1);
     E_bins   = np.linspace(0, maxE, E_spacing+1);
-    PHI,E = np.mgrid[ min(phi) : max(phi) : phi_spacing*1j,
+    PHI,E = np.mgrid[ -np.pi : np.pi : phi_spacing*1j,
                       0 : maxE : E_spacing*1j];
     S,_,_ = np.histogram2d(phi,e,bins=(phi_bins,E_bins),weights=s);
     if opts['--normalize']:
@@ -97,17 +109,10 @@ def main():
         plt.plot(full_phi,np.ones(full_phi.shape)*i,c='gray', lw=1, ls='--');
     ax.set_theta_zero_location('N');
     unit = 'KeV' if opts['--KeV'] else 'MeV';
-    label_str = '{} '+unit;
-    labels    = np.arange(0.0,maxE,Estep)[1:];
-    plt.rgrids(labels,labels=map(label_str.format,labels),angle=350);
-    ax.set_xticklabels(['Forward\n0$^{\circ}$',
-                        '45$^{\circ}$',
-                        'Left\n90$^{\circ}$',
-                        '135$^{\circ}$',
-                        'Backwards\n180$^{\circ}$',
-                        '215$^{\circ}$',
-                        'Right\n270$^{\circ}$',
-                        '315$^{\circ}$']);
+    rlabel_str = '{} '+unit;
+    rlabels    = np.arange(0.0,maxE,Estep)[1:];
+    plt.rgrids(rlabels, labels=map(rlabel_str.format,rlabels),angle=350);
+    ax.set_xticklabels(phi_labels);
     c=fig.colorbar(surf,pad=0.075);
     c.set_label(clabel);
     if opts['--title']:

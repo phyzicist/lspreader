@@ -39,9 +39,11 @@ def calculate3d(d,reverse=False):
     if reverse:
         d['theta'] = np.arccos(d['uy']/r);
         d['phi'] = np.arctan2(-d['uz'],d['ux']);
+        d['phi_n'] = np.arctan2(d['uy'],d['ux']);
     else:
         d['theta'] = np.arccos(d['uz']/r);
         d['phi'] = np.arctan2(d['uy'],d['ux']);
+        d['phi_n'] = np.arctan2(d['uz'],d['ux']);
     return d;
     
 def main():
