@@ -58,9 +58,9 @@ def main():
     phi_spacing = float(opts['--angle-bins']);
     E_spacing = float(opts['--radial-bins']);
     clabel = opts['--clabel'] if opts['--clabel'] else '$p C$';
-    maxE = conv(opts['--max-E'],default=(400 if opts['--KeV'] else 4.0),func=float);
+    maxE = conv(opts['--max-E'],default=(1000 if opts['--KeV'] else 4.0),func=float);
     maxQ = float(opts['--max-Q']) if opts['--max-Q'] else None;
-    Estep = conv(opts['--E-step'],default=(100 if opts['--KeV'] else 1.0),func=float);
+    Estep = conv(opts['--E-step'],default=(250 if opts['--KeV'] else 1.0),func=float);
     F = float(opts['--factor']);
     with open(inname,'r') as f:
         d = pickle.load(f)
