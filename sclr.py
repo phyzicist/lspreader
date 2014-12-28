@@ -47,60 +47,77 @@ def histogram_scalar_3d(x,y,z,s,
                         xres=100,yres=100,zres=100):
     '''Histograms the scalar s on the grid x,y,z
        with the resolutions *res along each axis.'''
-    xbins = np.linspace(min(x),max(x),xres+1);
-    ybins = np.linspace(min(y),max(y),yres+1);
-    zbins = np.linspace(min(z),max(z),zres+1);
+    maxs = dict(x=x.max(),y=y.max(),z=z.max());
+    mins = dict(x=x.min(),y=y.min(),z=z.min());
+    xbins = np.linspace(mins['x'],maxs['x'],xres+1);
+    ybins = np.linspace(mins['y'],maxs['y'],yres+1);
+    zbins = np.linspace(mins['z'],maxs['z'],zres+1);
     t=time();
     H,_= np.histogramdd([x,y,z],bins=[xbins,ybins,zbins],weights=s);
     logprint('It took {} seconds'.format(time()-t));
     #divide to get the average
     norm=float(len(s))/float(xres*yres*zres);
     logprint('we have a norm of {}'.format(norm));
-    return H/norm;
+    #making bounds
+    xb,yb,zb = map(lambda s: (mins[s],maxs[s]), ['x','y','z']);
+    return H/norm, xb, yb, zb;
 
 def interpolate_scalar_3d(x,y,z,s,
                           xres=100,yres=100,zres=100):
     '''Interpolates the scalar s on the grid x,y
        with the resolutions *res along each axis.
        Uses "nearest" interpolation'''
-    X,Y,Z = np.mgrid[ x.min():x.max():xres*1j,
-                      y.min():y.max():yres*1j,
-                      z.min():z.max():zres*1j ];
+    maxs = dict(x=x.max(),y=y.max(),z=z.max());
+    mins = dict(x=x.min(),y=y.min(),z=z.min());
+
+    X,Y,Z = np.mgrid[ mins['x']:maxs['x']:xres*1j,
+                      mins['y']:maxs['y']:yres*1j,
+                      mins['z']:maxs['z']:zres*1j ];
     t=time();
     H = interp.griddata((x,y,z),s,(X,Y,Z),method='nearest');
     logprint('It took {} seconds'.format(time()-t));
-    return H;
+    xb,yb,zb = map(lambda s: (mins[s],maxs[s]), ['x','y','z']);
+    return H, xb, yb, zb;
 
 
 def histogram_scalar_2d(x,y,s,
                         xres=100,yres=100):
     '''Histograms the scalar s on the grid x,y
        with the resolutions *res along each axis.'''
-    xbins = np.linspace(min(x),max(x),xres+1);
-    ybins = np.linspace(min(y),max(y),yres+1);
+    maxs = dict(x=x.max(),y=y.max());
+    mins = dict(x=x.min(),y=y.min());
+
+    xbins = np.linspace(mins['x'],maxs['x'],xres+1);
+    ybins = np.linspace(mins['y'],maxs['y'],yres+1);
     H,_,_ = np.histogram2d(x,y,bins=(xbins,ybins),weights=s);
     norm=float(len(s))/float(xres*yres);
     logprint('we have a norm of {}'.format(norm));
-    return H/norm;
+    xb,yb = map(lambda s: (mins[s],maxs[s]), ['x','y']);
+    return H/norm, xb, yb;
 
 def interpolate_scalar_2d(x,y,s,
                           xres=100,yres=100):
     '''Interpolates the scalar s on the grid x,y
        with the resolutions *res along each axis.
        Uses "nearest" interpolation'''
-    X,Y = np.mgrid[ x.min():x.max():xres*1j,
-                    y.min():y.max():yres*1j];
+    maxs = dict(x=x.max(),y=y.max());
+    mins = dict(x=x.min(),y=y.min());
+
+    X,Y = np.mgrid[ mins['x']:max['x']:xres*1j,
+                    mins['y']:max['y']:yres*1j];
     H = interp.griddata((x,y),s,(X,Y),method='nearest');
-    return H;
+    xb,yb = map(lambda s: (mins[s],maxs[s]), ['x','y']);
+    return H, xb, yb
 
 def interpolate_scalar_1d(x,s,
                           res=100):
     '''Interpolates the scalar s on the grid x
        with the resolutions *res along each axis.
        Uses "nearest" interpolation'''
-    X = np.mgrid[ x.min():x.max():res*1j];
+    maxx = x.max(); minx = x.min()
+    X = np.mgrid[ minx:maxx:res*1j];
     H = interp.griddata(x,s,X,method='nearest');
-    return H;
+    return H, (minx,maxx);
 
 def histogram_scalar_1d(x,s,res=100):
     '''Histograms the scalar s on the grid x
@@ -168,30 +185,21 @@ def main():
         logprint("sorting took {} seconds.".format(time()-t));
         
     for v,outname in vopairs:
-        logprint('histogramming');
+        logprint('histogram' if opts['--histogram'] else 'interpolating');
+        o={};
         if len(use) == 3:
-            if opts['--histogram']:
-                S = histogram_scalar_3d(d['x'],d['y'],d['z'],d[v],
-                                        xres=res[0],yres=res[1],zres=res[2]);
-            else:
-                S = interpolate_scalar_3d(d['x'],d['y'],d['z'],d[v],
-                                          xres=res[0],yres=res[1],zres=res[2]);
+                f  = histogram_scalar_3d if opts['--histogram'] else interpolate_scalar_3d
+                o['s'], o['x'],o['y'],o['z'] = f(d['x'],d['y'],d['z'],d[v],
+                                                xres=res[0],yres=res[1],zres=res[2]);
         elif len(use) == 2:
-            if opts['--histogram']:
-                S = histogram_scalar_2d(d[use[0]],d[use[1]],d[v],
-                                          xres=res[0],yres=res[1]);
-
-            else:
-                S = interpolate_scalar_2d(d[use[0]],d[use[1]],d[v],
-                                        xres=res[0],yres=res[1]);
+            f  = histogram_scalar_2d if opts['--histogram'] else interpolate_scalar_2d
+            o['s'], o[use[0]], o[use[1]] = f(d[use[0]],d[use[1]],d[v],xres=res[0],yres=res[1]);
         else:
-            if opts['--histogram']:
-                S = histogram_scalar_1d(d[use[0]],d[v],res=res[0]);
-            else:
-                S = interpolate_scalar_1d(d[use[0]],d[v],res=res[0]);
-        logprint("dumping");
+            f  = histogram_scalar_1d if opts['--histogram'] else interpolate_scalar_1d
+            o['s'], o[use[0]] = f(d[use[0]],d[v],res=res[0]);
+        logprint("outputting");
         with open(outname,"wb") as f:
-            cPickle.dump(S,f,2);
+            cPickle.dump(o,f,2);
     pass;
 
 if __name__ == '__main__':

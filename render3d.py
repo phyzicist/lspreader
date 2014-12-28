@@ -20,17 +20,90 @@ Options:
    --xlabel=XLABEL               Label for x axis. [default: k].
    --ylabel=YLABEL               Label for y axis. [default: h].
    --zlabel=ZLABEL               Label for x axis. [default: pol.].
+   --no-log                      Do not log10 the data.
 '''
 import numpy as np;
-import cPickle;
+import cPickle as pickle;
 from docopt import docopt;
 import re;
 import math;
 from misc import conv;
 
+def main():
+    #reading in arguments
+    opts=docopt(__doc__,help=True);
+    vmin = float(opts['--min']) if opts['--min'] else -1;
+    vmax = float(opts['--max']) if opts['--max'] else 23.5;
+    kwargs = {};
+    kwargs['zeros']=[conv(opts['--zero-x'],func=eval,default=(None,None)),
+                     conv(opts['--zero-y'],func=eval,default=(None,None)),
+                     conv(opts['--zero-z'],func=eval,default=(None,None))];
+    kwargs['zeros'] = None if kwargs['zeros'] == [(None,None)]*3 else kwargs['zeros'];
+    angle = [ float(opts['--polar']),
+              float(opts['--azimuth']),
+              float(opts['--roll']) ];
+    kwargs['clabel'] = opts['--clabel'];
+    kwargs['xlabel'] = opts['--xlabel'];
+    kwargs['ylabel'] = opts['--ylabel'];
+    kwargs['zlabel'] = opts['--zlabel'];
+    kwargs['log']    = not opts['--no-log'];
+    if opts['--trajectories']:
+        traj = opts['--trajectories'];
+        if not opts['--plot-single']:
+                if '*' not in traj:
+                        print('point format should contain \'*\'');
+                        print(usage)
+                        quit(1);
+                else:
+                        points_fmt = 'strung*.pt'
+                points_fmt=re.sub(r'\*',fmt,traj);
+                starti = lownum if not opts['<first>'] else lownum/step;
+                traj_arg = (points_fmt.format(highnum), starti);
+        else:
+                traj_arg = (traj, -1);
+        kwargs.update({'traj':traj_arg});
+    if not opts['--plot-single']:
+        if '*' not in opts['IN_FORMAT'] or '*' not in opts['OUT_FORMAT']:
+            print('point format should contain \'*\'');
+            print(usage);
+            quit(1);
+        lownum=int(opts['<lownum>']);
+        highnum=int(opts['<highnum>']);
+        numrange = range(lownum,highnum+1);
+        if opts['<step>']:
+            step = int(opts['<step>']);
+            numrange = numrange[::step];
+        fmt='{{:0>{}}}'.format(len(opts['<highnum>']))
+        out_fmt=re.sub(r'\*',fmt,opts['OUT_FORMAT']);
+        in_fmt =re.sub(r'\*',fmt,opts['IN_FORMAT']);
+        label_fmt=re.sub(r'\*',fmt,opts['LABEL_FORMAT']);
+        outnames = [out_fmt.format(i) for i in numrange];#this so I don't need to check for None
+        innames  = [in_fmt.format(i) for i in numrange];
+        labels   = [label_fmt.format(i) for i in numrange];
+        stuff = {'out':outnames,'in':innames,'label':labels};
+        files = [ dict(zip(stuff.keys(),d)) for d in zip(*stuff.values())];
+        plot(files,(vmin,vmax),angle,**kwargs);
+    else:
+        plot_single(opts['INFILE'],(vmin,vmax),angle,**kwargs);
+    pass;
+pass;
+
+
 def logprint(s):
     print(s);
-
+    
+def read(filename,dictlabel='s'):
+    with open(filename,'r') as f:
+        d=pickle.load(f);
+    if type(d) == np.ndarray:
+        return d;
+    else if type(d) == dict:
+        return d[dictlabel];
+    else:
+        s = str(type(d));
+        errstr='Unknown pickle type "{}" loaded from file "{}".'.format(s,filename);
+        raise IOError(errstr);
+    
 def zero_range(S,zeros):
     S[zeros[0][0]:zeros[0][1],zeros[1][0]:zeros[1][1],zeros[2][0]:zeros[2][1]]=0.0;
     return S;
@@ -52,12 +125,12 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     '''
     ret = {};
     logprint('loading file {}'.format(filename));
-    S=np.load(filename);
+    S=read(filename);
     S=np.nan_to_num(S);
     if 'zeros' in kwargs and kwargs['zeros'] is not None:
         S=zero_range(S,kwargs['zeros'])
     #taking the logarithm.
-    S=np.log10(S+0.1);
+    if kwargs['log']: S=np.log10(S+0.1);
     #creating the figure.
     fig=mlab.figure(size=(1280,1024)); ret['fig']=fig;
     fig.scene.disable_render=True;
@@ -74,7 +147,7 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     #doing the crazy trajectory stuff.
     if 'traj' in kwargs:
         strung_name, firsti = kwargs['traj'];
-        full_traj = np.load(strung_name);
+        full_traj = read(strung_name);
         #the shape of each dimension is d[x|y|z,particle,step]
         steps = full_traj.shape[2];
         N = full_traj.shape[1];
@@ -150,12 +223,11 @@ def plot(names_list,vlim,angle,
     mlab.savefig(first['out'],size=(1280,1024));
     for i,names in enumerate(names_list):
         print("processing {}...".format(names['in']))
-        S=np.load(names['in']);
+        S=read(names['in']);
         S=np.nan_to_num(S)
         if 'zeros' in kwargs and kwargs['zeros'] is not None:
             S=zero_range(S,kwargs['zeros']);
-        S=np.log10(S+0.1);
-        
+        if kwargs['log']: S=np.log10(S+0.1);
         d['fig'].scene.disable_render=True;
         d['v'].mlab_source.set(scalars=S);
         d['t'].text=names['label'];
@@ -180,59 +252,4 @@ def plot_single(inname,vlim,angle,
     mlab.show();
 
 if __name__=="__main__":
-    #reading in arguments
-    opts=docopt(__doc__,help=True);
-    vmin = float(opts['--min']) if opts['--min'] else -1;
-    vmax = float(opts['--max']) if opts['--max'] else 23.5;
-    kwargs = {};
-    kwargs['zeros']=[conv(opts['--zero-x'],func=eval,default=(None,None)),
-                     conv(opts['--zero-y'],func=eval,default=(None,None)),
-                     conv(opts['--zero-z'],func=eval,default=(None,None))];
-    kwargs['zeros'] = None if kwargs['zeros'] == [(None,None)]*3 else kwargs['zeros'];
-    angle = [ float(opts['--polar']),
-              float(opts['--azimuth']),
-              float(opts['--roll']) ];
-    kwargs['clabel'] = opts['--clabel'];
-    kwargs['xlabel'] = opts['--xlabel'];
-    kwargs['ylabel'] = opts['--ylabel'];
-    kwargs['zlabel'] = opts['--zlabel'];
-    if opts['--trajectories']:
-        traj = opts['--trajectories'];
-        if not opts['--plot-single']:
-                if '*' not in traj:
-                        print('point format should contain \'*\'');
-                        print(usage)
-                        quit(1);
-                else:
-                        points_fmt = 'strung*.pt'
-                points_fmt=re.sub(r'\*',fmt,traj);
-                starti = lownum if not opts['<first>'] else lownum/step;
-                traj_arg = (points_fmt.format(highnum), starti);
-        else:
-                traj_arg = (traj, -1);
-        kwargs.update({'traj':traj_arg});
-    if not opts['--plot-single']:
-        if '*' not in opts['IN_FORMAT'] or '*' not in opts['OUT_FORMAT']:
-            print('point format should contain \'*\'');
-            print(usage);
-            quit(1);
-        lownum=int(opts['<lownum>']);
-        highnum=int(opts['<highnum>']);
-        numrange = range(lownum,highnum+1);
-        if opts['<step>']:
-            step = int(opts['<step>']);
-            numrange = numrange[::step];
-        fmt='{{:0>{}}}'.format(len(opts['<highnum>']))
-        out_fmt=re.sub(r'\*',fmt,opts['OUT_FORMAT']);
-        in_fmt =re.sub(r'\*',fmt,opts['IN_FORMAT']);
-        label_fmt=re.sub(r'\*',fmt,opts['LABEL_FORMAT']);
-        outnames = [out_fmt.format(i) for i in numrange];#this so I don't need to check for None
-        innames  = [in_fmt.format(i) for i in numrange];
-        labels   = [label_fmt.format(i) for i in numrange];
-        stuff = {'out':outnames,'in':innames,'label':labels};
-        files = [ dict(zip(stuff.keys(),d)) for d in zip(*stuff.values())];
-        plot(files,(vmin,vmax),angle,**kwargs);
-    else:
-        plot_single(opts['INFILE'],(vmin,vmax),angle,**kwargs);
-    pass;
-pass;
+    main()
