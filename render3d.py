@@ -27,7 +27,7 @@ import cPickle as pickle;
 from docopt import docopt;
 import re;
 import math;
-from misc import conv;
+from misc import conv,read;
 
 def main():
     #reading in arguments
@@ -91,18 +91,6 @@ pass;
 
 def logprint(s):
     print(s);
-    
-def read(filename,dictlabel='s'):
-    with open(filename,'r') as f:
-        d=pickle.load(f);
-    if type(d) == np.ndarray:
-        return d;
-    else if type(d) == dict:
-        return d[dictlabel];
-    else:
-        s = str(type(d));
-        errstr='Unknown pickle type "{}" loaded from file "{}".'.format(s,filename);
-        raise IOError(errstr);
     
 def zero_range(S,zeros):
     S[zeros[0][0]:zeros[0][1],zeros[1][0]:zeros[1][1],zeros[2][0]:zeros[2][1]]=0.0;

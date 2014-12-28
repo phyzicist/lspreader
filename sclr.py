@@ -27,6 +27,7 @@ Options:
   --zres=XRES             Set the resolution along the z direction [default: 100].
   --use-sort              Use the experimental sorting algorithm.
   --histogram -H          Histogram instead.
+  --permute -p            Swap the order of axes for 2D data.
 '''
 
 import lspreader as rd;
@@ -167,6 +168,7 @@ def main():
     # It is probably worth mentioning that the xz in simulation
     # axes will be [0,1] in numpy axes, that is, it will be left-handed.
     # Using xz leads to this anyway, but it's worth reminding the reader.
+    # To permute in 2D, use the --permute flag.
     logprint('reading in {}'.format(name));
     with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
         d = f.get_data(var=var);
@@ -192,8 +194,12 @@ def main():
                 o['s'], o['x'],o['y'],o['z'] = f(d['x'],d['y'],d['z'],d[v],
                                                 xres=res[0],yres=res[1],zres=res[2]);
         elif len(use) == 2:
+            if opts['--permute']:
+                t = use[0]; use[0] = use[1]; use[1] = t;
             f  = histogram_scalar_2d if opts['--histogram'] else interpolate_scalar_2d
             o['s'], o[use[0]], o[use[1]] = f(d[use[0]],d[use[1]],d[v],xres=res[0],yres=res[1]);
+            #to remember the order
+            o['0th'] = use[0]; o['1st'] = use[1];
         else:
             f  = histogram_scalar_1d if opts['--histogram'] else interpolate_scalar_1d
             o['s'], o[use[0]] = f(d[use[0]],d[v],res=res[0]);
