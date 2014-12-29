@@ -12,7 +12,7 @@ def read(filename,dictlabel='s', dumpfull=True):
         d=pickle.load(f);
     if type(d) == np.ndarray or dumpfull:
         return d;
-    else if type(d) == dict:
+    elif type(d) == dict:
         return d[dictlabel];
     else:
         s = str(type(d));

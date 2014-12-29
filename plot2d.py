@@ -17,7 +17,6 @@ Options:
   --title=TITLE               Set title.
 '''
 
-
 import numpy as np;
 import matplotlib
 import matplotlib.pyplot as plt;
@@ -32,7 +31,7 @@ def main():
     vmax = float(opts['--max']);
     if not opts['--X'] and not opts['--Y'] and not opts['--Z']:
         opts['--X']=True;
-    outfile = opts['<outfile>']):
+    outfile = opts['<outfile>'];
     
     if outfile: matplotlib.use('Agg');
         
@@ -70,7 +69,7 @@ def main():
         plt.title(opts['--title']);
     if outfile:
         plt.savefig(opts['<outfile>']);
-    else
+    else:
         plt.show();
 pass;
 
