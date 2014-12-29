@@ -25,7 +25,6 @@ import matplotlib.pyplot as plt;
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
-import math as m;
 from misc import conv;
 def mk_cmap():
     hsv = np.array([[[0.00, 0.6, 1.0],
