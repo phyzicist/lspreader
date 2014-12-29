@@ -1,6 +1,10 @@
 '''
 Miscellaneous definitions.
 '''
+
+import cPickle as pickle;
+import numpy as np;
+
 def conv(arg,default=None,func=None):
     if func:
         return func(arg) if arg else default;

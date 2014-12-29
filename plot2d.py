@@ -18,9 +18,8 @@ Options:
 '''
 
 import numpy as np;
-import matplotlib
-import matplotlib.pyplot as plt;
-import cPickle;
+import matplotlib;
+import cPickle as pickle;
 import math;
 from docopt import docopt;
 from misc import read;
@@ -34,6 +33,7 @@ def main():
     outfile = opts['<outfile>'];
     
     if outfile: matplotlib.use('Agg');
+    import matplotlib.pyplot as plt;
         
     f = read(opts['<infile>'],dumpfull=True);
     S = f['s'];
@@ -41,28 +41,31 @@ def main():
     if coords == ['x','y','z']:
         SP,label=prep3d(S);
         coords.remove(label);
-        x = f[coords[0]]
-        y = f[coords[1]]
+        xlabel = f[coords[0]];
+        ylabel = f[coords[1]];
+        x = f[coords[0]];
+        y = f[coords[1]];
     else:
         if len(coords) < 2:
             raise RuntimeError("Cannot make a 2D plot that isn't 2D data.")
-        label = [i for i in ['x','y','z'] if i not in coords][0];
-        SP = S;            
-        x = f[f['0']]
-        y = f[f['1']]
+        xlabel = f['0th'];
+        ylabel = f['1st'];
+        SP = S;
+        x = f[xlabel];
+        y = f[ylabel];
     #other preparation
-    S = np.nan_to_num(S);
-    if not opts['--no-log']: S = np.log10(S+0.1);
-    
+    SP = np.nan_to_num(SP);
+    if not opts['--no-log']: SP = np.log10(SP+0.1);
     if opts['--T']:
-        SP=SP.T
-        t=x; x=y; y=x;
-    xmax,xmin = x; ymax,ymin = y;
-    #selecting index.
-    X,Y = np.mgrid[xmin:xmax:len(SP[:,0])*1j, ymin:ymax:len(SP[0,:])*1j];
-    plt.pcolormesh(X,Y,SP,vmin=vmin,vmax=vmax);
-    plt.xlabel('z ($\mu m$)');
-    plt.ylabel('x ($\mu m$)');
+        SP=SP.T;
+        t=x; x=y; y=t;
+        t=xlabel; xlabel=ylabel; ylabel=t;
+    xmin,xmax = x; ymin,ymax = y;
+    #selecting index.                         v--This is intentional, to match matlab semantics.
+    Y,X = np.mgrid[ ymin:ymax:len(SP[:,0])*1j,xmin:xmax:len(SP[0,:])*1j];
+    plt.pcolormesh(X, Y, SP,vmin=vmin,vmax=vmax);
+    plt.xlabel('{} ($\mu m$)'.format(xlabel));
+    plt.ylabel('{} ($\mu m$)'.format(ylabel));
     c=plt.colorbar();
     c.set_label('log10 of density');
     if opts['--title']:
