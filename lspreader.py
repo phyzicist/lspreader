@@ -138,9 +138,9 @@ class LspOutput(object):
             self.logprint('Reading domain {}.'.format(i));
             iR, jR, kR = self.get_int(),self.get_int(),self.get_int();
             #getting grid parameters (real coordinates)
-            nI = self.get_int(); Ip = np.fromfile(self,dtype='>f4',count=nI);
-            nJ = self.get_int(); Jp = np.fromfile(self,dtype='>f4',count=nJ);
-            nK = self.get_int(); Kp = np.fromfile(self,dtype='>f4',count=nK);
+            nI = self.get_int(); Ip = np.fromfile(self.file,dtype='>f4',count=nI);
+            nJ = self.get_int(); Jp = np.fromfile(self.file,dtype='>f4',count=nJ);
+            nK = self.get_int(); Kp = np.fromfile(self.file,dtype='>f4',count=nK);
             nAll = nI*nJ*nK;
             self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
             d={}
@@ -149,7 +149,7 @@ class LspOutput(object):
             d['y'], d['z'], d['x'] = np.vstack(np.meshgrid(Jp,Kp,Ip)).reshape(3,-1);
             for quantity in qs:
                 if quantity not in readin:
-                    self.seek(nAll*4*size,1);
+                    self.file.seek(nAll*4*size,1);
                 else:
                     self.logprint('Reading in {}'.format(quantity));
                     d[quantity] = np.fromfile(self.file,dtype='>f4',count=nAll*size);

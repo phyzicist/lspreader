@@ -70,7 +70,7 @@ def interpolate_scalar_3d(x,y,z,s,
        Uses "nearest" interpolation'''
     maxs = dict(x=x.max(),y=y.max(),z=z.max());
     mins = dict(x=x.min(),y=y.min(),z=z.min());
-
+    
     X,Y,Z = np.mgrid[ mins['x']:maxs['x']:xres*1j,
                       mins['y']:maxs['y']:yres*1j,
                       mins['z']:maxs['z']:zres*1j ];
@@ -104,8 +104,8 @@ def interpolate_scalar_2d(x,y,s,
     maxs = dict(x=x.max(),y=y.max());
     mins = dict(x=x.min(),y=y.min());
 
-    X,Y = np.mgrid[ mins['x']:max['x']:xres*1j,
-                    mins['y']:max['y']:yres*1j];
+    X,Y = np.mgrid[ mins['x']:maxs['x']:xres*1j,
+                    mins['y']:maxs['y']:yres*1j];
     H = interp.griddata((x,y),s,(X,Y),method='nearest');
     xb,yb = map(lambda s: (mins[s],maxs[s]), ['x','y']);
     return H, xb, yb
