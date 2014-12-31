@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 '''Render volumetric render of a sclr.py output files.
 
 Usage:
