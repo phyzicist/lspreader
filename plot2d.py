@@ -36,13 +36,15 @@ def main():
     import matplotlib.pyplot as plt;
         
     f = read(opts['<infile>'],dumpfull=True);
+    
     S = f['s'];
     coords = [i for i in f.keys() if i in ['x','y','z']];
+    coords.sort();
     if coords == ['x','y','z']:
-        SP,label=prep3d(S);
+        SP, label = prep3d(S, opts);
         coords.remove(label);
-        xlabel = f[coords[0]];
-        ylabel = f[coords[1]];
+        xlabel = coords[0];
+        ylabel = coords[1];
         x = f[coords[0]];
         y = f[coords[1]];
     else:
@@ -61,9 +63,16 @@ def main():
         t=x; x=y; y=t;
         t=xlabel; xlabel=ylabel; ylabel=t;
     xmin,xmax = x; ymin,ymax = y;
+    #convert to microns
+    xmin*=1e4;
+    xmax*=1e4;
+    ymin*=1e4;
+    ymax*=1e4;
     #selecting index.                         v--This is intentional, to match matlab semantics.
     Y,X = np.mgrid[ ymin:ymax:len(SP[:,0])*1j,xmin:xmax:len(SP[0,:])*1j];
     plt.pcolormesh(X, Y, SP,vmin=vmin,vmax=vmax);
+    plt.xlim(xmin,xmax);
+    plt.ylim(ymin,ymax);
     plt.xlabel('{} ($\mu m$)'.format(xlabel));
     plt.ylabel('{} ($\mu m$)'.format(ylabel));
     c=plt.colorbar();
@@ -78,27 +87,27 @@ pass;
 
 def prep3d(S,opts):
     #selecting index.
-    if opts['--index']:
-        i = int(opts['--index']);
-    elif opts['--half']:
+    if opts['--half']:
         if opts['--X']:
             i = len(S[:,0,0])/2;
-            label = 'x';
         elif opts['--Y']:
             i = len(S[0,:,0])/2;
-            label = 'y';
         else:
             i = len(S[0,0,:])/2;
-            label = 'z';
+    elif opts['--index']:
+        i = int(opts['--index']);
     else:
         i = 0;
     #selecting plane.
     if opts['--X']:
         SP = S[i,:,:];
+        label = 'x';
     elif opts['--Y']:
         SP = S[:,i,:];
+        label = 'y';
     else:
         SP = S[:,:,i];
+        label = 'z';
     if opts['--T']: SP=SP.T
     return SP, label;
 
