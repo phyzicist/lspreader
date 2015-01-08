@@ -3,7 +3,7 @@
 
 Usage:
   render3d.py [options] IN_FORMAT OUT_FORMAT LABEL_FORMAT <lownum> <highnum> [<step>]
-  render3d.py [options] (--plot-single | -s) INFILE
+  render3d.py [options] (--plot-single | -s) INFILE [OUTFILE [LABEL] ]
 
 Options:
    --min=MIN -n MIN              Set vmin in the volumetric plot to MIN. [default: 16.0]
@@ -21,7 +21,7 @@ Options:
    --ylabel=YLABEL               Label for y axis. [default: h].
    --zlabel=ZLABEL               Label for x axis. [default: pol.].
    --no-log                      Do not log10 the data.
-   --color=C                     Set color scheme.
+   --new-ctf                     Use the new ctf. Only valid for plot-single mode.
    --otf=O                       Choose an otf type. See mk_otf for details. [default: 0]
 '''
 import numpy as np;
@@ -49,8 +49,11 @@ def main():
     kwargs['ylabel'] = opts['--ylabel'];
     kwargs['zlabel'] = opts['--zlabel'];
     kwargs['log']    = not opts['--no-log'];
-    kwargs['color'] =  opts['--color'];
     kwargs['otf'] =  int(opts['--otf']);
+    kwargs['new-ctf'] = opts['--new-ctf'];
+    if kwargs['new-ctf'] and not opts['--plot-single']:
+        print("--new-ctf doesn't work with multi plot mode yet.");
+        quit(1);
     if opts['--trajectories']:
         traj = opts['--trajectories'];
         if not opts['--plot-single']:
@@ -87,8 +90,9 @@ def main():
         stuff = {'out':outnames,'in':innames,'label':labels};
         files = [ dict(zip(stuff.keys(),d)) for d in zip(*stuff.values())];
         plot(files,(vmin,vmax),angle,**kwargs);
-    else:
-        plot_single(opts['INFILE'],(vmin,vmax),angle,**kwargs);
+    else: #plot single mode
+        name_tuple = (opts['INFILE'],opts['OUTFILE'],opts['LABEL']);
+        plot_single(name_tuple,(vmin,vmax),angle,**kwargs);
     pass;
 pass;
 
@@ -131,6 +135,7 @@ def set_ctf(v,ctf):
     set_lut(v.module_manager.scalar_lut_manager.lut,
             v._volume_property);
 
+
 def initial_plot(mlab,filename,vlim,angle,**kwargs):
     '''
     Creates the first plot. This creates most of the data
@@ -152,7 +157,8 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     #volume rendering.
     v=mlab.pipeline.volume(src,vmin=vlim[0],vmax=vlim[1]);
     set_otf(v,mk_otf(vlim,kwargs['otf']));
-    set_ctf(v,mk_ctf(vlim));
+    ret['ctf'] = mk_ctf(vlim);
+    set_ctf(v,ret['ctf']);
     #putting in custom stuff
     v._volume_property.interpolation_type = 'nearest';
     ret['v']=v;
@@ -242,6 +248,7 @@ def plot(names_list,vlim,angle,
         if kwargs['log']: S=np.log10(S+0.1);
         d['fig'].scene.disable_render=True;
         d['v'].mlab_source.set(scalars=S);
+        set_ctf(d['v'],d['ctf']);
         d['t'].text=names['label'];
         if 'traj' in kwargs:
             d['cur_traj'][:,:,firsti+i] = d['full_traj'][:,:,firsti+i];
@@ -254,14 +261,20 @@ def plot(names_list,vlim,angle,
         mlab.savefig(names['out'],size=(1280,1024));
     pass
 
-def plot_single(inname,vlim,angle,
+def plot_single(name,vlim,angle,
                 **kwargs):
     print("loading mlab");
     import mayavi.mlab as mlab;
+    inname.outname,label = name;
     initial_plot(mlab,inname,vlim,angle,
-                 **kwargs);
-    print('plotting');
-    mlab.show();
+                 label=label, **kwargs);
+    if not outname:
+        print('plotting');
+        mlab.show();
+    else:
+        print('saving {}'.format(outname));
+        mlab.savefig(outname,size=1280,1024);
+    pass;
 
 if __name__=="__main__":
     main()
