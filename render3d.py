@@ -109,11 +109,15 @@ def mk_otf(vlim,otftype=0):
     '''Create the opacity transfer function.'''
     from tvtk.util.ctf import PiecewiseFunction;
     #chose the otf type
-    r = {0:0.85, 1:0.9, 2:0.99}[otftype];
+    r,m = {0:(0.85, 0.06),
+           1:(0.90, 0.06),
+           2:(0.90, 0.08),
+           3:(0.90, 0.10),
+           4:(0.99, 0.20)}[otftype];
     
     otf = PiecewiseFunction();
     otf.add_point(vlim[0],    0.0);
-    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*r, 0.06);
+    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*r, m);
     otf.add_point(vlim[1],    0.5);
     return otf;
 
