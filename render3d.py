@@ -6,8 +6,8 @@ Usage:
   render3d.py [options] (--plot-single | -s) INFILE
 
 Options:
-   --min=MIN -n MIN              Set vmin in the volumetric plot to MIN.
-   --max=MAX -x MAX              Set vmax in the volumetric plot to MAX.
+   --min=MIN -n MIN              Set vmin in the volumetric plot to MIN. [default: 16.0]
+   --max=MAX -x MAX              Set vmax in the volumetric plot to MAX. [default: 23.5]
    --plot-single -s              Just show, don't output, single scalar.
    --clabel=CLABEL               Set the colorbar label. [default: log10 of electron density (cm^-3)]
    --zero-x=XRANGE               Set a range of x to zero, as a python tuple.
@@ -21,6 +21,8 @@ Options:
    --ylabel=YLABEL               Label for y axis. [default: h].
    --zlabel=ZLABEL               Label for x axis. [default: pol.].
    --no-log                      Do not log10 the data.
+   --color=C                     Set color scheme.
+   --otf=O                       Choose an otf type. See mk_otf for details. [default: 0]
 '''
 import numpy as np;
 import cPickle as pickle;
@@ -32,8 +34,8 @@ from misc import conv,read;
 def main():
     #reading in arguments
     opts=docopt(__doc__,help=True);
-    vmin = float(opts['--min']) if opts['--min'] else -1;
-    vmax = float(opts['--max']) if opts['--max'] else 23.5;
+    vmin = float(opts['--min']);
+    vmax = float(opts['--max']);
     kwargs = {};
     kwargs['zeros']=[conv(opts['--zero-x'],func=eval,default=(None,None)),
                      conv(opts['--zero-y'],func=eval,default=(None,None)),
@@ -47,6 +49,8 @@ def main():
     kwargs['ylabel'] = opts['--ylabel'];
     kwargs['zlabel'] = opts['--zlabel'];
     kwargs['log']    = not opts['--no-log'];
+    kwargs['color'] =  opts['--color'];
+    kwargs['otf'] =  int(opts['--otf']);
     if opts['--trajectories']:
         traj = opts['--trajectories'];
         if not opts['--plot-single']:
@@ -96,15 +100,36 @@ def zero_range(S,zeros):
     S[zeros[0][0]:zeros[0][1],zeros[1][0]:zeros[1][1],zeros[2][0]:zeros[2][1]]=0.0;
     return S;
 
-def mk_opacity_tf(vlim):
+def mk_otf(vlim,otftype=0):
     '''Create the opacity transfer function.'''
     from tvtk.util.ctf import PiecewiseFunction;
+    #chose the otf type
+    r = {0:0.85, 1:0.9, 2:0.99}[otftype];
+    
     otf = PiecewiseFunction();
     otf.add_point(vlim[0],    0.0);
-    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*0.9,0.06);
-#    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*0.99,0.1);
+    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*r, 0.06);
     otf.add_point(vlim[1],    0.5);
     return otf;
+
+def set_otf(v,otf):
+    '''Set the volume object's otf'''
+    v._otf = otf;
+    v._volume_property.set_scalar_opacity(v._otf);
+
+def mk_ctf(vlim):
+    '''Create the color transfer function.'''
+    from mayavi.modules import volume;
+    return volume.make_CTF(vlim[0],vlim[1],hue_range=(0.9,0.0));
+
+def set_ctf(v,ctf):
+    '''Set the volume object's ctf'''
+    from tvtk.util.ctf import set_lut;
+    v._ctf = ctf;
+    v._volume_property.set_color(v._ctf);
+    v.update_ctf = True;
+    set_lut(v.module_manager.scalar_lut_manager.lut,
+            v._volume_property);
 
 def initial_plot(mlab,filename,vlim,angle,**kwargs):
     '''
@@ -126,9 +151,9 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     src=mlab.pipeline.scalar_field(S);
     #volume rendering.
     v=mlab.pipeline.volume(src,vmin=vlim[0],vmax=vlim[1]);
-    #creating custom opacity transfer function and set it
-    v._otf = mk_opacity_tf(vlim);
-    v._volume_property.set_scalar_opacity(v._otf);
+    set_otf(v,mk_otf(vlim,kwargs['otf']));
+    set_ctf(v,mk_ctf(vlim));
+    #putting in custom stuff
     v._volume_property.interpolation_type = 'nearest';
     ret['v']=v;
     #mlab.axes();  # make me an option.
@@ -164,16 +189,15 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
         ret['tracks'] = tracks;
         ret['cur_traj'] = cur_traj;
         ret['full_traj'] = full_traj;
+    #scalarbar
     if 'clabel' in kwargs:
         mlab.scalarbar(object=v,title=kwargs['clabel']);
     else:
         mlab.scalarbar(object=v);
     #The colorbar doesn't work if we change the
-    #vmin and vmax, so, we have to do this instead.
-    e=mlab.get_engine();
-    module_manager = e.scenes[0].children[0].children[0];
-    module_manager.scalar_lut_manager.use_default_range = False;
-    module_manager.scalar_lut_manager.data_range = np.array([vmin, vmax]);
+    #vmin and vmax, so, we have to do this instead.    
+    v.module_manager.scalar_lut_manager.use_default_range = False;
+    v.module_manager.scalar_lut_manager.data_range = np.array([vlim[0], vlim[1]]);
     if 'label' in kwargs:
         l = kwargs['label'];
         t=mlab.text(0.075,0.875, l, width=len(l)*0.015);
