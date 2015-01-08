@@ -92,6 +92,7 @@ def main():
         plot(files,(vmin,vmax),angle,**kwargs);
     else: #plot single mode
         name_tuple = (opts['INFILE'],opts['OUTFILE'],opts['LABEL']);
+        print(name_tuple);
         plot_single(name_tuple,(vmin,vmax),angle,**kwargs);
     pass;
 pass;
@@ -157,8 +158,9 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     #volume rendering.
     v=mlab.pipeline.volume(src,vmin=vlim[0],vmax=vlim[1]);
     set_otf(v,mk_otf(vlim,kwargs['otf']));
-    ret['ctf'] = mk_ctf(vlim);
-    set_ctf(v,ret['ctf']);
+    if kwargs['new-ctf']:
+        ret['ctf'] = mk_ctf(vlim);
+        set_ctf(v,ret['ctf']);
     #putting in custom stuff
     v._volume_property.interpolation_type = 'nearest';
     ret['v']=v;
@@ -204,7 +206,7 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     #vmin and vmax, so, we have to do this instead.    
     v.module_manager.scalar_lut_manager.use_default_range = False;
     v.module_manager.scalar_lut_manager.data_range = np.array([vlim[0], vlim[1]]);
-    if 'label' in kwargs:
+    if kwargs['label']:
         l = kwargs['label'];
         t=mlab.text(0.075,0.875, l, width=len(l)*0.015);
         ret['t'] = t;
@@ -248,7 +250,8 @@ def plot(names_list,vlim,angle,
         if kwargs['log']: S=np.log10(S+0.1);
         d['fig'].scene.disable_render=True;
         d['v'].mlab_source.set(scalars=S);
-        set_ctf(d['v'],d['ctf']);
+        # if kwargs['new-ctf']:
+        #     set_ctf(d['v'],d['ctf']);
         d['t'].text=names['label'];
         if 'traj' in kwargs:
             d['cur_traj'][:,:,firsti+i] = d['full_traj'][:,:,firsti+i];
@@ -265,7 +268,7 @@ def plot_single(name,vlim,angle,
                 **kwargs):
     print("loading mlab");
     import mayavi.mlab as mlab;
-    inname.outname,label = name;
+    inname,outname,label = name;
     initial_plot(mlab,inname,vlim,angle,
                  label=label, **kwargs);
     if not outname:
@@ -273,7 +276,7 @@ def plot_single(name,vlim,angle,
         mlab.show();
     else:
         print('saving {}'.format(outname));
-        mlab.savefig(outname,size=1280,1024);
+        mlab.savefig(outname,size=(1280,1024));
     pass;
 
 if __name__=="__main__":
