@@ -273,6 +273,8 @@ def plot_single(name,vlim,angle,
     print("loading mlab");
     import mayavi.mlab as mlab;
     inname,outname,label = name;
+    if outname:
+        mlab.options.offscreen = True;
     initial_plot(mlab,inname,vlim,angle,
                  label=label, **kwargs);
     if not outname:
