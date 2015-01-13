@@ -3,7 +3,7 @@
 Plot a charge vs. two other components, x and y of a pext.py output.
 
 Usage:
-  angular.py [options] <input> <x> <y> [<output>]
+  pextrect.py [options] <input> <x> <y> [<output>]
 
 Options:
   --x-bins=BINS -x BINS       Set the number of x bins. [default: 100]
@@ -18,14 +18,14 @@ Options:
   --clabel=CLABEL             Set colorbar label. [default: $p C$]
   --high-res -H               Output a high resolution plt.
   --max-Q=MAXQ                Set the maximum for the charge (pcolormesh's vmax value).
-  --normalize                 Normalize the histogram to 1 *eV^-1 rad^-1 .
+  --normalize                 Normalize the histogram.
   --factor=F                  Multiply histogram by F. [default: 1.0]
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
 import cPickle as pickle;
 from docopt import docopt;
-from misc import conv,pastel_rainbow;
+from misc import conv,pastel;
 
 def restrict(x,xlim):
     good = (x >= xlim[0]) & (x <= xlim[1]);
@@ -81,7 +81,7 @@ def main():
     plt.yticks(y_bins[::y_spacing/10]);
     plt.xlabel(x_label);
     plt.ylabel(y_label);
-    surf=plt.pcolormesh(X,Y,S,cmap=pastel_rainbow,vmax=maxQ);
+    surf=plt.pcolormesh(X,Y,S,cmap=pastel,vmax=maxQ);
     c=fig.colorbar(surf,pad=0.075);
     c.set_label(clabel);
     if opts['--title']:

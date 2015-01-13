@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt;
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
-from misc import conv,pastel_rainbow;
+from misc import conv,pastel;
 
 def main():
     opts = docopt(__doc__,help=True);
@@ -81,7 +81,7 @@ def main():
         S /= Efactor * 2*np.pi/phi_spacing;
     fig = plt.figure(1);
     ax=plt.subplot(projection='polar',axisbg='white');
-    surf=plt.pcolormesh(PHI,E,S,cmap=pastel_rainbow,vmax=maxQ);
+    surf=plt.pcolormesh(PHI,E,S,cmap=pastel,vmax=maxQ);
     #making radial guides. rgrids only works for plt.polar calls
     full_phi = np.linspace(0.0,2*np.pi,100);
     for i in np.arange(0.0,maxE,Estep)[1:]:
