@@ -10,15 +10,15 @@ Options:
   --angle-bins=BINS -a BINS   Set the number of angle bins.  [default: 180]
   --radial-bins=BINS -r BINS  Set the number of radial bins. [default: 40]
   --title=TITLE -t Title      Set the title. 
-  --clabel=CLABEL             Set colorbar label. [default: $p C$]
-  --KeV                       Scale by 100s of KeV instead of MeV.
-  --max-E=MAXE                Set the maximum energy value (in units depending on --KeV flag)
-  --E-step=ESTEP              Set the step of grid lines for Energy.
+  --clabel=CLABEL -c CLABEL   Set colorbar label. [default: $p C$]
+  --KeV -k                    Scale by 100s of KeV instead of MeV.
+  --max-e=MAXE -e MAXE        Set the maximum energy value (in units depending on --KeV flag)
+  --e-step=ESTEP              Set the step of grid lines for Energy.
   --high-res -H               Output a high resolution plt.
-  --max-Q=MAXQ                Set the maximum for the charge (pcolormesh's vmax value).
-  --normalize                 Normalize the histogram to 1 *eV^-1 rad^-1 .
-  --factor=F                  Multiply histogram by F. [default: 1.0]
-  --polar                     Plot polar angles, letting the east direction be forward.
+  --max-q=MAXQ -q MAXQ        Set the maximum for the charge (pcolormesh's vmax value).
+  --normalize -n              Normalize the histogram to 1 *eV^-1 rad^-1 .
+  --factor=F -f F             Multiply histogram by F. [default: 1.0]
+  --polar -p                 Plot polar angles, letting the east direction be forward.
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
@@ -34,9 +34,9 @@ def main():
     phi_spacing = float(opts['--angle-bins']);
     E_spacing = float(opts['--radial-bins']);
     clabel = opts['--clabel'];
-    maxE = conv(opts['--max-E'],default=(1000 if opts['--KeV'] else 4.0),func=float);
-    maxQ = float(opts['--max-Q']) if opts['--max-Q'] else None;
-    Estep = conv(opts['--E-step'],default=(250 if opts['--KeV'] else 1.0),func=float);
+    maxE = conv(opts['--max-e'],default=(1000 if opts['--KeV'] else 4.0),func=float);
+    maxQ = float(opts['--max-q']) if opts['--max-q'] else None;
+    Estep = conv(opts['--e-step'],default=(250 if opts['--KeV'] else 1.0),func=float);
     F = float(opts['--factor']);
     with open(inname,'r') as f:
         d = pickle.load(f)
@@ -75,9 +75,9 @@ def main():
         Efactor = maxE/E_spacing;
         if opts['--KeV']:
             Efactor *= 1e-3;
-            clabel = 'pC rad$^{-1}$ KeV$^{-1}$'
+            clabel += ' rad$^{-1}$ KeV$^{-1}$'
         else:
-            clabel = 'pC rad$^{-1}$ MeV$^{-1}$'
+            clabel += ' rad$^{-1}$ MeV$^{-1}$'
         S /= Efactor * 2*np.pi/phi_spacing;
     fig = plt.figure(1);
     ax=plt.subplot(projection='polar',axisbg='white');

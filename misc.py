@@ -80,4 +80,6 @@ def mkstrip(rgb,vmin,vmax,val,
     #and placing it inside rgb
     return np.concatenate((rgb[:,:i,:],c,rgb[:,i:,:]),axis=1);
 
-mkstrip_cmap = lambda vmin, vmax, val: cmap(mkstrip(_pastel_rgb, vmin, vmax, val));
+mkstrip_cmap = lambda vmin, vmax, val, strip=[1.0,0.0,0.0]: cmap(mkstrip(_pastel_rgb,
+                                                                         vmin, vmax, val,
+                                                                         strip));

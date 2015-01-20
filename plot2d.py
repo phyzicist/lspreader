@@ -15,6 +15,9 @@ Options:
   --T                         Transpose the SP.
   --no-log                    Do not log10 the data.
   --title=TITLE               Set title.
+  --highlight=VAL             Highlight a value on the cmap.
+  --high-res                  Use high resolution.
+  --clabel=CLABEL             Set the colorbar label. [default: log10 of electron density (cm$^{-3}$)].
 '''
 
 import numpy as np;
@@ -22,7 +25,7 @@ import matplotlib;
 import cPickle as pickle;
 import math;
 from docopt import docopt;
-from misc import read;
+import misc as m;
 
 def main():
     opts=docopt(__doc__,help=True);
@@ -35,7 +38,7 @@ def main():
     if outfile: matplotlib.use('Agg');
     import matplotlib.pyplot as plt;
         
-    f = read(opts['<infile>'],dumpfull=True);
+    f = m.read(opts['<infile>'],dumpfull=True);
     
     S = f['s'];
     coords = [i for i in f.keys() if i in ['x','y','z']];
@@ -43,10 +46,10 @@ def main():
     if coords == ['x','y','z']:
         SP, label = prep3d(S, opts);
         coords.remove(label);
-        xlabel = coords[0];
-        ylabel = coords[1];
-        x = f[coords[0]];
-        y = f[coords[1]];
+        xlabel = coords[1];
+        ylabel = coords[0];
+        x = f[coords[1]];
+        y = f[coords[0]];
     else:
         if len(coords) < 2:
             raise RuntimeError("Cannot make a 2D plot that isn't 2D data.")
@@ -70,17 +73,25 @@ def main():
     ymax*=1e4;
     #selecting index.                         v--This is intentional, to match matlab semantics.
     Y,X = np.mgrid[ ymin:ymax:len(SP[:,0])*1j,xmin:xmax:len(SP[0,:])*1j];
-    plt.pcolormesh(X, Y, SP,vmin=vmin,vmax=vmax);
+    if opts['--highlight']:
+        val = float(opts['--highlight']);
+        cmap = m.mkstrip_cmap(vmin,vmax,val);
+    else:
+        cmap = m.pastel;
+    plt.pcolormesh(X, Y, SP,vmin=vmin,vmax=vmax,cmap=cmap);
     plt.xlim(xmin,xmax);
     plt.ylim(ymin,ymax);
     plt.xlabel('{} ($\mu m$)'.format(xlabel));
     plt.ylabel('{} ($\mu m$)'.format(ylabel));
     c=plt.colorbar();
-    c.set_label('log10 of density');
+    c.set_label(opts['--clabel']);
     if opts['--title']:
         plt.title(opts['--title']);
     if outfile:
-        plt.savefig(opts['<outfile>']);
+        if opts['--high-res']:
+            plt.savefig(outfile,dpi=1000);
+        else:
+            plt.savefig(outfile);
     else:
         plt.show();
 pass;

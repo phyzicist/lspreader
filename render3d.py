@@ -6,7 +6,7 @@ Usage:
   render3d.py [options] (--plot-single | -s) INFILE [OUTFILE [LABEL] ]
 
 Options:
-   --min=MIN -n MIN              Set vmin in the volumetric plot to MIN. [default: 16.0]
+   --min=MIN -n MIN              Set vmin in the volumetric plot to MIN. [default: 15.0]
    --max=MAX -x MAX              Set vmax in the volumetric plot to MAX. [default: 23.5]
    --plot-single -s              Just show, don't output, single scalar.
    --clabel=CLABEL               Set the colorbar label. [default: log10 of electron density (cm^-3)]
@@ -49,7 +49,7 @@ def main():
     kwargs['ylabel'] = opts['--ylabel'];
     kwargs['zlabel'] = opts['--zlabel'];
     kwargs['log']    = not opts['--no-log'];
-    kwargs['otf'] =  int(opts['--otf']);
+    kwargs['otf'] =  opts['--otf'];
     kwargs['new-ctf'] = opts['--new-ctf'];
     if kwargs['new-ctf'] and not opts['--plot-single']:
         print("--new-ctf doesn't work with multi plot mode yet.");
@@ -92,7 +92,6 @@ def main():
         plot(files,(vmin,vmax),angle,**kwargs);
     else: #plot single mode
         name_tuple = (opts['INFILE'],opts['OUTFILE'],opts['LABEL']);
-        print(name_tuple);
         plot_single(name_tuple,(vmin,vmax),angle,**kwargs);
     pass;
 pass;
@@ -105,21 +104,26 @@ def zero_range(S,zeros):
     S[zeros[0][0]:zeros[0][1],zeros[1][0]:zeros[1][1],zeros[2][0]:zeros[2][1]]=0.0;
     return S;
 
-def mk_otf(vlim,otftype=0):
+def mk_otf(vlim,otftype):
     '''Create the opacity transfer function.'''
     from tvtk.util.ctf import PiecewiseFunction;
-    #chose the otf type
-    r,m = {0:(0.85, 0.06),
-           1:(0.90, 0.06),
-           2:(0.90, 0.08),
-           3:(0.90, 0.10),
-           4:(0.99, 0.20)}[otftype];
-    
     otf = PiecewiseFunction();
-    otf.add_point(vlim[0],    0.0);
-    otf.add_point(vlim[0]+(vlim[1]-vlim[0])*r, m);
-    otf.add_point(vlim[1],    0.5);
-    return otf;
+    def otf_mkr(pts,otf):
+        map(lambda i: otf.add_point(*i), pts);
+        return otf;
+    def mid_pt(r,m,b=0.001,e=1.0):
+        return [
+            (vlim[0], b),
+            (vlim[0]+(vlim[1]-vlim[0])*r, m),
+            (vlim[1], e)
+        ];
+    vs={'0': (0.85, 0.06),
+        '1': (0.90, 0.06),
+        '2': (0.90, 0.08),
+        '3': (0.90, 0.10),
+        '4': (0.99, 0.20),
+        'solid': (0.01,0.7,0.0)}
+    return otf_mkr(mid_pt(*vs[otftype]),otf);
 
 def set_otf(v,otf):
     '''Set the volume object's otf'''
@@ -129,7 +133,10 @@ def set_otf(v,otf):
 def mk_ctf(vlim):
     '''Create the color transfer function.'''
     from mayavi.modules import volume;
-    return volume.make_CTF(vlim[0],vlim[1],hue_range=(0.9,0.0));
+    return volume.make_CTF(vlim[0],vlim[1],
+                           hue_range=(0.0,0.8),
+                           sat_range=(0.6,0.6),
+                           mode="linear");
 
 def set_ctf(v,ctf):
     '''Set the volume object's ctf'''
@@ -155,7 +162,10 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     #taking the logarithm.
     if kwargs['log']: S=np.log10(S+0.1);
     #creating the figure.
-    fig=mlab.figure(size=(1280,1024)); ret['fig']=fig;
+    fig=mlab.figure(size=(1280,1024),
+                    bgcolor=(1.0,1.0,1.0),
+                    fgcolor=(0.3,0.3,0.3));
+    ret['fig']=fig;
     fig.scene.disable_render=True;
     #creating the source.
     src=mlab.pipeline.scalar_field(S);
