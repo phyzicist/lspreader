@@ -13,8 +13,8 @@ Options:
    --zero-x=XRANGE               Set a range of x to zero, as a python tuple.
    --zero-y=YRANGE               Set a range of y to zero, as a python tuple.
    --zero-z=ZRANGE               Set a range of z to zero, as a python tuple.
-   --azimuth=AZIMUTH             Set the azimuth [default: 135].
-   --polar=POLAR                 Set the polar angle [default: 125].
+   --azimuth=AZIMUTH -a AZIMUTH  Set the azimuth [default: 125].
+   --polar=POLAR -p POLAR        Set the polar angle [default: 110].
    --roll=ROLL                   Roll after setting the angle [default: 0].
    --trajectories=TRAJ_FORMAT    Look for trajectories files.
    --xlabel=XLABEL               Label for x axis. [default: k].
@@ -134,7 +134,7 @@ def mk_ctf(vlim):
     '''Create the color transfer function.'''
     from mayavi.modules import volume;
     return volume.make_CTF(vlim[0],vlim[1],
-                           hue_range=(0.0,0.8),
+                           hue_range=(0.8,0.0),
                            sat_range=(0.6,0.6),
                            mode="linear");
 
