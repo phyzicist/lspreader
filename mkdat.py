@@ -6,9 +6,9 @@ Create a dat file using the function as input
 import numpy as np;
 from cStringIO import StringIO;
     
-def mkdat(F,xr=(-30e-4,30e-4,600j),
-            yr=(-10e-4,10e-4,200j),
-            zr=(-20e-4,20e-4,400j),
+def mkdat(F,xr=(-30e-4,20e-4,100j),
+            yr=(-10e-4,10e-4, 20j),
+            zr=(-20e-4,20e-4, 40j),
             fname=None):
     Z,Y,X = np.mgrid[ zr[0]:zr[1]:zr[2],
                       yr[0]:yr[1]:yr[2],
