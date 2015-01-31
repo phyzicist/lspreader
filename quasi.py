@@ -3,7 +3,7 @@
 Plot the n_ion*Z plot.
 
 Usage:
-  quasi.py [options] (--X|--Y|--Z) (<input> <Z>)...
+  quasi.py [options] (--X|--Y|--Z) <electron-input> (<input> <Z>)...
 
 Options:
   --title=TITLE -t Title      Set the title.
@@ -34,28 +34,26 @@ def main():
         l = 'z';
     Z = map(float, opts['<Z>']);
     names = zip(opts['<input>'],Z);
-    #handling first
-    name,z = names[0]; names = names[1:];
-    d = read(name,dumpfull=True);
-    n  = get(d['s']);
-    nz = n*z;
-    x = np.linspace(d[l][0], d[l][1], n.size);
-    #looping over files
+    #getting electrons first, using it to derive dimensions.
+    e = read(opts['<electron-input>'],dumpfull=True);
+    x = np.linspace(e[l][0], e[l][1], e.size);
+    e = get(e['s']);
+    #setting up output
+    nz = zeros(e.size);
+    #looping over other species
     for name,z in zip(opts['<input>'],Z):
-        curn  = get(read(name));
-        n += curn
-        nz+= curn*z;
+        nz += get(read(name))*z;
     #restricting
     if opts['--restrict']:
         r = eval(opts['--restrict']);
         good = (x > r[0]) & (x < r[1]);
         x  =  x[good];
-        n  =  n[good];
+        e  =  e[good]
         nz = nz[good];
-        print(len(x));
     #plotting
-    plt.plot(x, np.log10(n+0.1), label="$n_{ion}$");
-    plt.plot(x, np.log10(nz+0.1), label="$n_{ion}Z$");
+    plt.plot(x, e, label="$n_{ele}$");
+    plt.plot(x, nz, label="$n_{ion}\timesZ$");
+    plt.ylabel("log$_{10}$ of number density (");
     plt.xlim(x[0],x[-1]);
     if opts['--ylim']:
         ylim=eval(opts['--ylim']);
