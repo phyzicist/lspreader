@@ -43,7 +43,7 @@ KE  = sum(-q*KE);
 print('total charge: {} pC'.format(sum(q)*1e12));
 #calculated in SI...
 if opts['--2D']:
-    E_laser = w * m.sqrt(m.pi/2) * (c*e_0*E_0**2)/2 * T;
+    E_laser = w * m.sqrt(m.pi/2) * (c*e_0*E_0**2)/2 * T*1e-2;
 else:
     E_laser = w**2 * (m.pi/2) * (c*e_0*E_0**2)/2 * T;
 print('efficiency is {}'.format(KE/E_laser));

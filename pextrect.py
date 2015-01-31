@@ -77,8 +77,8 @@ def main():
         S /= np.abs(xlim[1]-xlim[0])/x_spacing;
         S /= np.abs(ylim[1]-ylim[0])/y_spacing;
     fig = plt.figure(1);
-    plt.xticks(x_bins[::x_spacing/10]);
-    plt.yticks(y_bins[::y_spacing/10]);
+    #plt.xticks(x_bins[::x_spacing/2]);
+    #plt.yticks(y_bins[::y_spacing/2]);
     plt.xlabel(x_label);
     plt.ylabel(y_label);
     surf=plt.pcolormesh(X,Y,S,cmap=pastel,vmax=maxQ);
