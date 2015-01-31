@@ -17,13 +17,15 @@ Options:
   --factor=F -f F             Multiply histogram by F. [default: 1.0]
 '''
 import numpy as np;
-import matplotlib.pyplot as plt;
+import matplotlib;
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
 from misc import read
 def main():
     opts = docopt(__doc__,help=True);
+    if opts['--output']: matplotlib.use('Agg');
+    import matplotlib.pyplot as plt;
     if opts['--X']:
         get = lambda d: d[: ,d.shape[1]/2, d.shape[2]/2];
         l = 'x';
