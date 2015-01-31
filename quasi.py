@@ -6,7 +6,8 @@ Usage:
   quasi.py [options] (--X|--Y|--Z) <electron-input> (<input> <Z>)...
 
 Options:
-  --title=TITLE -t Title      Set the title.
+  --title=TITLE -t TITLE      Set the title.
+  --output=OUT -o OUT         Output instead of display.
   --X -x                      Draw a line along X, half in the other dimensions.
   --Y -y                      Draw a line along Y, half in the other dimensions.
   --Z -z                      Draw a line along Z, half in the other dimensions.
@@ -54,12 +55,16 @@ def main():
     plt.plot(x, e, label="$n_{ele}$");
     plt.plot(x, nz, label="$n_{ion}\timesZ$");
     plt.ylabel("log$_{10}$ of number density (");
+    if opts['--title']: plt.title(opts['--title']);
     plt.xlim(x[0],x[-1]);
     if opts['--ylim']:
         ylim=eval(opts['--ylim']);
         plt.ylim(ylim);
     plt.legend(loc='upper left');
-    plt.show();
+    if opts['--output']:
+        plt.savefig(opts['--output']);
+    else:
+        plt.show();
     
 if __name__ == '__main__':
     main();
