@@ -25,6 +25,7 @@ Options:
    --otf=O                       Choose an otf type. See mk_otf for details. [default: 0]
 '''
 import numpy as np;
+from scipy.misc import imsave;
 import cPickle as pickle;
 from docopt import docopt;
 import re;
@@ -166,7 +167,7 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
                     bgcolor=(1.0,1.0,1.0),
                     fgcolor=(0.3,0.3,0.3));
     ret['fig']=fig;
-    fig.scene.disable_render=True;
+    #fig.scene.disable_render=True;
     #creating the source.
     src=mlab.pipeline.scalar_field(S);
     #volume rendering.
@@ -233,7 +234,7 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     if 'render' not in kwargs or kwargs['render']:
         fig.scene.disable_render=False;
     #fig.scene.camera.zoom(1.3);
-       #setting the view
+    #setting the view
     mlab.view(elevation=angle[0],azimuth=angle[1],
               focalpoint='auto',distance='auto');
     mlab.roll(angle[2]);
@@ -254,7 +255,7 @@ def plot(names_list,vlim,angle,
         firsti = kwargs['traj'][1];
     d['fig'].scene.disable_render = False;
     print("saving {}".format(first['out']));
-    mlab.savefig(first['out'],size=(1280,1024));
+    imsave(first['out'],mlab.screenshot());
     for i,names in enumerate(names_list):
         print("processing {}...".format(names['in']))
         S=read(names['in']);
@@ -275,7 +276,7 @@ def plot(names_list,vlim,angle,
             tracks.mlab_source.set(x=x,y=y,z=z);
         d['fig'].scene.disable_render=False;
         print("saving {}".format(names['out']));
-        mlab.savefig(names['out'],size=(1280,1024));
+        imsave(names['out'],mlab.screenshot());
     pass
 
 def plot_single(name,vlim,angle,
@@ -292,7 +293,8 @@ def plot_single(name,vlim,angle,
         mlab.show();
     else:
         print('saving {}'.format(outname));
-        mlab.savefig(outname,size=(1280,1024));
+        #hack to avoid the lines, now mayavi really is headless
+        imsave(outname,mlab.screenshot());
     pass;
 
 if __name__=="__main__":
