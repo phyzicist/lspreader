@@ -8,7 +8,7 @@ import numpy as np;
 class LspOutput(object):
     '''represents an lsp output file on call,
        reads the header on open'''
-    def __init__(self,filename,verbose=False,prefix='',buffering=-1):
+    def __init__(self,filename,verbose=False,prefix='',buffering=0):
         self.filename = filename;
         self.buffering = buffering;
         self.verbose = verbose;
