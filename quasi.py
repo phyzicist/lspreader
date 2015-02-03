@@ -15,6 +15,7 @@ Options:
   --high-res -H               Output a high resolution plt.
   --ylim=YLIM                 Set ylim for videos.
   --factor=F -f F             Multiply histogram by F. [default: 1.0]
+  --L=L -l L                  Give lambda for writing the critical density line. [default: 800e-9]
 '''
 import numpy as np;
 import matplotlib;
@@ -22,27 +23,34 @@ import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
 from misc import read
+
+e0=8.854187817e-12
+m_e=9.10938291e-31
+q=1.60217657e-19
+c=2.99792458e8
+
 def main():
     opts = docopt(__doc__,help=True);
     if opts['--output']: matplotlib.use('Agg');
     import matplotlib.pyplot as plt;
     if opts['--X']:
         get = lambda d: d[: ,d.shape[1]/2, d.shape[2]/2];
-        l = 'x';
+        label = 'x';
     elif opts['--Y']:
         get = lambda d: d[d.shape[0]/2, :, d.shape[2]/2];
-        l = 'y';
+        label = 'y';
     elif opts['--Z']:
         get = lambda d: d[d.shape[0]/2, d.shape[1]/2, :];
-        l = 'z';
+        label = 'z';
     Z = map(float, opts['<Z>']);
     names = zip(opts['<input>'],Z);
     #getting electrons first, using it to derive dimensions.
     e = read(opts['<electron-input>'],dumpfull=True);
-    x = np.linspace(e[l][0], e[l][1], e.size);
+    dim = e[label];
     e = get(e['s']);
+    x = np.linspace(dim[0], dim[1], e.size);
     #setting up output
-    nz = zeros(e.size);
+    nz = np.zeros(e.size);
     #looping over other species
     for name,z in zip(opts['<input>'],Z):
         nz += get(read(name))*z;
@@ -54,8 +62,12 @@ def main():
         e  =  e[good]
         nz = nz[good];
     #plotting
-    plt.plot(x, e, label="$n_{ele}$");
-    plt.plot(x, nz, label="$n_{ion}\timesZ$");
+    ncrit = e0*m_e/q**2*(2*np.pi*c/float(opts['--L']))**2;
+    ncrit = np.log10(ncrit/1e6+0.1);
+    plt.annotate('Critical Density', ( (x[-1]-x[0])*0.1, ncrit+0.2 ));
+    plt.axhline(ncrit,linestyle=':');
+    plt.plot(x, np.log10(e+0.1), label="$n_{ele}$",linewidth=3);
+    plt.plot(x, np.log10(nz+0.1), label="$n_{ion}\timesZ$",linewidth=1);
     plt.ylabel("log$_{10}$ of number density (");
     if opts['--title']: plt.title(opts['--title']);
     plt.xlim(x[0],x[-1]);
