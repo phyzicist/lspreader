@@ -4,11 +4,33 @@ Reader for LSP output xdr files (.p4's)
 '''
 import xdrlib as xdr;
 import numpy as np;
+from fractions import gcd;
 
+#large positive number
+L=1e10
+
+def lgcd(l):
+    l = list(l); l.sort();
+    ret=l[0]; l=l[1:];
+    for i in l: ret=gcd(ret,i);
+    return ret;
+
+#fuck oop
+class maxV(object):
+    def __init__(self,v=-L):
+        self.v=v;
+    def add(self,nv):
+        if nv > self.v: self.v=nv;
+class minV(object):
+    def __init__(self,v=L):
+        self.v=v;
+    def add(self,nv):
+        if nv < self.v: self.v=nv;        
+                        
 class LspOutput(object):
     '''represents an lsp output file on call,
        reads the header on open'''
-    def __init__(self,filename,verbose=False,prefix='',buffering=-1):
+    def __init__(self,filename,verbose=False,prefix='',buffering=0):
         self.filename = filename;
         self.buffering = buffering;
         self.verbose = verbose;
@@ -119,7 +141,7 @@ class LspOutput(object):
         return;
     ###################
     #data processing    
-    def _getfields(self, var, vector=True):
+    def _getfields(self, var, vector=True, **kwargs):
         if vector:
             size=3;
             readin = set();
@@ -132,20 +154,27 @@ class LspOutput(object):
             size=1;
             readin = set(var);
         doms = [];
+        nIs,nJs,nKs = set(), set(), set();
+        maxX, maxY, maxZ = maxV(), maxV(), maxV();
+        minX, minY, minZ = minV(), minV(), minV();
         qs = [i[0] for i in self.header['quantities']];
         self.logprint('Reading positions and making buffers');
         for i in range(self.header['domains']):
+            d={};
             self.logprint('Reading domain {}.'.format(i));
             iR, jR, kR = self.get_int(),self.get_int(),self.get_int();
             #getting grid parameters (real coordinates)
             nI = self.get_int(); Ip = np.fromfile(self.file,dtype='>f4',count=nI);
             nJ = self.get_int(); Jp = np.fromfile(self.file,dtype='>f4',count=nJ);
             nK = self.get_int(); Kp = np.fromfile(self.file,dtype='>f4',count=nK);
-            nAll = nI*nJ*nK;
+            nAll=nI*nJ*nK;
+            nIs.add(nI); nJs.add(nJ); nKs.add(nK);
+            maxX.add(Ip[-1]); maxY.add(Jp[-1]); maxZ.add(Kp[-1]);
+            minX.add(Ip[0]); minY.add(Jp[0]); minZ.add(Kp[0]);
             self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
-            d={}
             self.logprint('Making points.');
             #the way meshgrid works, it has to be in this order.
+            d['minx'],d['miny'],d['minz'] = Ip.min(), Jp.min(), Kp.min();
             d['y'], d['z'], d['x'] = np.vstack(np.meshgrid(Jp,Kp,Ip)).reshape(3,-1);
             for quantity in qs:
                 if quantity not in readin:
@@ -154,11 +183,30 @@ class LspOutput(object):
                     self.logprint('Reading in {}'.format(quantity));
                     d[quantity] = np.fromfile(self.file,dtype='>f4',count=nAll*size);
                     if size==3:
-                        data=d[quantity].reshape(nAll,size).T;
-                        d[quantity+'x'],d[quantity+'y'],d[quantity+'z']= data;
+                        data=d[quantity].reshape(nAll,3).T;
+                        d[quantity+'x'],d[quantity+'y'],d[quantity+'z']=data
+                        d[quantity+'x'].reshape(nK,nJ,nI);
+                        d[quantity+'y'].reshape(nK,nJ,nI);
+                        d[quantity+'z'].reshape(nK,nJ,nI);
                         del data;
+                    else:
+                        d[quantity].reshape(nK,nJ,nI);
             doms.append(d);
-        self.logprint('Done! Stringing together.');
+        #calculate dimensions of cells
+        maxX = maxX.v; maxY = maxY.v; maxZ = maxZ.v;
+        minX = minX.v; minY = minY.v; minZ = minZ.v;
+        scaleX = (maxX-minX)*L;
+        scaleY = (maxY-minY)*L;
+        #I hate python3
+        key=lambda d:(d['minx']-minX)+(d['miny']-minY+(d['minz']-minZ)*scaleY)*scaleX;
+        doms.sort(key=key);
+        for d in doms:
+            print('{}: {:.6f},{:.6f},{:.6f}'.format(key(d),d['minx'],d['miny'],d['minz']));
+        Ispace = lgcd(list(nIs));
+        Jspace = lgcd(list(nJs));
+        Kspace = lgcd(list(nKs));
+        self.logprint('Stringing together.');
+        doms.sort(lambda d: d['xmin']);
         out = { k : np.concatenate([i[k] for i in doms]) for k in doms[0] };
         return out;
 
@@ -209,17 +257,21 @@ class LspOutput(object):
         out = np.fromfile(self.file,dtype=dt,count=-1);
         return out;
         
-    def get_data(self,var=None):
-        if not var and (self.header['dump_type']== 2 or self.header['dump_type']== 3):
+    def get_data(self,**kwargs):
+        if ('var' not in kwargs) and \
+            (self.header['dump_type']== 2 or self.header['dump_type']== 3):
             var=[i[0] for i in self.header['quantities']];
+        else:
+            var = kwargs['var'];
+            del kwargs['var'];
         if self.header['dump_type'] == 2:
-            return self._getfields(var,vector=True);
+            return self._getfields(var,vector=True,**kwargs);
         elif self.header['dump_type'] == 3:
-            return self._getfields(var,vector=False);
+            return self._getfields(var,vector=False,**kwargs);
         elif self.header['dump_type'] == 6:
-            return self._getmovie();
+            return self._getmovie(**kwargs);
         elif self.header['dump_type'] == 10:
-            return self._getpext();
+            return self._getpext(**kwargs);
         else:
             return None;
     pass;
