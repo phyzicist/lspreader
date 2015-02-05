@@ -75,7 +75,7 @@ def main():
     Y,X = np.mgrid[ ymin:ymax:len(SP[:,0])*1j,xmin:xmax:len(SP[0,:])*1j];
     if opts['--highlight']:
         val = float(opts['--highlight']);
-        cmap = m.mkstrip_cmap(vmin,vmax,val);
+        cmap = m.mkstrip_cmap(vmin,vmax,val,[1.0,1.0,1.0]);
     else:
         cmap = m.pastel;
     plt.pcolormesh(X, Y, SP,vmin=vmin,vmax=vmax,cmap=cmap);

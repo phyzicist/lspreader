@@ -53,7 +53,7 @@ def cmap(r,g=None,b=None):
     cd={'red':r,'green':g,'blue':b};
     return colors.LinearSegmentedColormap('cmap',cd, 1024);
 
-_pastel_h = np.linspace(0.0, 0.8, 9);
+_pastel_h = np.linspace(0.8, 0.0, 9);
 _pastel_s = np.ones(_pastel_h.shape)*0.6;
 _pastel_v = np.ones(_pastel_h.shape);
 _pastel_hsv = np.array([_pastel_h,_pastel_s,_pastel_v]);
