@@ -64,11 +64,11 @@ def main():
     #plotting
     ncrit = e0*m_e/q**2*(2*np.pi*c/float(opts['--L']))**2;
     ncrit = np.log10(ncrit/1e6+0.1);
-    plt.annotate('Critical Density', ( (x[-1]-x[0])*0.1, ncrit+0.2 ));
-    plt.axhline(ncrit,linestyle=':');
-    plt.plot(x, np.log10(e+0.1), label="$n_{ele}$",linewidth=3);
-    plt.plot(x, np.log10(nz+0.1), label="$n_{ion}\timesZ$",linewidth=1);
-    plt.ylabel("log$_{10}$ of number density (");
+    plt.annotate('Critical Density', xy=((x[-1]-x[0])*0.1, ncrit+0.2 ));
+    plt.axhline(ncrit,linestyle=':',c="gray");
+    plt.plot(x, np.log10(e+0.1), label="$n_{ele}$",linewidth=3,linestyle=":",c="black");
+    plt.plot(x, np.log10(nz+0.1), label=r"$n_{ion}\times Z$",linewidth=1);
+    plt.ylabel("log$_{10}$ of number density (cm$^{-3}$)");
     if opts['--title']: plt.title(opts['--title']);
     plt.xlim(x[0],x[-1]);
     if opts['--ylim']:
