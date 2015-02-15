@@ -149,27 +149,50 @@ def set_ctf(v,ctf):
             v._volume_property);
 
 
-def initial_plot(mlab,filename,vlim,angle,**kwargs):
+def initial_volumetric(mlab,S,vlim,angle,colorbar=True,**kwargs):
     '''
-    Creates the first plot. This creates most of the data
+    Creates the first volumetric render. This creates most of the data
     structures to be used and returns them as a dictionary.
     '''
     ret = {};
-    logprint('loading file {}'.format(filename));
-    S=read(filename);
+    if type(S) == str:
+        logprint('loading file {}'.format(S));
+        tmp = read(S, dumpfull=True);
+        if type(tmp) == dict:
+            S = tmp['s'];
+            assert(type(tmp['x']) == type(tmp['y']));
+            assert(type(tmp['z']) == type(tmp['y']));
+            if type(tmp['x']) == tuple:# check order
+                print(tmp['x']+tmp['y']+tmp['z']);
+                m = -np.log10(np.abs(min(tmp['x']+tmp['y']+tmp['z'])))+2;
+                m = 10**np.ceil(m);
+                kwargs['X'],kwargs['Y'],kwargs['Z'] = np.mgrid[
+                    tmp['x'][0]:tmp['x'][1]:S.shape[0]*1j,
+                    tmp['y'][0]:tmp['y'][1]:S.shape[1]*1j,
+                    tmp['z'][0]:tmp['z'][1]:S.shape[2]*1j]*m;
+            else:
+                kwargs['X'],kwargs['Y'],kwargs['Z']=tmp['x'],tmp['y'],tmp['z'];
+        else:
+            S = tmp;
     S=np.nan_to_num(S);
     if 'zeros' in kwargs and kwargs['zeros'] is not None:
         S=zero_range(S,kwargs['zeros'])
     #taking the logarithm.
     if kwargs['log']: S=np.log10(S+0.1);
     #creating the figure.
-    fig=mlab.figure(size=(1280,1024),
-                    bgcolor=(1.0,1.0,1.0),
-                    fgcolor=(0.3,0.3,0.3));
-    ret['fig']=fig;
+    if 'fig' not in kwargs:
+        fig=mlab.figure(size=(1280,1024),
+                        bgcolor=(1.0,1.0,1.0),
+                        fgcolor=(0.3,0.3,0.3));
+        ret['fig']=fig;
+    else:
+        ret['fig']=kwargs['fig'];
     #fig.scene.disable_render=True;
     #creating the source.
-    src=mlab.pipeline.scalar_field(S);
+    if 'X' in kwargs:
+        src=mlab.pipeline.scalar_field(kwargs['X'], kwargs['Y'], kwargs['Z'],S);
+    else:
+        src=mlab.pipeline.scalar_field(S);
     #volume rendering.
     v=mlab.pipeline.volume(src,vmin=vlim[0],vmax=vlim[1]);
     set_otf(v,mk_otf(vlim,kwargs['otf']));
@@ -179,7 +202,6 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     #putting in custom stuff
     v._volume_property.interpolation_type = 'nearest';
     ret['v']=v;
-    #mlab.axes();  # make me an option.
     #doing the crazy trajectory stuff.
     if 'traj' in kwargs:
         strung_name, firsti = kwargs['traj'];
@@ -213,10 +235,11 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
         ret['cur_traj'] = cur_traj;
         ret['full_traj'] = full_traj;
     #scalarbar
-    if 'clabel' in kwargs:
-        mlab.scalarbar(object=v,title=kwargs['clabel']);
-    else:
-        mlab.scalarbar(object=v);
+    if colorbar==True:
+        if 'clabel' in kwargs:
+            mlab.scalarbar(object=v,title=kwargs['clabel']);
+        else:
+            mlab.scalarbar(object=v);
     #The colorbar doesn't work if we change the
     #vmin and vmax, so, we have to do this instead.    
     v.module_manager.scalar_lut_manager.use_default_range = False;
@@ -233,7 +256,6 @@ def initial_plot(mlab,filename,vlim,angle,**kwargs):
     #begin rendering
     if 'render' not in kwargs or kwargs['render']:
         fig.scene.disable_render=False;
-    #fig.scene.camera.zoom(1.3);
     #setting the view
     mlab.view(elevation=angle[0],azimuth=angle[1],
               focalpoint='auto',distance='auto');
@@ -248,7 +270,7 @@ def plot(names_list,vlim,angle,
     first = names_list[0];
     names_list = names_list[1:];
     print("processing first file {}...".format(first['in']));
-    d=initial_plot(mlab,first['in'],vlim,angle,
+    d=initial_volumetric(mlab,first['in'],vlim,angle,
                    label=first['label'],
                    **kwargs);
     if 'traj' in kwargs:
@@ -286,8 +308,7 @@ def plot_single(name,vlim,angle,
     inname,outname,label = name;
     if outname:
         mlab.options.offscreen = True;
-    initial_plot(mlab,inname,vlim,angle,
-                 label=label, **kwargs);
+    initial_volumetric(mlab,inname,vlim,angle,label=label,**kwargs);
     if not outname:
         print('plotting');
         mlab.show();
