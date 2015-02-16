@@ -3,12 +3,12 @@
 
 Usage:
   render3d.py [options] IN_FORMAT OUT_FORMAT LABEL_FORMAT <lownum> <highnum> [<step>]
-  render3d.py [options] (--plot-single | -s) INFILE [OUTFILE [LABEL] ]
+  render3d.py [options] (--render-single | -s) INFILE [OUTFILE [LABEL] ]
 
 Options:
    --min=MIN -n MIN              Set vmin in the volumetric plot to MIN. [default: 15.0]
    --max=MAX -x MAX              Set vmax in the volumetric plot to MAX. [default: 23.5]
-   --plot-single -s              Just show, don't output, single scalar.
+   --render-single -s            Output single scalar.
    --clabel=CLABEL               Set the colorbar label. [default: log10 of electron density (cm^-3)]
    --zero-x=XRANGE               Set a range of x to zero, as a python tuple.
    --zero-y=YRANGE               Set a range of y to zero, as a python tuple.
@@ -16,12 +16,12 @@ Options:
    --azimuth=AZIMUTH -a AZIMUTH  Set the azimuth [default: 125].
    --polar=POLAR -p POLAR        Set the polar angle [default: 110].
    --roll=ROLL                   Roll after setting the angle [default: 0].
-   --trajectories=TRAJ_FORMAT    Look for trajectories files.
+   --trajectories=FMT -t FMT     Look for trajectories files with the following format FMT. For
+                                 single render mode, treat FMT as an actual filename.
    --xlabel=XLABEL               Label for x axis. [default: k].
    --ylabel=YLABEL               Label for y axis. [default: h].
    --zlabel=ZLABEL               Label for x axis. [default: pol.].
    --no-log                      Do not log10 the data.
-   --new-ctf                     Use the new ctf. Only valid for plot-single mode.
    --otf=O                       Choose an otf type. See mk_otf for details. [default: 0]
 '''
 import numpy as np;
@@ -30,70 +30,64 @@ import cPickle as pickle;
 from docopt import docopt;
 import re;
 import math;
-from misc import conv,read;
+from misc import conv,readfile;
+from tvtk.util.ctf import ColorTransferFunction, PiecewiseFunction;
 
 def main():
     #reading in arguments
     opts=docopt(__doc__,help=True);
     vmin = float(opts['--min']);
     vmax = float(opts['--max']);
-    kwargs = {};
-    kwargs['zeros']=[conv(opts['--zero-x'],func=eval,default=(None,None)),
+    kw = {};
+    kw['zeros']=[conv(opts['--zero-x'],func=eval,default=(None,None)),
                      conv(opts['--zero-y'],func=eval,default=(None,None)),
                      conv(opts['--zero-z'],func=eval,default=(None,None))];
-    kwargs['zeros'] = None if kwargs['zeros'] == [(None,None)]*3 else kwargs['zeros'];
+    kw['zeros'] = None if kw['zeros'] == [(None,None)]*3 else kw['zeros'];
     angle = [ float(opts['--polar']),
               float(opts['--azimuth']),
               float(opts['--roll']) ];
-    kwargs['clabel'] = opts['--clabel'];
-    kwargs['xlabel'] = opts['--xlabel'];
-    kwargs['ylabel'] = opts['--ylabel'];
-    kwargs['zlabel'] = opts['--zlabel'];
-    kwargs['log']    = not opts['--no-log'];
-    kwargs['otf'] =  opts['--otf'];
-    kwargs['new-ctf'] = opts['--new-ctf'];
-    if kwargs['new-ctf'] and not opts['--plot-single']:
-        print("--new-ctf doesn't work with multi plot mode yet.");
-        quit(1);
+    kw['clabel'] = opts['--clabel'];
+    kw['xlabel'] = opts['--xlabel'];
+    kw['ylabel'] = opts['--ylabel'];
+    kw['zlabel'] = opts['--zlabel'];
+    kw['log']    = not opts['--no-log'];
+    kw['otf'] =  opts['--otf'];
     if opts['--trajectories']:
-        traj = opts['--trajectories'];
-        if not opts['--plot-single']:
-                if '*' not in traj:
-                        print('point format should contain \'*\'');
-                        print(usage)
-                        quit(1);
-                else:
-                        points_fmt = 'strung*.pt'
-                points_fmt=re.sub(r'\*',fmt,traj);
-                starti = lownum if not opts['<first>'] else lownum/step;
-                traj_arg = (points_fmt.format(highnum), starti);
+        kw['traj']=True;
+        if type(opts['--trajectories']) == str:
+            traj = opts['--trajectories'];
         else:
-                traj_arg = (traj, -1);
-        kwargs.update({'traj':traj_arg});
-    if not opts['--plot-single']:
-        if '*' not in opts['IN_FORMAT'] or '*' not in opts['OUT_FORMAT']:
-            print('point format should contain \'*\'');
-            print(usage);
-            quit(1);
+            traj = 'strung*.pt' if not opts['--plot-single'] else 'strung.pt';
+    if not opts['--render-single']:
+        #getting range
         lownum=int(opts['<lownum>']);
         highnum=int(opts['<highnum>']);
         numrange = range(lownum,highnum+1);
         if opts['<step>']:
             step = int(opts['<step>']);
             numrange = numrange[::step];
-        fmt='{{:0>{}}}'.format(len(opts['<highnum>']))
-        out_fmt=re.sub(r'\*',fmt,opts['OUT_FORMAT']);
-        in_fmt =re.sub(r'\*',fmt,opts['IN_FORMAT']);
-        label_fmt=re.sub(r'\*',fmt,opts['LABEL_FORMAT']);
-        outnames = [out_fmt.format(i) for i in numrange];#this so I don't need to check for None
-        innames  = [in_fmt.format(i) for i in numrange];
-        labels   = [label_fmt.format(i) for i in numrange];
-        stuff = {'out':outnames,'in':innames,'label':labels};
+        #gathering things to collate
+        stepdata = [('in',opts['IN_FORMAT']),
+                    ('out',opts['OUT_FORMAT']),
+                    ('label',opts['LABEL_FORMAT'])];
+        if opts['--trajectories']:
+            stepdata.append(('traj',traj));
+            kw['traj_firsti'] = lownum;
+            kw['traj_step']   = step;
+        wildcardfmt='{{:0>{}}}'.format(len(opts['<highnum>']))
+        stuff = {}
+        for label,fmt in stepdata:
+            if '*' not in fmt:
+                print("point format should contain '*'");
+                print(usage); quit(-1);
+            fmt = re.sub(r'\*',wildcardfmt,fmt)
+            stuff[label] = [fmt.format(i) for i in numrange];
         files = [ dict(zip(stuff.keys(),d)) for d in zip(*stuff.values())];
-        plot(files,(vmin,vmax),angle,**kwargs);
-    else: #plot single mode
+        render_series(files,(vmin,vmax),angle,suppress=False,**kw);
+    else: #render single mode
         name_tuple = (opts['INFILE'],opts['OUTFILE'],opts['LABEL']);
-        plot_single(name_tuple,(vmin,vmax),angle,**kwargs);
+        if opts['--trajectories']: name_tuple+=(traj)
+        render(name_tuple, (vmin,vmax), angle, suppress=False,**kw);
     pass;
 pass;
 
@@ -105,8 +99,176 @@ def zero_range(S,zeros):
     S[zeros[0][0]:zeros[0][1],zeros[1][0]:zeros[1][1],zeros[2][0]:zeros[2][1]]=0.0;
     return S;
 
-def mk_otf(vlim,otftype):
-    '''Create the opacity transfer function.'''
+def mk_otf(vlim, orange):
+    '''
+    Create an opacity transfer function.
+
+    Arguments:
+      vlim   -- data limits
+      orange -- list of (fraction,opacity) pairs
+    '''
+    orange[:] = [(i[0]*(vlim[1]-vlim[0])+vlim[0],i[1]) for i in orange];
+    otf = PiecewiseFunction();
+    for i in orange:
+        otf.add_point(*i);
+    return otf;
+
+def mk_ctf(vlim,hr,sr):
+    '''
+    Create the color transfer function.
+
+    Arguments:
+      vlim -- data limits
+      hr   -- Hue range from min to max.
+      sr   -- Saturation range from min to max.
+    '''
+    from mayavi.modules import volume;
+    return volume.make_CTF(vlim[0],vlim[1],
+                           hue_range=(0.8,0.0),
+                           sat_range=(0.6,0.6),
+                           mode="linear");
+
+def set_otf(v,otf):
+    '''Set the volume object's otf'''
+    v._otf = otf;
+    v._volume_property.set_scalar_opacity(v._otf);
+
+def set_ctf(v,ctf):
+    '''Set the volume object's ctf'''
+    from tvtk.util.ctf import set_lut;
+    v._ctf = ctf;
+    v._volume_property.set_color(v._ctf);
+    v.update_ctf = True;
+    set_lut(v.module_manager.scalar_lut_manager.lut,
+            v._volume_property);
+
+
+
+def volumetric(S,colorbar=True,**kw):
+    '''
+    Creates the a volumetric render on a given figure
+    For the sake of scripted changes, data made are returned as a dictionary.
+    
+    Arguments:
+      S -- 3D Numpy array or filename.
+
+    Keyword arguments:
+      mlab     -- mlab instance, if None, make our own instance.
+      fig      -- Figure to render on. If None, create one sized 1280x1024 with white
+                  background and dark gray foreground.
+      vlim     -- Tuple that specifies the limits for the volumetric render (min,max),
+                  Default (if None) is the minimum and maximum of the data.
+      zeros    -- If zero a particular range of indices on the volume render.
+      X,Y,Z    -- Render with the given mgrid like points.
+      ctf      -- Use the given ctf. If a ColorTransferFunction instance, use it. This
+                  also supports using a tuple of the form ((h1,h2),(s1,s2),mode) where
+                  hx are the range of hues and sx are the range of saturation values
+                  and mode is a string representing the interpolation mode.
+                  The ctf is saved to the returned dict under the key 'ctf'
+      otf      -- Use the given otf. If a PiecewiseFunction instance, use it. This also
+                  supports using a tuple of the form (o1,o2) where ox are the ranges of
+                  opacity values. Moreover, a list of (value,opacity) points are accepted.
+                  The otf is saved to the returned dict under the key 'otf'.
+      log      -- If True, render the log10 of the data, specifically, log10(S+0.1).
+      inttype  -- Set the interpolation type. Default is "nearest".
+      colorbar -- Render a colorbar. You're going to have a lot of trouble if you do
+                  not let me do this and try to do it yourself since volume rendering
+                  does not use the LUT.
+      clabel   -- Set the color bar label.
+      render   -- If True, render immediately after creating the volumetric. If this is
+                  False, the caller should set fig.scene.disable_render to False to
+                  see the updated scene.
+    '''
+    ret = {};
+    if type(S) == str:
+        logprint('loading file {}'.format(S));
+        tmp = readfile(S, dumpfull=True);
+        if type(tmp) == dict:
+            S = tmp['s'];
+            assert(type(tmp['x']) == type(tmp['y']));
+            assert(type(tmp['z']) == type(tmp['y']));
+            if type(tmp['x']) == tuple:
+                m = -np.log10(np.abs(min(tmp['x']+tmp['y']+tmp['z'])))+2;
+                m = 10**np.ceil(m);
+                kw['X'],kw['Y'],kw['Z'] = np.mgrid[
+                    tmp['x'][0]:tmp['x'][1]:S.shape[0]*1j,
+                    tmp['y'][0]:tmp['y'][1]:S.shape[1]*1j,
+                    tmp['z'][0]:tmp['z'][1]:S.shape[2]*1j]*m;
+            else:
+                kw['X'],kw['Y'],kw['Z']=tmp['x'],tmp['y'],tmp['z'];
+        else:
+            S = tmp;
+    if 'mlab' in kw:
+        ret['mlab'] = mlab = kw['mlab'];
+    else:
+        import mayavi.mlab as mlab; ret['mlab']=mlab;
+    if 'zeros' in kw and kw['zeros'] is not None:
+        S=zero_range(S,kw['zeros'])
+    #taking the logarithm.
+    if 'log' in kw and kw['log']: S=np.log10(S+0.1);
+    #creating the figure.
+    if 'fig' not in kw:
+        fig=mlab.figure(size=(1280,1024),
+                        bgcolor=(1.0,1.0,1.0),
+                        fgcolor=(0.3,0.3,0.3));
+        ret['fig']=fig;
+    else:
+        fig = ret['fig'] = kw['fig'];
+    vlim=kw['vlim']
+    #end boilerplate
+    fig.scene.disable_render=True;
+    if 'X' in kw:
+        src=mlab.pipeline.scalar_field(kw['X'], kw['Y'], kw['Z'],S);
+    else:
+        src=mlab.pipeline.scalar_field(S);
+    #volume rendering.
+    v=mlab.pipeline.volume(src,vmin=vlim[0],vmax=vlim[1]);
+    #setting otf and ctf.
+    if 'otf' in kw:
+        if type(kw['otf']) == PiecewiseFunction:
+            otf = kw['otf'];
+        else:
+            if len(kw['otf']) == 2:
+                otfl = [(0.0, kw['otf'][0]), (1.0, kw['otf'][0])]
+            else:
+                otfl = kw['otf'];
+            otf = mk_otf(vlim,otfl);
+    if 'ctf' in kw:
+        if type(kw['ctf']) == ColorTransferFunction:
+            ctf = ret['ctf'];
+        elif type(kw['ctf']) == tuple:
+            mode = kw['ctf'][2] if len(kw['ctf']) >= 3 else 'linear';
+            ctf = mk_ctf(vlim, hr=kw['ctf'][0], sr=kw['ctf'][1]);
+        else:
+            raise ValueError("Invalid ctf keyword argument.")
+    else:
+        ctf = mk_ctf(vlim, hr=(0.8,0.0), sr=(0.6,0.6));
+    set_otf(v,otf);
+    set_ctf(v,ctf);
+    #putting in custom stuff
+    if 'inttype' in kw:
+        v._volume_property.interpolation_type = kw['inttype'];
+    else:
+        v._volume_property.interpolation_type = 'nearest';
+    #colorbar hacks. A lot of this is needed because
+    #the colorbar doesn't use the LUT.
+    if colorbar==True:
+        if 'clabel' in kw:
+            mlab.scalarbar(object=v,title=kw['clabel']);
+        else:
+            mlab.scalarbar(object=v);
+    if 'render' in kw and kw['render']:
+        fig.scene.disable_render=False;
+    #setting colorbar range
+    v.module_manager.scalar_lut_manager.use_default_range = False;
+    v.module_manager.scalar_lut_manager.data_range = np.array([vlim[0], vlim[1]]);
+    ret['v']=v;
+    
+    return ret;
+
+
+def otf_type(vlim,otftype):
+    '''Create the opacity transfer function based on options to this script.'''
     from tvtk.util.ctf import PiecewiseFunction;
     otf = PiecewiseFunction();
     def otf_mkr(pts,otf):
@@ -126,87 +288,48 @@ def mk_otf(vlim,otftype):
         'solid': (0.01,0.7,0.0)}
     return otf_mkr(mid_pt(*vs[otftype]),otf);
 
-def set_otf(v,otf):
-    '''Set the volume object's otf'''
-    v._otf = otf;
-    v._volume_property.set_scalar_opacity(v._otf);
-
-def mk_ctf(vlim):
-    '''Create the color transfer function.'''
-    from mayavi.modules import volume;
-    return volume.make_CTF(vlim[0],vlim[1],
-                           hue_range=(0.8,0.0),
-                           sat_range=(0.6,0.6),
-                           mode="linear");
-
-def set_ctf(v,ctf):
-    '''Set the volume object's ctf'''
-    from tvtk.util.ctf import set_lut;
-    v._ctf = ctf;
-    v._volume_property.set_color(v._ctf);
-    v.update_ctf = True;
-    set_lut(v.module_manager.scalar_lut_manager.lut,
-            v._volume_property);
-
-
-def initial_volumetric(mlab,S,vlim,angle,colorbar=True,**kwargs):
+def render(name,vlim,angle,suppress=True,**kw):
     '''
-    Creates the first volumetric render. This creates most of the data
-    structures to be used and returns them as a dictionary.
+    Render a single sclr file.
+
+    Arguments:
+      name -- A tuple of the form
     '''
-    ret = {};
-    if type(S) == str:
-        logprint('loading file {}'.format(S));
-        tmp = read(S, dumpfull=True);
-        if type(tmp) == dict:
-            S = tmp['s'];
-            assert(type(tmp['x']) == type(tmp['y']));
-            assert(type(tmp['z']) == type(tmp['y']));
-            if type(tmp['x']) == tuple:# check order
-                print(tmp['x']+tmp['y']+tmp['z']);
-                m = -np.log10(np.abs(min(tmp['x']+tmp['y']+tmp['z'])))+2;
-                m = 10**np.ceil(m);
-                kwargs['X'],kwargs['Y'],kwargs['Z'] = np.mgrid[
-                    tmp['x'][0]:tmp['x'][1]:S.shape[0]*1j,
-                    tmp['y'][0]:tmp['y'][1]:S.shape[1]*1j,
-                    tmp['z'][0]:tmp['z'][1]:S.shape[2]*1j]*m;
-            else:
-                kwargs['X'],kwargs['Y'],kwargs['Z']=tmp['x'],tmp['y'],tmp['z'];
-        else:
-            S = tmp;
-    S=np.nan_to_num(S);
-    if 'zeros' in kwargs and kwargs['zeros'] is not None:
-        S=zero_range(S,kwargs['zeros'])
-    #taking the logarithm.
-    if kwargs['log']: S=np.log10(S+0.1);
-    #creating the figure.
-    if 'fig' not in kwargs:
-        fig=mlab.figure(size=(1280,1024),
-                        bgcolor=(1.0,1.0,1.0),
-                        fgcolor=(0.3,0.3,0.3));
-        ret['fig']=fig;
+    logprint("loading mlab");
+    import mayavi.mlab as mlab;
+    
+    if len(name)==3:
+        inname,outname,label = name;
     else:
-        ret['fig']=kwargs['fig'];
-    #fig.scene.disable_render=True;
-    #creating the source.
-    if 'X' in kwargs:
-        src=mlab.pipeline.scalar_field(kwargs['X'], kwargs['Y'], kwargs['Z'],S);
-    else:
-        src=mlab.pipeline.scalar_field(S);
-    #volume rendering.
-    v=mlab.pipeline.volume(src,vmin=vlim[0],vmax=vlim[1]);
-    set_otf(v,mk_otf(vlim,kwargs['otf']));
-    if kwargs['new-ctf']:
-        ret['ctf'] = mk_ctf(vlim);
-        set_ctf(v,ret['ctf']);
-    #putting in custom stuff
-    v._volume_property.interpolation_type = 'nearest';
-    ret['v']=v;
+        inname, outname, label, traj = name;
+    
+    if outname:
+        print("hi");
+        mlab.options.offscreen = True;
+    #setting otf
+    kw['otf']=otf_type(vlim,kw['otf']);
+    d=volumetric(inname, mlab=mlab, vlim=vlim, **kw);
+    #label
+    if label:
+        l = label;
+        d['t'] = mlab.text(0.075,0.875, l, width=len(l)*0.015);
+    #show the nubs
+    kw['oa'] = mlab.orientation_axes(xlabel=kw['xlabel'],
+                                ylabel=kw['ylabel'],
+                                zlabel=kw['zlabel']);
+    kw['oa'].marker.set_viewport(0,0,0.4,0.4);
+    #setting the view
+    mlab.view(elevation=angle[0],azimuth=angle[1],
+              focalpoint='auto',distance='auto');
+    mlab.roll(angle[2]);
+    
     #doing the crazy trajectory stuff.
-    if 'traj' in kwargs:
-        strung_name, firsti = kwargs['traj'];
-        full_traj = read(strung_name);
-        #the shape of each dimension is d[x|y|z,particle,step]
+    if 'traj' in kw:
+        #the first index into the start
+        firsti = d['traj_firsti'] = kw['traj_firsti'] if 'traj_firsti' in kw else 0;#ugh
+        step = d['traj_step'] = kw['traj_step'] if 'traj_step' in kw else 1;
+        full_traj = readfile(traj);
+        #the shape of each dimension is d[dimension,particle,step]
         steps = full_traj.shape[2];
         N = full_traj.shape[1];
         #creating connections between points, this should be an
@@ -231,92 +354,53 @@ def initial_volumetric(mlab,S,vlim,angle,colorbar=True,**kwargs):
         lines = mlab.pipeline.stripper(tracks_src);
         #creating tracks.
         tracks = mlab.pipeline.surface(lines,line_width=2,opacity=1.0);
-        ret['tracks'] = tracks;
-        ret['cur_traj'] = cur_traj;
-        ret['full_traj'] = full_traj;
-    #scalarbar
-    if colorbar==True:
-        if 'clabel' in kwargs:
-            mlab.scalarbar(object=v,title=kwargs['clabel']);
+        d['tracks'] = tracks;
+        d['traj_cur'] = cur_traj;
+        d['traj_full'] = full_traj;
+    d['fig'].scene.disable_render = False;
+    d['image'] = mlab.screenshot();
+    if not suppress:
+        if not outname:
+            logprint('showing');
+            mlab.show();
         else:
-            mlab.scalarbar(object=v);
-    #The colorbar doesn't work if we change the
-    #vmin and vmax, so, we have to do this instead.    
-    v.module_manager.scalar_lut_manager.use_default_range = False;
-    v.module_manager.scalar_lut_manager.data_range = np.array([vlim[0], vlim[1]]);
-    if kwargs['label']:
-        l = kwargs['label'];
-        t=mlab.text(0.075,0.875, l, width=len(l)*0.015);
-        ret['t'] = t;
-    #show the nubs
-    oa=mlab.orientation_axes(xlabel=kwargs['xlabel'],
-                             ylabel=kwargs['ylabel'],
-                             zlabel=kwargs['zlabel']);
-    oa.marker.set_viewport(0,0,0.4,0.4);
-    #begin rendering
-    if 'render' not in kwargs or kwargs['render']:
-        fig.scene.disable_render=False;
-    #setting the view
-    mlab.view(elevation=angle[0],azimuth=angle[1],
-              focalpoint='auto',distance='auto');
-    mlab.roll(angle[2]);
-    return ret;
-
-def plot(names_list,vlim,angle,
-         **kwargs):
-    print("loading mayavi");
-    import mayavi.mlab as mlab;
-    mlab.options.offscreen = True;
+            logprint('saving {}'.format(outname));
+            #hack to avoid the lines, now mayavi really is headless
+            imsave(outname, d['image']);
+    return d;
+    
+def render_series(names_list,vlim,angle,**kw):
+    '''
+    Render a series of files. The names_list
+    '''
     first = names_list[0];
     names_list = names_list[1:];
-    print("processing first file {}...".format(first['in']));
-    d=initial_volumetric(mlab,first['in'],vlim,angle,
-                   label=first['label'],
-                   **kwargs);
-    if 'traj' in kwargs:
-        firsti = kwargs['traj'][1];
-    d['fig'].scene.disable_render = False;
-    print("saving {}".format(first['out']));
-    imsave(first['out'],mlab.screenshot());
+    logprint("processing first file {}...".format(first['in']));
+    
+    d = render(first,vlim,angle,**kw);
+        
     for i,names in enumerate(names_list):
-        print("processing {}...".format(names['in']))
-        S=read(names['in']);
-        S=np.nan_to_num(S)
-        if 'zeros' in kwargs and kwargs['zeros'] is not None:
-            S=zero_range(S,kwargs['zeros']);
-        if kwargs['log']: S=np.log10(S+0.1);
+        logprint("processing {}...".format(names['in']))
+        S=readfile(names['in']);
+        if 'zeros' in kw and kw['zeros'] is not None:
+            S=zero_range(S,kw['zeros']);
+        if kw['log']: S=np.log10(S+0.1);
         d['fig'].scene.disable_render=True;
         d['v'].mlab_source.set(scalars=S);
-        # if kwargs['new-ctf']:
-        #     set_ctf(d['v'],d['ctf']);
         d['t'].text=names['label'];
-        if 'traj' in kwargs:
-            d['cur_traj'][:,:,firsti+i] = d['full_traj'][:,:,firsti+i];
-            x = np.hstack(d['cur_traj'][0,:,:]);
-            y = np.hstack(d['cur_traj'][1,:,:]);
-            z = np.hstack(d['cur_traj'][2,:,:]);
+        if 'traj' in kw:
+            #lord have mercy
+            d['traj_cur'][:,:,d['traj_firsti']+d['traj_step']]\
+                = d['traj_full'][:,:,d['traj_firsti']+d['traj_step']];
+            x = np.hstack(d['traj_cur'][0,:,:]);
+            y = np.hstack(d['traj_cur'][1,:,:]);
+            z = np.hstack(d['traj_cur'][2,:,:]);
             tracks.mlab_source.set(x=x,y=y,z=z);
         d['fig'].scene.disable_render=False;
-        print("saving {}".format(names['out']));
+        logprint("saving {}".format(names['out']));
         imsave(names['out'],mlab.screenshot());
     pass
 
-def plot_single(name,vlim,angle,
-                **kwargs):
-    print("loading mlab");
-    import mayavi.mlab as mlab;
-    inname,outname,label = name;
-    if outname:
-        mlab.options.offscreen = True;
-    initial_volumetric(mlab,inname,vlim,angle,label=label,**kwargs);
-    if not outname:
-        print('plotting');
-        mlab.show();
-    else:
-        print('saving {}'.format(outname));
-        #hack to avoid the lines, now mayavi really is headless
-        imsave(outname,mlab.screenshot());
-    pass;
-
+    
 if __name__=="__main__":
     main()
