@@ -22,7 +22,7 @@ import matplotlib;
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
-from misc import read
+from misc import readfile
 
 e0=8.854187817e-12
 m_e=9.10938291e-31
@@ -45,7 +45,7 @@ def main():
     Z = map(float, opts['<Z>']);
     names = zip(opts['<input>'],Z);
     #getting electrons first, using it to derive dimensions.
-    e = read(opts['<electron-input>'],dumpfull=True);
+    e = readfile(opts['<electron-input>'],dumpfull=True);
     dim = e[label];
     e = get(e['s']);
     x = np.linspace(dim[0], dim[1], e.size);
@@ -53,7 +53,7 @@ def main():
     nz = np.zeros(e.size);
     #looping over other species
     for name,z in zip(opts['<input>'],Z):
-        nz += get(read(name))*z;
+        nz += get(readfile(name))*z;
     #restricting
     if opts['--restrict']:
         r = eval(opts['--restrict']);

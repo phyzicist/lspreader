@@ -12,7 +12,7 @@ def conv(arg,default=None,func=None):
     else:
         return arg if arg else default;
 
-def read(filename,dictlabel='s', dumpfull=False):
+def readfile(filename,dictlabel='s', dumpfull=False):
     with open(filename,'r') as f:
         d=pickle.load(f);
     if type(d) == np.ndarray or dumpfull:

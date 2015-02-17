@@ -214,7 +214,10 @@ def volumetric(S,colorbar=True,**kw):
         ret['fig']=fig;
     else:
         fig = ret['fig'] = kw['fig'];
-    vlim=kw['vlim']
+    if 'vlim' not in kw:
+        vlim = (S.min(),S.max());
+    else:
+        vlim=kw['vlim'];
     #end boilerplate
     fig.scene.disable_render=True;
     if 'X' in kw:
@@ -233,6 +236,9 @@ def volumetric(S,colorbar=True,**kw):
             else:
                 otfl = kw['otf'];
             otf = mk_otf(vlim,otfl);
+    else:
+        otf = mk_otf(vlim,[(0.0, 0.0), (1.0, 1,0)]);
+    set_otf(v,otf);
     if 'ctf' in kw:
         if type(kw['ctf']) == ColorTransferFunction:
             ctf = ret['ctf'];
@@ -243,7 +249,6 @@ def volumetric(S,colorbar=True,**kw):
             raise ValueError("Invalid ctf keyword argument.")
     else:
         ctf = mk_ctf(vlim, hr=(0.8,0.0), sr=(0.6,0.6));
-    set_otf(v,otf);
     set_ctf(v,ctf);
     #putting in custom stuff
     if 'inttype' in kw:
