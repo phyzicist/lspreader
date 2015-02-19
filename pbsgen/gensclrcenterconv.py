@@ -58,9 +58,10 @@ if opts['--stdin']:
                        varpairs=varpairs.format(I=line.strip()),
                        opts=opts['--extra-options'])
                        for line in sys.stdin.readlines()];
-    out = header.format(hours=opts['--hours'],min=opts['--minutes'],ppn=opts['--ppn'],
-                        post=opts['--post'])+'\n'.join(r);
-    print(out);
+    body = '\n'.join(r);
+    head = header.format(hours=opts['--hours'],min=opts['--minutes'],ppn=opts['--ppn'],
+                        post=opts['--post'],extra_lopts=extra_lopts);
+    print(head+body);
     quit();
 
 
@@ -81,7 +82,8 @@ for i,cur in enumerate(subdivs):
             ppn=opts['--ppn'],first=f,second=s,step=step,
             varpairs=varpairs.format(I="${I}"),
             post=post, padlen=padlen,
-            opts=opts['--extra-options']);
+            opts=opts['--extra-options'],
+            extra_lopts=extra_lopts);
     with open(name,'w') as f:
         f.write(curout);
     pass;
