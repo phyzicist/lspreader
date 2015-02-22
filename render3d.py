@@ -178,6 +178,7 @@ def volumetric(S,colorbar=True,**kw):
       render   -- If True, render immediately after creating the volumetric. If this is
                   False, the caller should set fig.scene.disable_render to False to
                   see the updated scene.
+      opacity   
     '''
     ret = {};
     if type(S) == str:
@@ -224,7 +225,7 @@ def volumetric(S,colorbar=True,**kw):
         src=mlab.pipeline.scalar_field(kw['X'], kw['Y'], kw['Z'],S);
     else:
         src=mlab.pipeline.scalar_field(S);
-    #volume rendering.
+    #volume rendering
     v=mlab.pipeline.volume(src,vmin=vlim[0],vmax=vlim[1]);
     #setting otf and ctf.
     if 'otf' in kw:
@@ -232,7 +233,7 @@ def volumetric(S,colorbar=True,**kw):
             otf = kw['otf'];
         else:
             if len(kw['otf']) == 2:
-                otfl = [(0.0, kw['otf'][0]), (1.0, kw['otf'][0])]
+                otfl = [(0.0, kw['otf'][0]), (1.0, kw['otf'][1])]
             else:
                 otfl = kw['otf'];
             otf = mk_otf(vlim,otfl);
@@ -259,11 +260,19 @@ def volumetric(S,colorbar=True,**kw):
     #the colorbar doesn't use the LUT.
     if colorbar==True:
         if 'clabel' in kw:
-            mlab.scalarbar(object=v,title=kw['clabel']);
+            sb=mlab.scalarbar(object=v,title=kw['clabel']);
         else:
-            mlab.scalarbar(object=v);
+            sb=mlab.scalarbar(object=v);
+        v.module_manager.scalar_lut_manager.title_text_property.font_family = 'courier';
+        v.module_manager.scalar_lut_manager.label_text_property.font_family = 'courier';
+        v.module_manager.scalar_lut_manager.title_text_property.italic = False;
+        v.module_manager.scalar_lut_manager.label_text_property.bold = False;
+        v.module_manager.scalar_lut_manager.label_text_property.italic = False;
+
     if 'render' in kw and kw['render']:
         fig.scene.disable_render=False;
+    else:
+        fig.scene.disable_render=True;
     #setting colorbar range
     v.module_manager.scalar_lut_manager.use_default_range = False;
     v.module_manager.scalar_lut_manager.data_range = np.array([vlim[0], vlim[1]]);
@@ -291,6 +300,11 @@ def otf_type(vlim,otftype):
         '3': (0.90, 0.10),
         '4': (0.99, 0.20),
         'solid': (0.01,0.7,0.0)}
+    if (otftype=='new'):
+        r = [(vlim[0], 0.0),
+             (vlim[0] + (vlim[1]-vlim[0])*0.999,0.7),
+             (vlim[1],0.0)];
+        return otf_mkr(r,otf);
     return otf_mkr(mid_pt(*vs[otftype]),otf);
 
 def render(name,vlim,angle,suppress=True,**kw):
