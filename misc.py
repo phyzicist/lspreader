@@ -12,6 +12,8 @@ def conv(arg,default=None,func=None):
     else:
         return arg if arg else default;
 
+test = lambda d,k: k in d and d[k];
+
 def readfile(filename,dictlabel='s', dumpfull=False):
     with open(filename,'r') as f:
         d=pickle.load(f);
@@ -46,19 +48,23 @@ def rgbfromhsv(h,s=None,v=None,split=True):
     else:
         return rgb;
     pass;
-    
+
 def cmap(r,g=None,b=None):
-    if g is None and b is None:
+    if not g and not b:
         r,g,b = r;
-    cd={'red':r,'green':g,'blue':b};
-    return colors.LinearSegmentedColormap('cmap',cd, 1024);
+    cd = {'red':r,'green':g,'blue':b};
+    return colors.LinearSegmentedColormap('cmap', cd, 1024);
 
 _pastel_h = np.linspace(0.8, 0.0, 9);
 _pastel_s = np.ones(_pastel_h.shape)*0.6;
 _pastel_v = np.ones(_pastel_h.shape);
 _pastel_hsv = np.array([_pastel_h,_pastel_s,_pastel_v]);
-_pastel_rgb = rgbfromhsv(_pastel_hsv,split=False)
-pastel = cmap(_pastel_rgb);
+_pastel_rgb = rgbfromhsv(_pastel_hsv,split=False);
+
+pastel      = cmap(_pastel_rgb);
+pastel_b2r  = cmap(rgbfromhsv(
+    np.array([np.linspace(0.725,0.0,9),_pastel_s,_pastel_v])
+));
 
 def mkstrip(rgb,vmin,vmax,val,
             strip=[1.0,0.0,0.0]):

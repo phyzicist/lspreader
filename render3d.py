@@ -113,20 +113,21 @@ def mk_otf(vlim, orange):
         otf.add_point(*i);
     return otf;
 
-def mk_ctf(vlim,hr,sr):
+def mk_ctf(vlim,hr,sr,mode='linear'):
     '''
     Create the color transfer function.
 
     Arguments:
-      vlim -- data limits
+      vlim -- Data limits
       hr   -- Hue range from min to max.
       sr   -- Saturation range from min to max.
+      mode -- The interpolation mode.
     '''
     from mayavi.modules import volume;
     return volume.make_CTF(vlim[0],vlim[1],
-                           hue_range=(0.8,0.0),
-                           sat_range=(0.6,0.6),
-                           mode="linear");
+                           hue_range=hr,
+                           sat_range=sr,
+                           mode=mode);
 
 def set_otf(v,otf):
     '''Set the volume object's otf'''
@@ -178,7 +179,6 @@ def volumetric(S,colorbar=True,**kw):
       render   -- If True, render immediately after creating the volumetric. If this is
                   False, the caller should set fig.scene.disable_render to False to
                   see the updated scene.
-      opacity   
     '''
     ret = {};
     if type(S) == str:
