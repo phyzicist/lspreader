@@ -95,7 +95,7 @@ def prep(opts):
 
 def main():
     opts=docopt(__doc__,help=True);
-    s,phi,e,kw = prep(opts);
+    s,phi,e,kw,_ = prep(opts);
     angular(s,phi,e,**kw);
     
     if opts['<output>']:
