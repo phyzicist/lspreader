@@ -20,7 +20,7 @@ Options:
   --max-q=MAXQ -q MAXQ        Set the maximum for the charge (pcolormesh's vmax value).
   --normalize -n              Normalize the histogram to 1 *eV^-1 rad^-1 .
   --factor=F -f F             Multiply histogram by F. [default: 1.0]
-  --polar -p                 Plot polar angles, letting the east direction be forward.
+  --polar -p                  Plot polar angles, letting the east direction be forward.
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
@@ -149,7 +149,7 @@ def angular(s, phi, e,
     S,_,_ = np.histogram2d(phi,e,bins=(phi_bins,E_bins),weights=s);
     fig = kw['fig'] if test(kw,'fig') else plt.figure(1);
     ax  = kw['ax'] if test(kw,'ax') else plt.subplot(projection='polar',axisbg='white');
-    surf=plt.pcolormesh(PHI,E,S,cmap=pastel_b2r,vmax=maxQ);
+    surf=plt.pcolormesh(PHI,E,S,cmap=pastel,vmax=maxQ);
     #making radial guides. rgrids only works for plt.polar calls
     full_phi = np.linspace(0.0,2*np.pi,100);
     for i in np.arange(0.0,maxE,Estep)[1:]:
@@ -159,7 +159,9 @@ def angular(s, phi, e,
     rlabel_str = '{} ' + unit;
     rlabels    = np.arange(0.0,maxE,Estep)[1:];
     plt.rgrids(rlabels, labels=map(rlabel_str.format,rlabels),angle=350);
-    if test(kw,'labels'): ax.set_xticklabels(kw['labels']);
+    if test(kw,'labels'):
+        ax.set_xticks(np.pi/180*np.linspace(0,360,len(kw['labels']),endpoint=False));
+        ax.set_xticklabels(kw['labels']);
     if colorbar:
         c=fig.colorbar(surf,pad=0.075);
         c.set_label(clabel);
