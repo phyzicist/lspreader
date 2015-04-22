@@ -163,10 +163,14 @@ def angular(s, phi, e,
         ax.set_xticks(np.pi/180*np.linspace(0,360,len(kw['labels']),endpoint=False));
         ax.set_xticklabels(kw['labels']);
     if colorbar:
-        c=fig.colorbar(surf,pad=0.075);
+        c=fig.colorbar(surf,pad=0.1);
         c.set_label(clabel);
     if test(kw,'ltitle'):
-        plt.title(kw['ltitle'],loc='left',fontdict={'fontsize':28});
+        if len(kw['ltitle']) <= 4:
+            ax.set_title(kw['ltitle'],loc='left',fontdict={'fontsize':28});
+        else:
+            ax.text(np.pi/4+0.145,maxE+Estep*2.5,kw['ltitle'],fontdict={'fontsize':28});
+        #plt.title(kw['ltitle'],loc='left',fontdict={'fontsize':28});
     if test(kw,'rtitle'):
         if '\n' in kw['rtitle']:
             fig.text(0.60,0.875,kw['rtitle'],fontdict={'fontsize':22});

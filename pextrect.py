@@ -25,12 +25,56 @@ import numpy as np;
 import matplotlib.pyplot as plt;
 import cPickle as pickle;
 from docopt import docopt;
-from misc import conv,pastel;
+from misc import conv,pastel,test;
 
 def restrict(x,xlim):
     good = (x >= xlim[0]) & (x <= xlim[1]);
     return x[good];
 
+def pextrect(d,xname,yname,**kw):
+    xlim = kw['xlim'] if test(kw,'xlim') else None;
+    ylim = kw['ylim'] if test(kw,'ylim') else None;
+    x_spacing = kw['x_spacing'] if test(kw,'x_spacing') else 100;
+    y_spacing = kw['y_spacing'] if test(kw,'y_spacing') else 100;
+    xlabel = kw['xlabel'] if test(kw,'xlabel') else xname;
+    ylabel = kw['ylabel'] if test(kw,'ylabel') else yname;
+    x = d[xname];
+    y = d[yname];
+    F = kw['F'] if test(kw,'F') else 1.0;
+    if xlim and not kw['x_no_restrict']:
+        x = restrict(x,xlim);
+    else:
+        xlim = (x.min(), x.max());
+    if ylim and not opts['y_no_restrict']:
+        y = restrict(y,ylim);
+    else:
+        ylim = (y.min(), y.max());
+    s =-d['q']*1e6*F;
+    maxQ = kw['maxQ'] if test(kw,'maxQ') else None;
+    
+    x_bins = np.linspace(xlim[0],xlim[1],x_spacing+1);
+    y_bins = np.linspace(ylim[0],ylim[1],y_spacing+1);
+    
+    X,Y = np.mgrid[ xlim[0] : xlim[1] : x_spacing*1j,
+                    ylim[0] : ylim[1] : y_spacing*1j];
+    S,_,_ = np.histogram2d(x,y,bins=(x_bins,y_bins),weights=s);
+    if test(kw,'normalize'):
+        S /= np.abs(xlim[1]-xlim[0])/x_spacing;
+        S /= np.abs(ylim[1]-ylim[0])/y_spacing;
+    fig = kw['fig'] if test(kw,'fig') else plt.figure(1);
+    ax  = kw['ax'] if test(kw,'ax') else plt.subplot();
+    #plt.xticks(x_bins[::x_spacing/2]);
+    #plt.yticks(y_bins[::y_spacing/2]);
+    plt.xlabel(xlabel);
+    plt.ylabel(ylabel);
+    surf=ax.pcolormesh(X,Y,S,cmap=pastel,vmax=maxQ);
+    c=fig.colorbar(surf,pad=0.075);
+    if test(kw,'clabel'):
+        c.set_label(kw['clabel']);
+    if test(kw,'title'):
+        ax.set_title(kw['title'],fontdict={'size':28});
+    pass;
+    
 def main():
     opts = docopt(__doc__,help=True);
     inname = opts['<input>'];
@@ -39,51 +83,23 @@ def main():
     xname = opts['<x>'];
     yname = opts['<y>'];
     
-    x_spacing = float(opts['--x-bins']);
-    y_spacing = float(opts['--y-bins']);
-
-    x_label = conv(opts['--x-label'],xname);
-    y_label = conv(opts['--y-label'],yname);
-    
-    clabel = opts['--clabel'] if opts['--clabel'] else '$p C$';
-    maxQ = float(opts['--max-Q']) if opts['--max-Q'] else None;
-    F = float(opts['--factor']);
     with open(inname,'r') as f:
-        d = pickle.load(f)
-
-    x = d[xname];
-    y = d[yname];
-    if opts['--xlim'] and not opts['--x-no-restrict']:
-        xlim = eval(opts['--xlim']);
-        x = restrict(x,xlim);
-    else:
-        xlim = (x.min(), x.max());
-
-    if opts['--ylim'] and not opts['--y-no-restrict']:
-        ylim = eval(opts['--ylim']);
-        y = restrict(y,ylim);
-    else:
-        ylim = (y.min(), y.max());
-
-    s =-d['q']*1e6*F;
-    
-    x_bins = np.linspace(xlim[0],xlim[1],x_spacing+1);
-    y_bins = np.linspace(ylim[0],ylim[1],y_spacing+1);
-    
-    X,Y = np.mgrid[ xlim[0] : xlim[1] : x_spacing*1j,
-                    ylim[0] : ylim[1] : y_spacing*1j];
-    S,_,_ = np.histogram2d(x,y,bins=(x_bins,y_bins),weights=s);
-    if opts['--normalize']:
-        S /= np.abs(xlim[1]-xlim[0])/x_spacing;
-        S /= np.abs(ylim[1]-ylim[0])/y_spacing;
-    fig = plt.figure(1);
-    #plt.xticks(x_bins[::x_spacing/2]);
-    #plt.yticks(y_bins[::y_spacing/2]);
-    plt.xlabel(x_label);
-    plt.ylabel(y_label);
-    surf=plt.pcolormesh(X,Y,S,cmap=pastel,vmax=maxQ);
-    c=fig.colorbar(surf,pad=0.075);
-    c.set_label(clabel);
+        d = pickle.load(f);
+    kw = {
+        'xlim':   opts['--xlim'],
+        'ylim':   opts['--ylim'],
+        'xlabel': opts['--x-label'],
+        'ylabel': opts['--y-label'],
+        'x_spacing': float(opts['--x-bins']),
+        'y_spacing': float(opts['--y-bins']),
+        'F': float(opts['--factor']),
+        'maxQ': float(opts['--max-Q']) if opts['--max-Q'] else None,
+        'clabel': opts['--clabel'],
+        'normalize': opts['--normalize'],
+        'fig': None,
+        'ax':  None
+    };
+    pextrect(d,xname,yname,**kw);
     if opts['--title']:
         plt.title(opts['--title'],loc='left',fontdict={'fontsize':28});
     if outname:
