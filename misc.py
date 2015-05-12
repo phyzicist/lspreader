@@ -28,7 +28,7 @@ def readfile(filename,dictlabel='s', dumpfull=False):
     pass;
 
 cmap_min = 0.001;
-def rgbfromhsv(h,s=None,v=None,split=True):
+def rgbfromhsv(h,s=None,v=None,split=True,whitezero=True):
     if  s is None and v is None:
         hsv = h.T;
     elif s is not None and v is not None:
@@ -38,11 +38,17 @@ def rgbfromhsv(h,s=None,v=None,split=True):
     rgb = colors.hsv_to_rgb(hsv);
     rgb=np.array([rgb,rgb]);
     rgb[0,0,:]=1.0;
-    inter = np.linspace(cmap_min, 1.0, rgb.shape[1]);
+    if whitezero:
+        inter = np.linspace(cmap_min, 1.0, rgb.shape[1]);
+    else:
+        inter = np.linspace(0, 1.0, rgb.shape[1]);
     inter = np.array([inter,inter,inter]);
     rgb = np.concatenate(([inter.T],rgb));
-    top = np.array([[[0.0,1.0,1.0]]]*3);
-    rgb = np.concatenate((top,rgb.T),axis=1);
+    if whitezero:
+        top = np.array([[[0.0,1.0,1.0]]]*3);
+        rgb = np.concatenate((top,rgb.T),axis=1);
+    else:
+        rgb = np.concatenate((rgb.T,),axis=1);
     if split:#     r      g      b
         return rgb[0],rgb[1],rgb[2];
     else:
@@ -60,10 +66,12 @@ _pastel_s = np.ones(_pastel_h.shape)*0.6;
 _pastel_v = np.ones(_pastel_h.shape);
 _pastel_hsv = np.array([_pastel_h,_pastel_s,_pastel_v]);
 _pastel_rgb = rgbfromhsv(_pastel_hsv,split=False);
+_pastel_rgb_nozero = rgbfromhsv(_pastel_hsv,split=False,whitezero=False);
 
-pastel      = cmap(_pastel_rgb);
-pastel_b2r  = cmap(rgbfromhsv(
-    np.array([np.linspace(0.725,0.0,9),_pastel_s,_pastel_v])
+pastel        = cmap(_pastel_rgb);
+pastel_nozero = cmap(_pastel_rgb_nozero);
+pastel_b2r    = cmap(rgbfromhsv(
+    np.array([np.linspace(0.0,0.725,9),_pastel_s,_pastel_v])
 ));
 
 def mkstrip(rgb,vmin,vmax,val,
