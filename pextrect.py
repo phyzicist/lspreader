@@ -28,7 +28,6 @@ from docopt import docopt;
 from misc import conv,pastel,test;
 
 def restrict(x,xlim):
-    good = (x >= xlim[0]) & (x <= xlim[1]);
     return x[good];
 
 def pextrect(d,xname,yname,**kw):
@@ -41,15 +40,20 @@ def pextrect(d,xname,yname,**kw):
     x = d[xname];
     y = d[yname];
     F = kw['F'] if test(kw,'F') else 1.0;
-    if xlim and not kw['x_no_restrict']:
-        x = restrict(x,xlim);
+    
+    good = np.ones(len(x)).astype(bool);
+    if xlim and not test(kw,'x_no_restrict'):
+        good &= (x >= xlim[0]) & (x <= xlim[1]);
     else:
         xlim = (x.min(), x.max());
-    if ylim and not opts['y_no_restrict']:
-        y = restrict(y,ylim);
+    if ylim and not test(kw,'y_no_restrict'):
+        good &= (y >= ylim[0]) & (y <= ylim[1]);
     else:
-        ylim = (y.min(), y.max());
-    s =-d['q']*1e6*F;
+        ylim = (x.min(), x.max());
+    s =-d['q'][good]*1e6*F;
+    x = x[good];
+    y = y[good];
+    
     maxQ = kw['maxQ'] if test(kw,'maxQ') else None;
     
     x_bins = np.linspace(xlim[0],xlim[1],x_spacing+1);
@@ -63,8 +67,9 @@ def pextrect(d,xname,yname,**kw):
         S /= np.abs(ylim[1]-ylim[0])/y_spacing;
     fig = kw['fig'] if test(kw,'fig') else plt.figure(1);
     ax  = kw['ax'] if test(kw,'ax') else plt.subplot();
-    #plt.xticks(x_bins[::x_spacing/2]);
-    #plt.yticks(y_bins[::y_spacing/2]);
+    plt.xlim(xlim);
+    plt.ylim(ylim);
+    
     plt.xlabel(xlabel);
     plt.ylabel(ylabel);
     surf=ax.pcolormesh(X,Y,S,cmap=pastel,vmax=maxQ);

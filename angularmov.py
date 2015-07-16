@@ -23,6 +23,7 @@ Options:
   --normalize -n              Normalize the histogram to 1 *eV^-1 rad^-1 .
   --factor=F -f F             Multiply histogram by F. [default: 1.0]
   --polar -p                  Plot polar angles, letting the east direction be forward.
+  --oap=ANGLE -o ANGLE        Set the width angle of the OAP. [default: 49.0]
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
@@ -63,7 +64,7 @@ t=fig.text(0.02,0.05,'t = {:3.2f}e-4 ns'.format(tbins[0]*1e4),
 def animate(ii):
     j,i = ii;
     S,_,_ = np.histogram2d(phi[:i],e[:i],bins=bins,weights=s[:i]);
-    surf.set_array(S[::-1,:-1].ravel());
+    surf.set_array(S[::,:-1].ravel());
     t.set_text('t = {:3.2f}e-4 ns'.format((tbins[j]-mt)*1e4));
     return surf;
 

@@ -21,6 +21,7 @@ Options:
   --normalize -n              Normalize the histogram to 1 *eV^-1 rad^-1 .
   --factor=F -f F             Multiply histogram by F. [default: 1.0]
   --polar -p                  Plot polar angles, letting the east direction be forward.
+  --oap=ANGLE -o ANGLE        Set the width angle of the OAP. [default: 56.6]
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
@@ -81,7 +82,8 @@ def prep(opts):
         'labels':phi_labels,
         'rtitle':opts['--rtitle'],
         'ltitle':opts['--ltitle'],
-        'outname':outname
+        'outname':outname,
+        'oap': float(opts['--oap']) if opts['--oap'] != 'none' else None
     };
     if opts['--normalize']:
         Efactor = kw['max_e']/kw['radial_bins'];
@@ -144,6 +146,7 @@ def angular(s, phi, e,
     clabel = kw['clabel'] if kw['clabel'] else '$pC';
     phi_bins = np.linspace(-np.pi,np.pi,phi_spacing+1);
     E_bins   = np.linspace(0, maxE, E_spacing+1);
+            
     PHI,E = np.mgrid[ -np.pi : np.pi : phi_spacing*1j,
                       0 : maxE : E_spacing*1j];
     S,_,_ = np.histogram2d(phi,e,bins=(phi_bins,E_bins),weights=s);
@@ -159,6 +162,16 @@ def angular(s, phi, e,
     rlabel_str = '{} ' + unit;
     rlabels    = np.arange(0.0,maxE,Estep)[1:];
     plt.rgrids(rlabels, labels=map(rlabel_str.format,rlabels),angle=350);
+    if test(kw,'oap'):
+        oap = kw['oap']/2 * np.pi/180;
+        maxt = oap+np.pi; mint = np.pi-oap;
+        maxr  = maxE*.99;
+        ths=np.linspace(mint, maxt, 20);
+        rs =np.linspace(0,    maxr, 20);
+        c = (0.55,0,0);
+        plt.plot(ths, maxE*.99*np.ones(ths.shape),c=c,ls='--');
+        plt.plot(mint*np.ones(ths.shape), rs,c=c,ls='--');
+        plt.plot(maxt*np.ones(ths.shape), rs,c=c,ls='--');
     if test(kw,'labels'):
         ax.set_xticks(np.pi/180*np.linspace(0,360,len(kw['labels']),endpoint=False));
         ax.set_xticklabels(kw['labels']);

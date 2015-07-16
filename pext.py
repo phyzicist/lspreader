@@ -16,6 +16,7 @@ Options:
   --late-time=TIME -l TIME  Cut out after this time.
   --reverse -r              Reverse Y and Z.
   --massE=ME                Rest energy of the particle.
+  --verbose -v              Print verbose.
 '''
 import lspreader as rd;
 import cPickle as pickle;
@@ -24,8 +25,10 @@ import itertools as itools;
 from docopt import docopt;
 massE = 0.511e6;
 
+
 def calculate2d(x,y,d,reverse=False):
-    r = np.sqrt(d['u'+x]**2+d['u'+y]**2);    
+    r = np.sqrt(d['ux']**2+d['uy']**2+d['uz']**2);
+    #r = np.sqrt(d['u'+x]**2+d['u'+y]**2);    
     d['KE'] = (np.sqrt(r**2+1)-1)*massE;
     if reverse:
         d['phi'] = np.arctan2(d['u'+y],d['u'+x]);
@@ -45,9 +48,11 @@ def calculate3d(d,reverse=False):
         d['phi'] = np.arctan2(d['uy'],d['ux']);
         d['phi_n'] = np.arctan2(d['uz'],d['ux']);
     return d;
-    
+def _vprint(s):
+    print(s);
 def main():
     opts = docopt(__doc__,help=True);
+    vprint = _vprint if opts['--verbose'] else  (lambda s: None);
     outname = opts['<output>']
     names = opts['<names>'];
     coords = {'x':opts['--X'],'y':opts['--Y'],'z':opts['--Z']};
@@ -60,20 +65,23 @@ def main():
         print('reading in {}'.format(name));
         with rd.LspOutput(name) as f:
             d.append(f.get_data());
+    vprint('length of d={}'.format(len(d)));
+    if opts['--verbose']:
+        print("printing d's");
+        for i in d:
+            print(i['t'].shape[0]);
+    d = [ i for i in d if i['t'].shape[0] > 0];
+    vprint('length of d={} after remove empties'.format(len(d)));
     print('cutting out duplicate times');
-    ch = lambda i,j: i[ i['t'] < j['t'][0] ]
-    try:
-        d[:-1] = [ch(i,j) for i,j in zip(d[:-1],d[1:])]
-    except IndexError:
-        #this means that one of the arrays has nothing in it, ie, nothing
-        #exited that plane. Ignore this.
-        pass;
-    #concatenating
+    #            make a mask of times less than the minimum of the next pexts
+    #           only take those in the previous run
+    #only assign up to the last element of d. 
+    d[:-1] = [i[ i['t'] < j['t'].min() ] for i,j in zip(d[:-1],d[1:])]
     d = np.concatenate(d);
+
     if latetime:
         print('cutting out times greater than {}'.format(latetime));
-        good = d['t'] <= latetime;
-        d = d[good];
+        d = d[ d['t'] <= latetime ];
     #turn arrays into dict
     d = {k:d[k] for k in d.dtype.names};
     #calculating based on the number of dimensions.
@@ -84,8 +92,10 @@ def main():
         d = calculate2d(x,y,d,opts['--reverse']);
     elif num_of_coords ==3:
         d = calculate3d(d,opts['--reverse']);
+    elif num_of_coords == 1:
+        raise RuntimeError("not working for 1D yet...");
     else:
-        raise RuntimeError("derp")
+        raise RuntimeError("derp");
     print('outputting');
     with open(outname,"wb") as f:
         pickle.dump(d,f);

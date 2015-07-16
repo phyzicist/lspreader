@@ -12,12 +12,13 @@ Options:
   --Z                         Plot with Z set to the index.
   --index=INDEX -i INDEX      The index that defines the cutplane. [default: 0].
   --half                      Just cut it in half along the specified axis.
-  --T                         Transpose the SP.
+  --T -T                      Transpose the SP.
   --no-log                    Do not log10 the data.
-  --title=TITLE               Set title.
+  --title=TITLE -t TITLE      Set title.
   --highlight=VAL             Highlight a value on the cmap.
-  --high-res                  Use high resolution.
-  --clabel=CLABEL             Set the colorbar label. [default: log10 of electron density (cm$^{-3}$)].
+  --high-res -H               Use high resolution.
+  --clabel=CLABEL -c CLABEL   Set the colorbar label. [default: log10 of electron density (cm$^{-3}$)].
+  --fontsize SIZE -f SIZE     Set the fontsize. [default: 14].
 '''
 
 import numpy as np;
@@ -81,12 +82,14 @@ def main():
     plt.pcolormesh(X, Y, SP,vmin=vmin,vmax=vmax,cmap=cmap);
     plt.xlim(xmin,xmax);
     plt.ylim(ymin,ymax);
-    plt.xlabel('{} ($\mu m$)'.format(xlabel));
-    plt.ylabel('{} ($\mu m$)'.format(ylabel));
+    fontsize = float(opts['--fontsize']);
+    plt.xlabel('{} ($\mu m$)'.format(xlabel),{'fontsize':fontsize});
+    plt.ylabel('{} ($\mu m$)'.format(ylabel),{'fontsize':fontsize});
     c=plt.colorbar();
-    c.set_label(opts['--clabel']);
+    c.set_label(opts['--clabel'],size=fontsize);
+    c.ax.tick_params(labelsize=fontsize-2);
     if opts['--title']:
-        plt.title(opts['--title']);
+        plt.title(opts['--title'],{'fontsize':fontsize+4});
     if outfile:
         if opts['--high-res']:
             plt.savefig(outfile,dpi=1000);
