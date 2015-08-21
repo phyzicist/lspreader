@@ -29,8 +29,8 @@ opts = docopt(__doc__,help=True);
 
 E_0 = float(opts['--E_0']);
 
-ecut = float(opts['--E-cut'])*1e6
-w = float(opts['--W'])
+ecut = float(opts['--E-cut'])*1e6;
+w = float(opts['--W']);
 
 with open(opts['<input>'],'rb') as f:
     d = cPickle.load(f);
@@ -51,10 +51,12 @@ q*=1e-6;
 KE  = sum(-q*KE);
 
 print('total charge: {} {}'.format(sum(q)*1e12,'pC/cm' if opts['--2D'] else 'pC'));
+print("total energy: {} J".format(KE));
 #calculated in SI...
 if opts['--2D']:
     E_laser = w * m.sqrt(m.pi/2) * (c*e_0*E_0**2)/2 * T*1e-2;
 else:
     E_laser = w**2 * (m.pi/2) * (c*e_0*E_0**2)/2 * T;
+print('pulse energy: {} J'.format(E_laser));
 print('efficiency is {}'.format(KE/E_laser));
-print('the pulse energy is {} J'.format(E_laser));
+

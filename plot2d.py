@@ -79,10 +79,13 @@ def main():
         cmap = m.mkstrip_cmap(vmin,vmax,val,[0.6,0.3,0.0]);
     else:
         cmap = m.pastel;
+    ax = plt.subplot(111);
     plt.pcolormesh(X, Y, SP,vmin=vmin,vmax=vmax,cmap=cmap);
     plt.xlim(xmin,xmax);
     plt.ylim(ymin,ymax);
     fontsize = float(opts['--fontsize']);
+    for i in ax.get_xticklabels()+ax.get_yticklabels():
+        i.set_fontsize(fontsize);
     plt.xlabel('{} ($\mu m$)'.format(xlabel),{'fontsize':fontsize});
     plt.ylabel('{} ($\mu m$)'.format(ylabel),{'fontsize':fontsize});
     c=plt.colorbar();
