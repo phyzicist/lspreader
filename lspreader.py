@@ -168,30 +168,30 @@ class LspOutput(object):
         pbytes = (nparams+1)*4;
         frames=[];
         while True:
-            c=self.tell();
-            self.read(1); #python, y u no eof?
-            if self.tell() == c:
+            c=self.file.tell();
+            self.file.read(1); #python, y u no eof?
+            if self.file.tell() == c:
                 break;
-            self.seek(c);
+            self.file.seek(c);
             d=self.get_dict('fii',['t','step','pnum']);
             self.logprint('scanning frame at lsp step {}'.format(d['step']));
-            d['pos']=self.tell();
-            self.seek(d['pnum']*pbytes,1);
+            d['pos']=self.file.tell();
+            self.file.seek(d['pnum']*pbytes,1);
             frames.append(d);
         self.logprint('converting frames');
         for i,d in enumerate(frames):
             N = d['pnum'];
             lt=[('ip','>i4')]+zip(params,['>f4']*nparams);
             dt=np.dtype(lt);
-            self.seek(d['pos']);
+            self.file.seek(d['pos']);
             arr=np.fromfile(self.file,dtype=dt,count=N);
             d['data']=arr;
             del d['pos'];
             self.logprint('done!');
             #checking eof
-            c=self.tell();
-            self.read(1); #python, y u no eof?
-            self.logprint("Do we have eof? {}".format(self.tell() == c));            
+            c=self.file.tell();
+            self.file.read(1); #python, y u no eof?
+            self.logprint("Do we have eof? {}".format(self.file.tell() == c));            
             frames[i] = d;
         return frames;
 
