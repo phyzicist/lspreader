@@ -31,5 +31,5 @@ d=d[uniq];
 keys=np.array([d[s] for s in dims]);
 sortedargs = np.lexsort(keys);
 f[0]['data'] = d[sortedargs];
-#with open(opts['<input>'],'w') as outf:
-#    pickle.dump(f,outf,2);
+with open(opts['<input>'],'w') as outf:
+    pickle.dump(f,outf,2);
