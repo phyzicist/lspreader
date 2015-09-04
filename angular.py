@@ -21,7 +21,7 @@ Options:
   --normalize -n              Normalize the histogram to 1 *eV^-1 rad^-1 .
   --factor=F -f F             Multiply histogram by F. [default: 1.0]
   --polar -p                  Plot polar angles, letting the east direction be forward.
-  --oap=ANGLE -o ANGLE        Set the width angle of the OAP. [default: 56.6]
+  --oap=ANGLE -o ANGLE        Set the width angle of the OAP. [default: 50.47]
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
