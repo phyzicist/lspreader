@@ -73,9 +73,12 @@ pastel_nozero = cmap(_pastel_rgb_nozero);
 pastel_b2r    = cmap(rgbfromhsv(
     np.array([np.linspace(0.0,0.725,9),_pastel_s,_pastel_v])
 ));
-
 def mkstrip(rgb,vmin,vmax,val,
-            strip=[1.0,0.0,0.0]):
+            strip=[1.0,0.0,0.0],log10=False):
+    if log10:
+        val=np.log10(val);
+        vmin=np.log10(vmin);
+        vmax=np.log10(vmax);
     val = (val-vmin)/(vmax-vmin);
     strip = np.array(strip);
     rng = rgb[0,:,0];
@@ -94,6 +97,7 @@ def mkstrip(rgb,vmin,vmax,val,
     #and placing it inside rgb
     return np.concatenate((rgb[:,:i,:],c,rgb[:,i:,:]),axis=1);
 
-mkstrip_cmap = lambda vmin, vmax, val, strip=[1.0,0.0,0.0]: cmap(mkstrip(_pastel_rgb,
-                                                                         vmin, vmax, val,
-                                                                         strip));
+def mkstrip_cmap(vmin, vmax, val, strip=[1.0,0.0,0.0],log10=False):
+    return cmap(
+        mkstrip(_pastel_rgb,vmin, vmax, val,strip,log10=log10)
+    );

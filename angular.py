@@ -22,9 +22,11 @@ Options:
   --factor=F -f F             Multiply histogram by F. [default: 1.0]
   --polar -p                  Plot polar angles, letting the east direction be forward.
   --oap=ANGLE -o ANGLE        Set the width angle of the OAP. [default: 50.47]
+  --log10 -l                  Plot a logarithmic pcolor instead of a linear one.
 '''
 import numpy as np;
 import matplotlib.pyplot as plt;
+import matplotlib
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
@@ -83,7 +85,8 @@ def prep(opts):
         'rtitle':opts['--rtitle'],
         'ltitle':opts['--ltitle'],
         'outname':outname,
-        'oap': float(opts['--oap']) if opts['--oap'] != 'none' else None
+        'oap': float(opts['--oap']) if opts['--oap'] != 'none' else None,
+        'log_q': opts['--log10'],
     };
     if opts['--normalize']:
         Efactor = kw['max_e']/kw['radial_bins'];
@@ -137,6 +140,7 @@ def angular(s, phi, e,
                      make a new axis.
       ltitle      -- Make a plot on the top left.
       rtitle      -- Make a plot on the top right.
+      log_q       -- log10 the charges.
     '''
     phi_spacing = kw['angle_bins'];
     E_spacing =   kw['radial_bins'];    
@@ -152,7 +156,9 @@ def angular(s, phi, e,
     S,_,_ = np.histogram2d(phi,e,bins=(phi_bins,E_bins),weights=s);
     fig = kw['fig'] if test(kw,'fig') else plt.figure(1);
     ax  = kw['ax'] if test(kw,'ax') else plt.subplot(projection='polar',axisbg='white');
-    surf=plt.pcolormesh(PHI,E,S,cmap=pastel,vmax=maxQ);
+    norm = matplotlib.colors.LogNorm() if test(kw,'log_q') else None;
+    
+    surf=plt.pcolormesh(PHI,E,S,norm=norm, cmap=pastel,vmax=maxQ);
     #making radial guides. rgrids only works for plt.polar calls
     full_phi = np.linspace(0.0,2*np.pi,100);
     for i in np.arange(0.0,maxE,Estep)[1:]:
