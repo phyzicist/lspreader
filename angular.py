@@ -92,7 +92,7 @@ def prep(opts):
         Efactor = kw['max_e']/kw['radial_bins'];
         if kw['KeV']:
             Efactor *= 1e-3;
-            kw['clabel'] += ' rad$^{-1}$ KeV$^{-1}$'            
+            kw['clabel'] += ' rad$^{-1}$ MeV$^{-1}$'            
         else:
             kw['clabel'] += ' rad$^{-1}$ MeV$^{-1}$'
         s /= Efactor*2*np.pi/phi_spacing;
