@@ -4,12 +4,20 @@ Reader for LSP output xdr files (.p4's)
 '''
 import xdrlib as xdr;
 import numpy as np;
-import misc as m;
+from misc import test;
 #get basic dtypes
 def get_int(file,N=1):
-    return np.fromfile(file,dtype='>i4',counts=N);
+    ret=np.fromfile(file,dtype='>i4',count=N);
+    if N==1:
+        return ret[0];
+    return ret;
+
 def get_float(file,N=1):
-    return np.fromfile(file,dtype='>f4',counts=N);
+    ret=np.fromfile(file,dtype='>f4',count=N);
+    if N==1:
+        return ret[0];
+    return ret;
+
 def get_str(file):
     l1 = get_int(file);
     l2 = get_int(file);
@@ -30,17 +38,17 @@ def get_list(file,fmt):
     out=[]
     for i in fmt:
         if i == 'i':
-            out.append(get_ints(self.file,1));
+            out.append(get_int(file));
         elif i == 'f' or i == 'd':
-            out.append(get_floats(self.file,1));
+            out.append(get_float(file));
         elif i == 's':
-            out.append(self.get_str());
+            out.append(get_str(file));
         else:
             raise ValueError("Unexpected flag '{}'".format(i));
     return out;
 def get_dict(file,fmt,keys):
     return dict(
-        zip(keys,l), get_list(file,fmt)
+        zip(keys, get_list(file,fmt))
     );
 
 def get_header(file,**kw):
@@ -85,9 +93,9 @@ def get_header(file,**kw):
         header['geometry'] = xdr.get_int();
         #reading quantities
         n = xdr.get_int();
-        header['quantities'] = [self.get_str() for i in range(n)];
+        header['quantities'] = [get_str(file) for i in range(n)];
     else:
-        raise ValueError('Unknown dump_type: {}'.format(self.header['dump_type']));
+        raise ValueError('Unknown dump_type: {}'.format(header['dump_type']));
     return header;
 
 def read_flds(file, header, var=None, vector=True):
@@ -112,9 +120,9 @@ def read_flds(file, header, var=None, vector=True):
     for i in range(header['domains']):
         iR, jR, kR = get_int(file, N=3);
         #getting grid parameters (real coordinates)
-        nI = get_int(file); Ip = get_float(file,count=nI);
-        nJ = get_int(file); Jp = get_float(file,count=nJ);
-        nK = get_int(file); Kp = get_float(file,count=nK);
+        nI = get_int(file); Ip = get_float(file,N=nI);
+        nJ = get_int(file); Jp = get_float(file,N=nJ);
+        nK = get_int(file); Kp = get_float(file,N=nK);
         nAll = nI*nJ*nK;
         #self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
         d={}
@@ -126,14 +134,17 @@ def read_flds(file, header, var=None, vector=True):
                 file.seek(nAll*4*size,1);
             else:
                 #self.logprint('Reading in {}'.format(quantity));
-                d[quantity] = get_float(file,count=nAll*size);
+                d[quantity] = get_float(file,N=nAll*size);
                 if size==3:
                     data=d[quantity].reshape(nAll,size).T;
                     d[quantity+'x'],d[quantity+'y'],d[quantity+'z']= data;
-                    del data;
+                    del data, d[quantity];
         doms.append(d);
     #self.logprint('Done! Stringing together.');
     out = { k : np.concatenate([i[k] for i in doms]) for k in doms[0] };
+    #converting to little endian
+    for k in out:
+        out[k] = out[k].astype('<f4');
     return out;
 def read_sclr(file,header,var):
     return read_flds(file, header, var, False);
@@ -142,13 +153,13 @@ def read(fname,**kw):
     '''reads an lsp output file into an h5 file.'''
     with open(fname,'r') as file:
         header = get_header(file);
-        if test(kw, 'var'):
-            var=[i[0] for i in self.header['quantities']];
+        if not test(kw, 'var'):
+            var=[i[0] for i in header['quantities']];
         else:
             var=kw['var'];
-        if self.header['dump_type'] == 2:
+        if header['dump_type'] == 2:
             d=read_flds(file,header,var);
-        elif self.header['dump_type'] == 3:
+        elif header['dump_type'] == 3:
             d=read_sclr(file,header,var);
         else:
             raise NotImplementedError("Other file types not implemented yet!");
