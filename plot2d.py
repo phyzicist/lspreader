@@ -7,6 +7,8 @@ Usage:
 Options:
   --min=MIN -n MIN            Plot with a minimum MIN [default: 1e16].
   --max=MAX -x MAX            Plot with a minimum MAX [default: 2e23].
+  --xlabel=LABEL              Set the x label on the plot.
+  --ylabel=LABEL              Set the y label on the plot.
   --X                         Plot with X set to the index. Default.
   --Y                         Plot with Y set to the index.
   --Z                         Plot with Z set to the index.
@@ -89,8 +91,14 @@ def main():
     fontsize = float(opts['--fontsize']);
     for i in ax.get_xticklabels()+ax.get_yticklabels():
         i.set_fontsize(fontsize);
-    plt.xlabel('{} ($\mu$m)'.format(xlabel),{'fontsize':fontsize});
-    plt.ylabel('{} ($\mu$m)'.format(ylabel),{'fontsize':fontsize});
+    if not opts['--xlabel']:
+        plt.xlabel('{} ($\mu$m)'.format(xlabel),{'fontsize':fontsize});
+    else:
+        plt.xlabel(opts['--xlabel'],{'fontsize':fontsize});
+    if not opts['--ylabel']:
+        plt.ylabel('{} ($\mu$m)'.format(ylabel),{'fontsize':fontsize});
+    else:
+        plt.ylabel(opts['--ylabel'],{'fontsize':fontsize});
     c=plt.colorbar();
     c.set_label(opts['--clabel'],size=fontsize);
     c.ax.tick_params(labelsize=fontsize-2);
