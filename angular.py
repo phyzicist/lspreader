@@ -18,6 +18,7 @@ Options:
   --e-step=ESTEP              Set the step of grid lines for Energy.
   --high-res -H               Output a high resolution plt.
   --max-q=MAXQ -q MAXQ        Set the maximum for the charge (pcolormesh's vmax value).
+  --min-q=MINQ                Set a minimum charge.
   --normalize -n              Normalize the histogram to 1 *eV^-1 rad^-1 .
   --factor=F -f F             Multiply histogram by F. [default: 1.0]
   --polar -p                  Plot polar angles, letting the east direction be forward.
@@ -30,7 +31,7 @@ import matplotlib
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
-from misc import conv,pastel,pastel_b2r,test;
+from misc import conv,pastel_clear,test;
 
 def prep(opts):
     '''I put this here in order to reuse this'''
@@ -77,6 +78,7 @@ def prep(opts):
         'radial_bins': float(opts['--radial-bins']),
         'max_e': float(opts['--max-e']) if opts['--max-e'] else (1000 if opts['--KeV'] else 4.0),
         'max_q': float(opts['--max-q']) if opts['--max-q'] else None,
+        'min_q': float(opts['--min-q']) if opts['--min-q'] else None,
         'KeV': opts['--KeV'],
         'clabel' : opts['--clabel'],
         'colorbar' : not opts['--no-cbar'],
@@ -146,8 +148,9 @@ def angular(s, phi, e,
     E_spacing =   kw['radial_bins'];    
     maxE  = kw['max_e']  if kw['max_e'] else (1000 if kw['KeV'] else 4.0);
     maxQ  = kw['max_q']  if kw['max_q'] else None;
+    minQ  = kw['min_q']  if kw['min_q'] else None;
     Estep = kw['e_step'] if kw['e_step'] else (250 if kw['KeV'] else 1.0);
-    clabel = kw['clabel'] if kw['clabel'] else '$pC';
+    clabel = kw['clabel'] if kw['clabel'] else '$pC$';
     phi_bins = np.linspace(-np.pi,np.pi,phi_spacing+1);
     E_bins   = np.linspace(0, maxE, E_spacing+1);
             
@@ -158,24 +161,31 @@ def angular(s, phi, e,
     ax  = kw['ax'] if test(kw,'ax') else plt.subplot(projection='polar',axisbg='white');
     norm = matplotlib.colors.LogNorm() if test(kw,'log_q') else None;
     
-    surf=plt.pcolormesh(PHI,E,S,norm=norm, cmap=pastel,vmax=maxQ);
+    surf=plt.pcolormesh(PHI,E,S,norm=norm, cmap=pastel_clear,vmin=minQ,vmax=maxQ);
     #making radial guides. rgrids only works for plt.polar calls
     full_phi = np.linspace(0.0,2*np.pi,100);
     for i in np.arange(0.0,maxE,Estep)[1:]:
         plt.plot(full_phi,np.ones(full_phi.shape)*i,c='gray', lw=1, ls='--');
     ax.set_theta_zero_location('N');
+    ax.patch.set_alpha(0.0);
+    ax.set_axis_bgcolor('red');
+        
     unit = 'KeV' if test(kw,'KeV') else 'MeV';
     rlabel_str = '{} ' + unit;
     rlabels    = np.arange(0.0,maxE,Estep)[1:];
-    plt.rgrids(rlabels, labels=map(rlabel_str.format,rlabels),angle=350);
+    plt.rgrids(rlabels, labels=map(rlabel_str.format,rlabels),angle=45);
     if test(kw,'oap'):
         oap = kw['oap']/2 * np.pi/180;
         maxt = oap+np.pi; mint = np.pi-oap;
         maxr  = maxE*.99;
+        if kw['KeV']:
+            minr=120;
+        else:
+            minr=.12;
         ths=np.linspace(mint, maxt, 20);
-        rs =np.linspace(0,    maxr, 20);
+        rs =np.linspace(minr, maxr, 20);
         c = (0.55,0,0);
-        plt.plot(ths, maxE*.99*np.ones(ths.shape),c=c,ls='--');
+        #plt.plot(ths, maxE*.99*np.ones(ths.shape),c=c,ls='--');
         plt.plot(mint*np.ones(ths.shape), rs,c=c,ls='--');
         plt.plot(maxt*np.ones(ths.shape), rs,c=c,ls='--');
     if test(kw,'labels'):
@@ -189,7 +199,6 @@ def angular(s, phi, e,
             ax.set_title(kw['ltitle'],loc='left',fontdict={'fontsize':28});
         else:
             ax.text(np.pi/4+0.145,maxE+Estep*2.5,kw['ltitle'],fontdict={'fontsize':28});
-        #plt.title(kw['ltitle'],loc='left',fontdict={'fontsize':28});
     if test(kw,'rtitle'):
         if '\n' in kw['rtitle']:
             fig.text(0.60,0.875,kw['rtitle'],fontdict={'fontsize':22});
