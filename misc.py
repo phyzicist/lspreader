@@ -5,6 +5,7 @@ Miscellaneous definitions.
 import cPickle as pickle;
 import numpy as np;
 from matplotlib import colors;
+import colormaps
 
 def conv(arg,default=None,func=None):
     if func:
@@ -36,6 +37,7 @@ def rgbfromhsv(h,s=None,v=None):
     else:
         raise ValueError("Usage of rgbfromhsv is incorrect.");
     return colors.hsv_to_rgb(hsv);
+
 def whiteoutzero(rgb,alpha=False):
     rgb=np.array([rgb,rgb]);
     rgb[0,0,:]=1.0;
@@ -53,6 +55,10 @@ def whiteoutzero(rgb,alpha=False):
         return rgb;
     pass;
 
+def listtoclear(l):
+    rgb,a = whiteoutzero(l,alpha=True);
+    return cmap(rgb,a=a);
+
 def cmap(r,g=None,b=None,a=None):
     if g is None and b is None:
         r,g,b = r;
@@ -60,8 +66,6 @@ def cmap(r,g=None,b=None,a=None):
     if a is not None:
         cd.update({'alpha':a});
     return colors.LinearSegmentedColormap('cmap', cd, 1024);
-def list2cmap(l):
-    l=np.array(l);
     
 _p_h = np.linspace(0.725, 0.0, 9);
 _p_s = np.ones(_p_h.shape)*0.6;
@@ -69,14 +73,20 @@ _p_v = np.ones(_p_h.shape);
 _p_hsv = np.array([_p_h,_p_s,_p_v]);
 _p_rgb= rgbfromhsv(_p_hsv);
 _p_rgb,_p_a =whiteoutzero(_p_rgb,alpha=True);
-#_p_rgb_nozero = rgbfromhsv(_p_hsv,split=False,whitezero=False);
+
+_pl_rgb_r,_pl_a_r = whiteoutzero(colormaps._plasma_data[::-1],alpha=True);
+
+_vi_rgb,_vi_a = whiteoutzero(colormaps._viridis_data,alpha=True);
+_vi_rgb_r,_vi_a_r = whiteoutzero(colormaps._viridis_data[::-2],alpha=True);
 
 pastel        = cmap(_p_rgb);
 pastel_clear  = cmap(_p_rgb,a=_p_a);
-#pastel_nozero = cmap(_pastel_rgb_nozero);
-#pastel_b2r    = cmap(rgbfromhsv(
-#    np.array([np.linspace(0.0,0.725,9),_pastel_s,_pastel_v])
-#));
+plasma_clear  =  listtoclear(colormaps._plasma_data);
+plasma_clear_r = listtoclear(colormaps._plasma_data[::-1]);
+magma_clear  =  listtoclear(colormaps._magma_data);
+magma_clear_r = listtoclear(colormaps._magma_data[::-1]);
+viridis_clear =  listtoclear(colormaps._viridis_data);
+viridis_clear_r =listtoclear(colormaps._viridis_data[::-1]);
 def mkstrip(rgb,vmin,vmax,val,
             strip=[1.0,0.0,0.0],log10=False):
     if log10:
