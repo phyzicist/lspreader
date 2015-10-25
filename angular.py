@@ -35,7 +35,7 @@ import matplotlib.patheffects as pe;
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
-from misc import conv,pastel_clear,plasma_clear,viridis_clear,test;
+from misc import conv,pastel_clear,plasma_clear,viridis_clear,magma_clear_r,test;
 
 def prep(opts):
     '''I put this here in order to reuse this'''
@@ -97,6 +97,8 @@ def prep(opts):
         kw['cmap'] = viridis_clear;
     elif opts['--cmap'] == 'plasma':
         kw['cmap'] = plasma_clear;
+    elif opts['--cmap'] == 'magma_r':
+        kw['cmap'] = magma_clear_r;
     else:
         kw['cmap'] = pastel_clear;
     if opts['--normalize']:
@@ -197,9 +199,9 @@ def angular(s, phi, e,
     if test(kw, 'rgridopts'):
         ropts = kw['rgridopts'];
         if test(ropts, 'unit'):
-            runit = 'KeV' if test(kw,'KeV') else 'MeV';
+            runit = ropts['unit'];
         else:
-            runit = None;
+            runit = 'KeV' if test(kw,'KeV') else 'MeV';
         if test(ropts, 'angle'):
             rangle = ropts['angle'];
         else:
