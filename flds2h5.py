@@ -26,12 +26,12 @@ opts=docopt(__doc__,help=True);
 def _print(s):
     print(s);
 vprint = _print if opts['--verbose'] else lambda s:None;
-
 if len(opts['<var>']) == 0:
     opts['<var>'] = False;
 b=time();
 d=rd.read(opts['<input>'],var=opts['<var>']);
 vprint("time to read file {}: {}".format(opts['<input>'],time()-b));
+vprint("read: {}".format(",".join(d.keys())));
 if opts['--sort']:
     vprint("sorting using {}".format(opts['--sort']));
     sortargs = np.load(opts['--sort']);
