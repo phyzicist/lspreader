@@ -5,8 +5,10 @@ Usage:
   ./plotcut.py [options] [(--X | --Y | --Z)] [(--half|--index=INDEX)] <infile> [<outfile>]
 
 Options:
-  --min=MIN -n MIN            Plot with a minimum MIN [default: 16.0].
-  --max=MAX -x MAX            Plot with a minimum MAX [default: 23.5].
+  --min=MIN -n MIN            Plot with a minimum MIN [default: 1e16].
+  --max=MAX -x MAX            Plot with a minimum MAX [default: 2e23].
+  --xlabel=LABEL              Set the x label on the plot.
+  --ylabel=LABEL              Set the y label on the plot.
   --X                         Plot with X set to the index. Default.
   --Y                         Plot with Y set to the index.
   --Z                         Plot with Z set to the index.
@@ -17,7 +19,7 @@ Options:
   --title=TITLE -t TITLE      Set title.
   --highlight=VAL             Highlight a value on the cmap.
   --high-res -H               Use high resolution.
-  --clabel=CLABEL -c CLABEL   Set the colorbar label. [default: log10 of electron density (cm$^{-3}$)].
+  --clabel=CLABEL -c CLABEL   Set the colorbar label. [default: electron density (cm$^{-3}$)].
   --fontsize SIZE -f SIZE     Set the fontsize. [default: 14].
 '''
 
@@ -61,7 +63,10 @@ def main():
         y = f[ylabel];
     #other preparation
     SP = np.nan_to_num(SP);
-    if not opts['--no-log']: SP = np.log10(SP+0.1);
+    if opts['--no-log']:
+        norm=None;
+    else:
+        norm=matplotlib.colors.LogNorm();
     if opts['--T']:
         SP=SP.T;
         t=x; x=y; y=t;
@@ -76,18 +81,24 @@ def main():
     Y,X = np.mgrid[ ymin:ymax:len(SP[:,0])*1j,xmin:xmax:len(SP[0,:])*1j];
     if opts['--highlight']:
         val = float(opts['--highlight']);
-        cmap = m.mkstrip_cmap(vmin,vmax,val,[0.6,0.3,0.0]);
+        cmap = m.mkstrip_cmap(vmin,vmax,val,[0.6,0.3,0.0],log10=not opts['--no-log']);
     else:
         cmap = m.pastel;
     ax = plt.subplot(111);
-    plt.pcolormesh(X, Y, SP,vmin=vmin,vmax=vmax,cmap=cmap);
+    plt.pcolormesh(X, Y, SP,norm=norm,vmin=vmin,vmax=vmax,cmap=cmap);
     plt.xlim(xmin,xmax);
     plt.ylim(ymin,ymax);
     fontsize = float(opts['--fontsize']);
     for i in ax.get_xticklabels()+ax.get_yticklabels():
         i.set_fontsize(fontsize);
-    plt.xlabel('{} ($\mu m$)'.format(xlabel),{'fontsize':fontsize});
-    plt.ylabel('{} ($\mu m$)'.format(ylabel),{'fontsize':fontsize});
+    if not opts['--xlabel']:
+        plt.xlabel('{} ($\mu$m)'.format(xlabel),{'fontsize':fontsize});
+    else:
+        plt.xlabel(opts['--xlabel'],{'fontsize':fontsize});
+    if not opts['--ylabel']:
+        plt.ylabel('{} ($\mu$m)'.format(ylabel),{'fontsize':fontsize});
+    else:
+        plt.ylabel(opts['--ylabel'],{'fontsize':fontsize});
     c=plt.colorbar();
     c.set_label(opts['--clabel'],size=fontsize);
     c.ax.tick_params(labelsize=fontsize-2);
