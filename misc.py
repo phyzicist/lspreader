@@ -5,6 +5,7 @@ Miscellaneous definitions.
 import cPickle as pickle;
 import numpy as np;
 from matplotlib import colors;
+import colormaps
 
 def conv(arg,default=None,func=None):
     if func:
@@ -28,51 +29,64 @@ def readfile(filename,dictlabel='s', dumpfull=False):
     pass;
 
 cmap_min = 0.001;
-def rgbfromhsv(h,s=None,v=None,split=True,whitezero=True):
+def rgbfromhsv(h,s=None,v=None):
     if  s is None and v is None:
         hsv = h.T;
     elif s is not None and v is not None:
         hsv = np.array([h,s,v]).T;
     else:
         raise ValueError("Usage of rgbfromhsv is incorrect.");
-    rgb = colors.hsv_to_rgb(hsv);
+    return colors.hsv_to_rgb(hsv);
+
+def whiteoutzero(rgb,alpha=False):
     rgb=np.array([rgb,rgb]);
     rgb[0,0,:]=1.0;
-    if whitezero:
-        inter = np.linspace(cmap_min, 1.0, rgb.shape[1]);
-    else:
-        inter = np.linspace(0, 1.0, rgb.shape[1]);
+    inter = np.linspace(cmap_min, 1.0, rgb.shape[1]);
     inter = np.array([inter,inter,inter]);
     rgb = np.concatenate(([inter.T],rgb));
-    if whitezero:
-        top = np.array([[[0.0,1.0,1.0]]]*3);
-        rgb = np.concatenate((top,rgb.T),axis=1);
-    else:
-        rgb = np.concatenate((rgb.T,),axis=1);
-    if split:#     r      g      b
-        return rgb[0],rgb[1],rgb[2];
+    top = np.array([[[0.0,1.0,1.0]]]*3);
+    rgb = np.concatenate((top,rgb.T),axis=1);
+    if alpha:
+        a = np.copy(rgb[0]);
+        a[:,1:]=1.0;
+        a[0,:]=0.0;
+        return rgb,a;
     else:
         return rgb;
     pass;
 
-def cmap(r,g=None,b=None):
-    if not g and not b:
+def listtoclear(l):
+    rgb,a = whiteoutzero(l,alpha=True);
+    return cmap(rgb,a=a);
+
+def cmap(r,g=None,b=None,a=None):
+    if g is None and b is None:
         r,g,b = r;
     cd = {'red':r,'green':g,'blue':b};
+    if a is not None:
+        cd.update({'alpha':a});
     return colors.LinearSegmentedColormap('cmap', cd, 1024);
+    
+_p_h = np.linspace(0.725, 0.0, 9);
+_p_s = np.ones(_p_h.shape)*0.6;
+_p_v = np.ones(_p_h.shape);
+_p_hsv = np.array([_p_h,_p_s,_p_v]);
+_p_rgb= rgbfromhsv(_p_hsv);
+_p_rgb,_p_a =whiteoutzero(_p_rgb,alpha=True);
 
-_pastel_h = np.linspace(0.725, 0.0, 9);
-_pastel_s = np.ones(_pastel_h.shape)*0.6;
-_pastel_v = np.ones(_pastel_h.shape);
-_pastel_hsv = np.array([_pastel_h,_pastel_s,_pastel_v]);
-_pastel_rgb = rgbfromhsv(_pastel_hsv,split=False);
-_pastel_rgb_nozero = rgbfromhsv(_pastel_hsv,split=False,whitezero=False);
+_pl_rgb_r,_pl_a_r = whiteoutzero(colormaps._plasma_data[::-1],alpha=True);
 
-pastel        = cmap(_pastel_rgb);
-pastel_nozero = cmap(_pastel_rgb_nozero);
-pastel_b2r    = cmap(rgbfromhsv(
-    np.array([np.linspace(0.0,0.725,9),_pastel_s,_pastel_v])
-));
+_vi_rgb,_vi_a = whiteoutzero(colormaps._viridis_data,alpha=True);
+_vi_rgb_r,_vi_a_r = whiteoutzero(colormaps._viridis_data[::-2],alpha=True);
+
+pastel        = cmap(_p_rgb);
+pastel_clear  = cmap(_p_rgb,a=_p_a);
+plasma_clear  =  listtoclear(colormaps._plasma_data);
+plasma_clear_r = listtoclear(colormaps._plasma_data[::-1]);
+magma_clear  =  listtoclear(colormaps._magma_data);
+magma_clear_r = listtoclear(colormaps._magma_data[::-1]);
+viridis_clear =  listtoclear(colormaps._viridis_data);
+viridis_clear_r =listtoclear(colormaps._viridis_data[::-1]);
 def mkstrip(rgb,vmin,vmax,val,
             strip=[1.0,0.0,0.0],log10=False):
     if log10:
