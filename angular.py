@@ -206,9 +206,19 @@ def angular(s, phi, e,
             rangle = ropts['angle'];
         else:
             rangle = 45;
+        if test(ropts, 'size'):
+            rsize = ropts['size'];
+        else:
+            rsize = 10.5;
+        if test(ropts, 'invert'):
+            c1,c2 = "w","black";
+        else:
+            c1,c2 = "black","w";
     else:
         runit = 'KeV' if test(kw,'KeV') else 'MeV';
         rangle = 45;
+        rsize = 10.5;
+        c1,c2 = "black","w";
     rlabel_str = '{} ' + runit;
     rlabels    = np.arange(0.0,maxE,Estep)[1:];
     _,ts=plt.rgrids(rlabels,
@@ -216,10 +226,11 @@ def angular(s, phi, e,
                     angle=rangle);
     for t in ts:
         t.set_path_effects([
-            pe.Stroke(linewidth=1, foreground="w"),
+            pe.Stroke(linewidth=1.5, foreground=c2),
             pe.Normal()
         ]);
-        t.set_size(10.5);
+        t.set_size(rsize);
+        t.set_color(c1);
     if test(kw,'oap'):
         oap = kw['oap']/2 * np.pi/180;
         maxt = oap+np.pi; mint = np.pi-oap;
@@ -230,7 +241,7 @@ def angular(s, phi, e,
             minr=.12;
         ths=np.linspace(mint, maxt, 20);
         rs =np.linspace(minr, maxr, 20);
-        mkline = lambda a,b: plt.plot(a,b,c=(1,0,0),ls='-',alpha=0.5);
+        mkline = lambda a,b: plt.plot(a,b,c=(0.2,0.2,0.2),ls='-',alpha=0.5);
         mkline(ths, np.ones(ths.shape)*minr)
         mkline(mint*np.ones(ths.shape), rs);
         mkline(maxt*np.ones(ths.shape), rs);
