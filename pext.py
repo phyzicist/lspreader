@@ -18,7 +18,7 @@ Options:
   --massE=ME                Rest energy of the particle.
   --verbose -v              Print verbose.
 '''
-import lspreader as rd;
+import lspreader2 as rd;
 import cPickle as pickle;
 import numpy as np;
 import itertools as itools;
@@ -63,8 +63,9 @@ def main():
     d=[];
     for name in names:
         print('reading in {}'.format(name));
-        with rd.LspOutput(name) as f:
-            d.append(f.get_data());
+        d.append(rd.read(name));
+        #with rd.LspOutput(name) as f:
+        #    d.append(f.get_data());
     vprint('length of d={}'.format(len(d)));
     if opts['--verbose']:
         print("printing d's");
