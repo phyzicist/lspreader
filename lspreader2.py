@@ -87,13 +87,13 @@ def get_header(file,**kw):
         else:
             raise NotImplementedError('Not implemented for these number of parameters:{}.'.format(n));
         header['params'] = [
-            (i[0],i[1]) for i in zip(labels,units,flags) if i[2]
+            (label,unit) for (label,unit,flag) in zip(labels,units,flags) if flag
         ];
     elif header['dump_type'] == 10:
         #this is a particle extraction file:
-        header['geometry'] = xdr.get_int();
+        header['geometry'] = get_int(file);
         #reading quantities
-        n = xdr.get_int();
+        n = get_int(file);
         header['quantities'] = [get_str(file) for i in range(n)];
     else:
         raise ValueError('Unknown dump_type: {}'.format(header['dump_type']));
@@ -150,6 +150,7 @@ def read_flds(file, header, var=None, vector=True):
 def read_sclr(file,header,var):
     return read_flds(file, header, var, False);
 
+
 def iseof(file):
     c = file.tell();
     file.read(1);
@@ -177,6 +178,21 @@ def read_movie(file, header):
         del frames[i]['pos'];
     return frames;
 
+def read_pext(file, header):
+    nparams = len(header['quantities']);
+    params = ['t','q','x','y','z','ux','uy','uz'];
+    if nparams == 9:
+        params+=['E'];
+    elif nparams == 11:
+        params+=['xi','yi','zi'];
+    elif nparams == 12:
+        params+=['E','xi','yi','zi'];
+    #it's just floats here on out
+    dt = list(zip(params, ['>f4']*len(params)));
+    out = np.fromfile(file,dtype=dt,count=-1);
+    return out;
+
+
 def read(fname,**kw):
     '''reads an lsp output file into an h5 file.'''
     with open(fname,'r') as file:
@@ -185,10 +201,14 @@ def read(fname,**kw):
             var=[i[0] for i in header['quantities']];
         else:
             var=kw['var'];
-        if header['dump_type'] == 2:
-            d=read_flds(file,header,var);
-        elif header['dump_type'] == 3:
-            d=read_sclr(file,header,var);
-        else:
+        readers = {#overkill
+            2: lambda: read_flds(file,header,var),
+            3: lambda: read_sclr(file,header,var),
+            10:lambda: read_pext(file,header)
+        };
+        try:
+            d = readers[header['dump_type']]();
+        except KeyError:
+            d = None;
             raise NotImplementedError("Other file types not implemented yet!");
     return d;
