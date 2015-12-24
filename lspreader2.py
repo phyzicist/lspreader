@@ -69,14 +69,15 @@ def get_header(file,**kw):
         header['quantities'] = zip(names,units);
     elif header['dump_type'] == 6:
         #this is a particle movie file
-        d = xdr.get_dict('iiii',
-                         ['geometry','sflagsx','sflagsy','sflagsz']);
+        d = xdr.get_dict(
+            'iiii',
+            ['geometry','sflagsx','sflagsy','sflagsz']);
         header.update(d);
         #reading params
         n = get_int(file);
         flags=[bool(get_int(file)) for i in range(n)];
         units=[get_str(file) for i in range(n)];
-        labels=['q','x','y','z','ux','uy','uz','E']
+        labels=['q','x','y','z','ux','uy','uz','E'];
         if n == 8:
             pass;
         elif n == 7:
@@ -149,6 +150,34 @@ def read_flds(file, header, var=None, vector=True):
 def read_sclr(file,header,var):
     return read_flds(file, header, var, False);
 
+
+def iseof(file):
+    c = file.tell();
+    file.read(1);
+    if file.tell() == c:
+        return True;
+    file.seek(c);
+    
+def read_movie(file, header):
+    params,_  = zip(*header['params']);
+    nparams = len(params);
+    pbytes = (nparams+1)*4;
+    frames=[];
+    pos0 = file.tell(); 
+    while not iseof(file):
+        d=get_dict('fii',['t','step','pnum']);
+        d['pos']=file.tell();
+        file.seek(d['pnum']*pbytes,1);
+        frames.append(d);
+    for i,d in enumerate(frames):
+        N = d['pnum'];
+        lt=[('ip','>i4')]+zip(params,['>f4']*nparams);
+        file.seek(d['pos']);
+        arr=np.fromfile(file,dtype=np.dtype(lt),count=N);
+        frames[i].update({'data':arr});
+        del frames[i]['pos'];
+    return frames;
+
 def read_pext(file, header):
     nparams = len(header['quantities']);
     params = ['t','q','x','y','z','ux','uy','uz'];
@@ -162,6 +191,7 @@ def read_pext(file, header):
     dt = list(zip(params, ['>f4']*len(params)));
     out = np.fromfile(file,dtype=dt,count=-1);
     return out;
+
 
 def read(fname,**kw):
     '''reads an lsp output file into an h5 file.'''
