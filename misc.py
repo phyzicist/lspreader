@@ -27,7 +27,20 @@ def readfile(filename,dictlabel='s', dumpfull=False):
         errstr='Unknown pickle type "{}" loaded from file "{}".'.format(s,filename);
         raise IOError(errstr);
     pass;
+def dump_pickle(name, obj):
+    with open(name,"w") as f:
+        pickle.dump(obj,f,2);
+    pass;
 
+def mkvprint(opts):
+    def vprint(s):
+        print s:
+    if opts['--verbose']:
+        return vprint;
+    else:
+        return lambda s: None;
+
+#colormap stuff
 cmap_min = 0.001;
 def rgbfromhsv(h,s=None,v=None):
     if  s is None and v is None:
