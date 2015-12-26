@@ -34,7 +34,7 @@ def dump_pickle(name, obj):
 
 def mkvprint(opts):
     def vprint(s):
-        print s:
+        print(s);
     if opts['--verbose']:
         return vprint;
     else:

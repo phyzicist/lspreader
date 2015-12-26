@@ -11,7 +11,7 @@ Options:
   --size -s               Output the size of the header in bytes.
 '''
 
-import lspreader as rd;
+import lspreader2 as rd;
 import cPickle;
 import numpy as np;
 import matplotlib.pyplot as plt;
@@ -23,8 +23,8 @@ from time import time;
 opts=docopt(__doc__,help=True);
 verbose = opts['--verbose'];
 name = opts['<input>'];
-with rd.LspOutput(name, verbose=verbose, prefix=name) as f:
-    h=f.header;
-    if opts['--size']:
-        print('size:{}'.format(f.file.tell()));
-print(h);
+h = rd.get_header(opts['<input>'],size=opts['--size']);
+if opts['--size']:
+    print("size:{}".format(h[1]));
+else:
+    print(h);
