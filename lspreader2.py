@@ -54,7 +54,15 @@ def get_dict(file,fmt,keys):
 def get_header(file,**kw):
     '''gets the header for the .p4 file, note that this
        Advanced the file position to the end of the header.
+       
+       Returns the size of the header, and the size of the header, if the header keyword is true.
     '''
+    if type(file) == str:
+        #if called with a filename, recall with opened file.
+        with open(file,'r') as f:
+            return get_header(f,**kw);
+    if test(kw, "size"):
+        size = file.tell();
     header = get_dict(
         file,'iiss',
         ['dump_type','dversion', 'title','revision']);
@@ -97,6 +105,8 @@ def get_header(file,**kw):
         header['quantities'] = [get_str(file) for i in range(n)];
     else:
         raise ValueError('Unknown dump_type: {}'.format(header['dump_type']));
+    if test(kw,'size'):
+        return header, file.tell()-size;
     return header;
 
 def read_flds(file, header, var=None, vector=True):
