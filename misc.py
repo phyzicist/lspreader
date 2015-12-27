@@ -31,6 +31,8 @@ def dump_pickle(name, obj):
     with open(name,"w") as f:
         pickle.dump(obj,f,2);
     pass;
+def chunks(l,n):
+    return [l[x:x+n] for x in xrange(0, len(l), n)];
 
 def mkvprint(opts):
     def vprint(s):
