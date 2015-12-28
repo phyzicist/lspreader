@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+USAGE="usage: ./pmovie-prep [-h] <pmovie-dir> [<lspreader-dir>]"
+while getopts ':h' opt; do
+      case $opt in
+          h)
+              echo "Script to prepare pmovies for trajectories."
+              echo
+              echo $USAGE
+              exit 0
+              ;;
+          \?)
+              echo "Invalid option: $OPTARG">&2
+              exit 1
+              ;;
+      esac
+done
+
+DEST=$( [ -n "$1" ] && echo $1)
+[ -z "$DEST" ] && echo $USAGE && exit 1;
+RDDIR=$( [ -n "$2" ]  && echo $2 || echo ".." )
+cp $RDDIR/pmovie-reader/* $RDDIR/lspreader2.py misc.py colormaps.py pmov.py $DEST
+
