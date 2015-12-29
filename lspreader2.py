@@ -6,15 +6,17 @@ import xdrlib as xdr;
 import numpy as np;
 from misc import test;
 #get basic dtypes
-def get_int(file,N=1):
+def get_int(file,N=1,forcearray=False):
+    # If forcearray is True, the output will always be a numpy array.
     ret=np.fromfile(file,dtype='>i4',count=N);
-    if N==1:
+    if N==1 and not forcearray:
         return ret[0];
     return ret;
 
-def get_float(file,N=1):
+def get_float(file,N=1,forcearray=False):
+    # If forcearray is True, the output will always be a numpy array.
     ret=np.fromfile(file,dtype='>f4',count=N);
-    if N==1:
+    if N==1 and not forcearray:
         return ret[0];
     return ret;
 
@@ -194,21 +196,28 @@ def read_flds2(fname, flds=None):
         flds_set = set(flds);
     
         doms = [];
+        doms2 = [];
         for i in range(header['domains']): # Iterate over domains
             #print "Domain: " + str(i + 1) + " of " + str(header['domains'])
             iR, jR, kR = get_int(file, N=3)
             #getting grid parameters (real coordinates)
             nI = get_int(file)
-            Ip = get_float(file,N=nI)
+            Ip = get_float(file,N=nI,forcearray=True)
             nJ = get_int(file)
-            Jp = get_float(file,N=nJ)
+            Jp = get_float(file,N=nJ,forcearray=True)
             nK = get_int(file)
-            Kp = get_float(file,N=nK)
+            Kp = get_float(file,N=nK,forcearray=True)
             nAll = nI*nJ*nK
             #self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
             d={}
+            d2 = {}
             #print('Making points.')
             #the way meshgrid works, it has to be in this order.
+            d2['Ip'] = Ip
+            #d['Jp'] = Jp
+            d2['Jp'] = Jp
+            d2['Kp'] = Kp
+
             d['y'], d['z'], d['x'] = np.vstack(np.meshgrid(Jp,Kp,Ip)).reshape(3,-1);
             for quantity in qs:
                 if quantity not in flds_set: # Skip file cursor past unwanted fields/quantities
@@ -218,14 +227,18 @@ def read_flds2(fname, flds=None):
                     d[quantity] = get_float(file,N=nAll*size)
                     data=d[quantity].reshape(nAll,size).T
                     d[quantity+'x'],d[quantity+'y'],d[quantity+'z']= data
+                    d2[quantity+'x'] = d[quantity+'x'].reshape(nI,nJ,nK)
+                    d2[quantity+'y'] = d[quantity+'y'].reshape(nI,nJ,nK)
+                    d2[quantity+'z'] = d[quantity+'z'].reshape(nI,nJ,nK)
                     del data, d[quantity]
             doms.append(d)
+            doms2.append(d2)
     print 'Done! Stringing together.'
     out = { k : np.concatenate([i[k] for i in doms]) for k in doms[0] }
     #converting to little endian
     for k in out:
         out[k] = out[k].astype('<f4')
-    return out, header, doms
+    return out, header, doms2
 
 
 def read_sclr(file,header,var):
