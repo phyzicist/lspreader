@@ -227,10 +227,14 @@ def read_flds2(fname, flds=None):
                     d[quantity] = get_float(file,N=nAll*size)
                     data=d[quantity].reshape(nAll,size).T
                     d[quantity+'x'],d[quantity+'y'],d[quantity+'z']= data
-                    d2[quantity+'x'] = d[quantity+'x'].reshape(nI,nJ,nK)
-                    d2[quantity+'y'] = d[quantity+'y'].reshape(nI,nJ,nK)
-                    d2[quantity+'z'] = d[quantity+'z'].reshape(nI,nJ,nK)
+                    d2[quantity+'x'] = d[quantity+'x'].reshape(nK,nJ,nI) # CHECK THE ORDER!!!
+                    d2[quantity+'y'] = d[quantity+'y'].reshape(nK,nJ,nI)
+                    d2[quantity+'z'] = d[quantity+'z'].reshape(nK,nJ,nI)
                     del data, d[quantity]
+            
+            d2['x']=d['x'].reshape(nK,nJ,nI)
+            d2['y']=d['y'].reshape(nK,nJ,nI)
+            d2['z']=d['z'].reshape(nK,nJ,nI)
             doms.append(d)
             doms2.append(d2)
     print 'Done! Stringing together.'
