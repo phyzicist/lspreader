@@ -14,7 +14,7 @@ import numpy as np
 
 fn = r"C:\Users\Scott\Documents\temp\lsp laser test fields\flds2090.p4"
 
-doms2, header = rd.read_flds3(fn, flds=['E','B'])
+doms2, header = rd.read_flds2(fn, flds=['E','B'])
 
 fld, xgv, zgv = rd.stitch2D(doms2,'Ex')
 fld_min, fld_max = -np.abs(fld).max(), np.abs(fld).max()
