@@ -2,9 +2,10 @@
 Reader for LSP output xdr files (.p4's)
 
 '''
-import xdrlib as xdr;
-import numpy as np;
-from misc import test;
+import xdrlib as xdr
+import numpy as np
+from misc import test
+
 #get basic dtypes
 def get_int(file,N=1,forcearray=False):
     # If forcearray is True, the output will always be a numpy array.
