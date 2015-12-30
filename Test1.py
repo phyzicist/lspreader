@@ -33,6 +33,21 @@ for i in range(1,48):
 
 z_min, z_max = -np.abs(z).max(), np.abs(z).max()
 
+zgv = zZ[:,0]
+xgv = zX[0,:]
+x,y = np.meshgrid(xgv,zgv)
+
+plt.figure(1)
+plt.clf() # Clear the figure
+ax = plt.subplot(111)
+ax.pcolorfast(xgv*1e3,zgv*1e3,z,cmap='RdBu', vmin=z_min, vmax=z_max)
+ax.set_xlabel('X')
+ax.set_ylabel('Z')
+ax.set_title('Ex')
+#plt.axis('equal')
+
+plt.figure(2)
+plt.clf() # Clear the figure
 ax = plt.subplot(4, 1, 1)
 #ax.pcolorfast(x, y, z, cmap='RdBu', vmin=z_min, vmax=z_max)
 ax.pcolorfast(z, cmap='RdBu', vmin=z_min, vmax=z_max)
