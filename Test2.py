@@ -5,7 +5,7 @@ Created on Mon Dec 28 15:30:36 2015
 @author: Scott
 """
 
-# A test of the lspreader
+# A test of the lspreader. Specifically, reading in the second
 
 #import h5py
 import lspreader2 as rd

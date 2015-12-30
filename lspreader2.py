@@ -161,7 +161,7 @@ def read_flds(file, header, var=None, vector=True):
         out[k] = out[k].astype('<f4');
     return out;
 
-def read_flds3(fname, flds=None):
+def read_flds2(fname, flds=None):
     # Re-written by Scott to be more python-syntax oriented. Reads fields files only (not scalar files).
     # Inputs:
     #   fname: a file path (string) for a fields .p4 file
@@ -174,8 +174,10 @@ def read_flds3(fname, flds=None):
     #   2015-02-29  Wrapped up the function such that it takes in the filename
     #               Changed file open argument to 'rb' rather than 'r' for compatibility with linux and windows binary file reads
     #   2015-12-30  Spun off this function, read_flds3, from read_flds2. Got rid of legacy read-in of data X, Y, Z
+    #               Renamed this function read_flds2 to avoid extraneous version jumping.
     # Issues:
     #   * Unknown if this function will work for 3D field dumps. Specifically, the order of the reshaping of fields may be wrong.
+    
     with open(fname, 'rb') as file:
         # Read in the header, and check that this dump is a vector fields file
         size = 3;    
@@ -304,10 +306,6 @@ def read(fname,**kw):
             raise NotImplementedError("Other file types not implemented yet!");
     return d;
 
-def pseek(file):
-    # Print out the current file seek position ("file.tell")
-    print "Current file seek position: " + str(file.tell())
-
 def stitch2D(doms, fld_id):
     # Stitch a simple 2D lsp sim together, where we have N domains all built up along the Z dimension, and a flat Y dimension.
     # Such as with Chris' 2D sims of the back-reflected plasma
@@ -332,3 +330,7 @@ def stitch2D(doms, fld_id):
     zgv = zgv_cat
     fld = fld_cat
     return fld, xgv, zgv
+
+def pseek(file):
+    # Print out the current file seek position ("file.tell")
+    print "Current file seek position: " + str(file.tell())
