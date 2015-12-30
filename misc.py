@@ -6,6 +6,7 @@ import cPickle as pickle;
 import numpy as np;
 from matplotlib import colors;
 import colormaps
+import h5py as h5;
 
 def conv(arg,default=None,func=None):
     if func:
@@ -47,6 +48,8 @@ def dump_pickle(name, obj):
     pass;
 
 def chunks(l,n):
+    #http://stackoverflow.com/a/3226719
+    #...not that this is hard to understand.
     return [l[x:x+n] for x in xrange(0, len(l), n)];
 
 def mkvprint(opts):
@@ -56,6 +59,22 @@ def mkvprint(opts):
         return vprint;
     else:
         return lambda s: None;
+ 
+def h5w(file,d,group='/',compression=None):
+    if type(file) == str:
+        with h5.File(file, 'a') as f:
+            h5w(f,d,group=group,
+                compression=compression);
+            return;
+    if group not in file:
+        file.create_group(group);
+    group = file[group];
+    for k in d:
+        if k in group: del group[k];
+        group.create_dataset(
+            k, data=d[k],
+            compression=compression)
+    pass;
 
 #colormap stuff
 cmap_min = 0.001;
