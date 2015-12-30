@@ -15,22 +15,37 @@ def conv(arg,default=None,func=None):
 
 test = lambda d,k: k in d and d[k];
 
-def readfile(filename,dictlabel='s', dumpfull=False):
-    with open(filename,'r') as f:
-        d=pickle.load(f);
-    if type(d) == np.ndarray or dumpfull:
-        return d;
-    elif type(d) == dict:
-        return d[dictlabel];
+def readfile(filename, stuff='s',
+             dumpfull=False,hdf=False,
+             group=None):
+    if hdf:
+        with h5.File(filename, "rb") as f:
+            if group:
+                g=f[group];
+            else:
+                g=f;
+            if not stuff or dumpfull:
+                d={l:g[l] for l in g.keys()};
+            elif type(stuff) == str:
+                d = g[stuff];
+            else:
+                d={l:g[l] for l in stuff};
     else:
-        s = str(type(d));
-        errstr='Unknown pickle type "{}" loaded from file "{}".'.format(s,filename);
-        raise IOError(errstr);
-    pass;
+        with open(filename, "rb") as f:
+            d=pickle.load(f);
+        if not stuff or dumpfull:
+            pass
+        elif type(stuff) == str:
+            d = d[stuff];
+        else:
+            d={l:d[l] for l in stuff};
+    return d;
+
 def dump_pickle(name, obj):
-    with open(name,"w") as f:
+    with open(name,"wb") as f:
         pickle.dump(obj,f,2);
     pass;
+
 def chunks(l,n):
     return [l[x:x+n] for x in xrange(0, len(l), n)];
 
