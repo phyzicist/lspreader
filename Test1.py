@@ -14,19 +14,24 @@ import numpy as np
 
 fn = r"C:\Users\Scott\Documents\temp\lsp laser test fields\flds2090.p4"
 
-data, header, doms2 = rd.read_flds2(fn, flds=['E','B'])
+data, header, doms2 = rd.read_flds3(fn, flds=['E','B'])
 
 z = np.squeeze(doms2[0]['Ex'])
 zX = np.squeeze(doms2[0]['x'])
 zY = np.squeeze(doms2[0]['y'])
 zZ = np.squeeze(doms2[0]['z'])
+xgv2 = doms2[0]['xgv']
+ygv2 = doms2[0]['ygv']
+zgv2 = doms2[0]['zgv']
 
-for i in range(1,48):
+for i in range(1,header['domains']):
     z_tmp = np.squeeze(doms2[i]['Ex'])[1:,:]
     zX_tmp = np.squeeze(doms2[i]['x'])[1:,:]
     zY_tmp = np.squeeze(doms2[i]['y'])[1:,:]
     zZ_tmp = np.squeeze(doms2[i]['z'])[1:,:]
     z = np.concatenate((z,z_tmp),0)
+    zgv2 = np.concatenate((zgv2,doms2[i]['zgv'][1:]),0)
+
     zX = np.concatenate((zX,zX_tmp),0)
     zY = np.concatenate((zY,zY_tmp),0)
     zZ = np.concatenate((zZ,zZ_tmp),0)
