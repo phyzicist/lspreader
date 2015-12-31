@@ -20,17 +20,17 @@ def readfile(filename, stuff='s',
              dumpfull=False,hdf=False,
              group=None):
     if hdf:
-        with h5.File(filename, "rb") as f:
+        with h5.File(filename, "r") as f:
             if group:
                 g=f[group];
             else:
                 g=f;
             if not stuff or dumpfull:
-                d={l:g[l] for l in g.keys()};
+                d={l:np.array(g[l]) for l in g.keys()};
             elif type(stuff) == str:
-                d = g[stuff];
+                d = np.array(g[stuff]);
             else:
-                d={l:g[l] for l in stuff};
+                d={l:np.array(g[l]) for l in stuff};
     else:
         with open(filename, "rb") as f:
             d=pickle.load(f);
