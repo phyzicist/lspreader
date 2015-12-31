@@ -60,12 +60,13 @@ Options:
   --yres=XRES                 Set the resolution along the y direction [default: 100].
   --zres=XRES                 Set the resolution along the z direction [default: 100].
   --permute -p                Swap the order of axes for 2D data.
-  --hdf5[=GROUP] -H [GROUP]   Read an hdf5 file at the given group. If there
+  --hdf=GROUP -H GROUP        Read an hdf5 file at the given group. If there
                               is no supplied argument, read at the root.
   --gen-samples -G            Instead of interpolating, generate a sample file
                               and output to <output>.
   --sample=S -s S             Load the sample file S and use these indices to sample
                               the input file to create a interpolated file.
+  --zip -z                    Compress for hdf5.
 '''
 
 import lspreader2 as rd;
@@ -76,7 +77,7 @@ from scipy.spatial import cKDTree;
 from scipy.interpolate.interpnd import _ndim_coords_from_arrays,NDInterpolatorBase;
 from docopt import docopt;
 from time import time;
-from misc import h5w, readfile, mkvprint;
+from misc import h5w, readfile, mkvprint, dump_pickle;
 
 def nearest_indices(xs, XS):
     '''
@@ -120,14 +121,13 @@ def simple_nearest_indices(xs,res):
     XS = tuple(np.meshgrid(*XS,indexing='ij'));
     if type(xs) != tuple:
         xs = tuple(xs);
-    return nearest_indices(xs,s,XS);
+    return nearest_indices(xs,XS);
     
 def handle_dims(opts):
     '''
     Script option handling.
     '''
-    use = [];
-    res = [];
+    use,res = [],[];
     if opts['--X']:
         use.append('x');
         res.append(int(opts['--xres']));
@@ -159,6 +159,8 @@ var = opts['<var>'];
 readvars = list(var);
 if readvars:
     readvars+=dims;
+if opts['--hdf']==True:#we don't pass an argument.
+    opts['--hdf']='/';
 d = readfile(opts['<input>'],stuff=readvars,
              group=opts['--hdf'],hdf=opts['--hdf']);
 if opts['--gen-samples']:
@@ -168,14 +170,14 @@ if opts['--gen-samples']:
     exit(1);
 
 if opts['--sample']:
-    xs, i = read_file(opts['--sample'], dumpfull=True);
+    i,xs = readfile(opts['--sample'], dumpfull=True);
 else:
     xs = tuple([d[l] for l in dims]);
     i = simple_nearest_indices(xs,res);
 
 did = {v:d[v][i] for v in var};
 #Has _D_ been _I_nterpolate_D_?  Yes it DID.
-did.update({xs[l]:l for l in dims});
+did.update({l:x for l,x in zip(dims,xs)});
 #get it?
 if opts['--hdf']:
     #alright, I'll stop.
