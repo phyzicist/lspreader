@@ -18,7 +18,7 @@ times = f['times'][...]
 fns = f['filenames'][...]
 xgv = f['xgv'][...]*1e4
 zgv = f['zgv'][...]*1e4
-Ex = f['Ez'][...]
+Ez = f['Ez'][...]
 
 ix = np.argsort(times)
 
@@ -26,19 +26,40 @@ dx = xgv[1] - xgv[0]
 dz = zgv[1] - zgv[0]
 dt = times[ix[10]] - times[ix[9]]
 
-Imap = np.zeros((Ex.shape[1],Ex.shape[2]))
+# Some basic calculations
+c = 3e8 # Speed of light in m/s
+wl = 0.8e-6 # Wavelength in m
+fr_fund = c/wl # Frequency of the fundamental, in Hz
+
+freqHz = np.fft.rfftfreq(len(times), d = dt/1e9) # Frequencies in Hz, for upcoming real FFT
+freq = freqHz/fr_fund # Frequencies in units of the fundamental
+
+Imap = np.zeros((Ez.shape[1],Ez.shape[2]))
+FTmap1 = np.zeros((Ez.shape[1],Ez.shape[2]))
+FTmap2 = np.zeros((Ez.shape[1],Ez.shape[2]))
+
+map1_condit = np.logical_and(freq > 0.9, freq < 1.1)
+map2_condit = np.logical_and(freq > 0.3, freq < 0.7)
+
 for i in range(len(zgv)):
     for j in range(len(xgv)):
-        tline = Ex[:,i,j]
+        tline = Ez[:,i,j]
+        
+        # Make a simple intensity map        
         esum = np.sum(tline**2)
         Imap[i,j] = esum
-
-fld = f['Ez'][ix[91]]
-
+        
+        # Make a more complex ftransform map
+        time_ft = np.fft.rfft(tline[ix])
+        pwr = np.abs(time_ft)**2
+        FTmap1[i,j] = np.mean(pwr[map1_condit])
+        FTmap2[i,j] = np.mean(pwr[map2_condit])
+        
 f.close()
 
 
 # Make some plots
+# Time-integrated intensity map (a.u.)
 plt.figure(1)
 plt.clf() # Clear the figure
 ax = plt.subplot(111)
@@ -46,3 +67,23 @@ ax.pcolorfast(xgv,zgv,Imap, cmap='gray')
 ax.set_xlabel('X (um)')
 ax.set_ylabel('Z (um)')
 ax.set_title('Integrated power from Ez (a.u.)')
+X,Z = np.meshgrid(xgv,zgv)
+plt.contour(X,Z,Imap)
+
+# Fourier transform subset map 1
+plt.figure(2)
+plt.clf() # Clear the figure
+ax = plt.subplot(111)
+ax.pcolorfast(xgv,zgv,FTmap1, cmap='gray')
+ax.set_xlabel('X (um)')
+ax.set_ylabel('Z (um)')
+ax.set_title('Fundamental map (0.9 to 1.1 x fundamental) (a.u.)')
+
+# Fourier transform subset map 2
+plt.figure(3)
+plt.clf() # Clear the figure
+ax = plt.subplot(111)
+ax.pcolorfast(xgv,zgv,FTmap2, cmap='gray')
+ax.set_xlabel('X (um)')
+ax.set_ylabel('Z (um)')
+ax.set_title('1/2-omega map (0.3 to 0.7 x fundamental) (a.u.)')
