@@ -5,13 +5,13 @@ the name based on the frame step.
 
 Usage:
     pmov.py [options] <input> [<output>]
-    pmov.py [options] --hdf5 <input> <output>
+    pmov.py [options] --hdf <input> <output>
 
 Options:
     --help -h      Output this help.
     --sort -s      Sort the pmovies by IPP. Implies --unique.
     --unique -u    Take unique particles.
-    --hdf5         Output to hdf5 instead of to a pickle file.
+    --hdf -H       Output to hdf5 instead of to a pickle file.
                    The group will be based on the step.
     --zip -z       Use compression for hdf5.
 '''
@@ -34,7 +34,7 @@ for i,frame in enumerate(frames):
     frame['data']=d;
     frames[i]=frame;
 
-if opts['--hdf5']:
+if opts['--hdf']:
     if opts['--zip']:
         c = 'lzf';
     else:
