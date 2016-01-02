@@ -205,7 +205,7 @@ def read_pext(file, header):
 
 def read(fname,**kw):
     '''reads an lsp output file into an h5 file.'''
-    with open(fname,'r') as file:
+    with open(fname,'rb') as file:
         header = get_header(file);
         if not test(kw, 'var'):
             var=[i[0] for i in header['quantities']];

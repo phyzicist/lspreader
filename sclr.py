@@ -37,6 +37,7 @@ import matplotlib.pyplot as plt;
 import scipy.interpolate as interp;
 from docopt import docopt;
 from time import time;
+print("!!!WARNING: This script will be deprecated soon, within the next week.");
 
 def logprint(s):
     global verbose;

@@ -12,7 +12,7 @@ Options:
   --help -h              Show this help.
   --verbose -v           Turn on verbosity.
   --sort=SFILE -s SFILE  Sort using the given index file.
-  --hdf5                 Output to hdf instead of pickle.
+  --hdf -H               Output to hdf instead of pickle.
   --zip -z               Compress for hdf5.
 '''
 
@@ -37,8 +37,8 @@ if opts['--sort']:
     for k in d:
         d[k] = d[k][sortargs];
 vprint("outputting to {}".format(opts['<output>']));
-if opts['--hdf5']:
+if opts['--hdf']:
     h5w(opts['<output>'], d,
-        compression='lzf' if opts['--lzf'] else None);
+        compression='lzf' if opts['--zip'] else None);
 else:
     dump_pickle(opts['<output>'], d);
