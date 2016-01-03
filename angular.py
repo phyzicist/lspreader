@@ -35,7 +35,8 @@ import matplotlib.patheffects as pe;
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
-from misc import conv,pastel_clear,plasma_clear,viridis_clear,magma_clear_r,test;
+from misc import conv, test;
+from cmaps import pastel_clear,plasma_clear,viridis_clear,magma_clear_r;
 
 def prep(opts):
     '''I put this here in order to reuse this'''
