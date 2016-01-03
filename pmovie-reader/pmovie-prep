@@ -35,7 +35,7 @@ done
 DEST=$( [ -n "$1" ] && echo $1)
 [ -z "$DEST" ] && echo $USAGE && exit 1;
 RDDIR=$( [ -n "$2" ]  && echo $2 || echo ".." )
-cp $RDDIR/lspreader2.py misc.py colormaps.py pmov.py $DEST
+cp $RDDIR/lspreader2.py $RDDIR/misc.py $RDDIR/colormaps.py $RDDIR/pmov.py $DEST
 cp $RDDIR/pmovie-reader/* ./
 
 ./pmovie-pbsgen.py --server=$SERVER --nodes=$NODES $DEST
@@ -46,4 +46,5 @@ echo "#!/bin/bash
 for i in $PBSES; do
     qsub \$i;
 done;
-"
+">pmovreader.sh
+chmod +x pmovreader.sh
