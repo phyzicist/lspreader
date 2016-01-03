@@ -27,7 +27,7 @@ ls = call(('ls',))
 # filtering for pmovies
 pmovierx=re.compile(r"pmovie([0-9]+).p4$");
 lspmovies = [(s,int(pmovierx.match(s).group(1))) for s in ls if pmovierx.match(s)];
-drx = re.compie(r"pmovie([0-9]+).p4.d$");
+drx = re.compile(r"pmovie([0-9]+).p4.d$");
 lsds = [int(drx.match(s).group(1)) for s in ls if drx.match(s)];
 #O(N^2), although N is only ~2000, we can do better.
 lspmovies = [i for i in lspmovies if i[1] not in lsds];

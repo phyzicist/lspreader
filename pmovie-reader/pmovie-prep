@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-USAGE="usage: ./pmovie-prep [-h] <pmovie-dir> [<lspreader-dir>]"
-while getopts ':h' opt; do
+USAGE="Copies pmovie reading scripts and makes pbs files. Makes the files in the working directory.
+
+usage: ./pmovie-prep [-h -n <numberofnodes> -s <server>] <pmovie-dir> [<reader-dir>]"
+NODES=1
+SERVER="ramses"
+while getopts ':hn:s:' opt; do
       case $opt in
           h)
               echo "Script to prepare pmovies for trajectories."
@@ -8,8 +12,21 @@ while getopts ':h' opt; do
               echo $USAGE
               exit 0
               ;;
+          n)
+              NODES=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+          s)
+              SERVER=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+              
           \?)
               echo "Invalid option: $OPTARG">&2
+              exit 1
+              ;;
+          :)
+              echo "Option -$OPTARG requires an argument.">&2
               exit 1
               ;;
       esac
@@ -18,5 +35,15 @@ done
 DEST=$( [ -n "$1" ] && echo $1)
 [ -z "$DEST" ] && echo $USAGE && exit 1;
 RDDIR=$( [ -n "$2" ]  && echo $2 || echo ".." )
-cp $RDDIR/pmovie-reader/* $RDDIR/lspreader2.py misc.py colormaps.py pmov.py $DEST
+cp $RDDIR/lspreader2.py misc.py colormaps.py pmov.py $DEST
+cp $RDDIR/pmovie-reader/* ./
 
+./pmovie-pbsgen.py --server=$SERVER --nodes=$NODES $DEST
+PBSES=$(ls | grep .pbs)
+#generating the reader script. Calling it unleashes the hounds.
+echo "#!/bin/bash
+
+for i in $PBSES; do
+    qsub \$i;
+done;
+"
