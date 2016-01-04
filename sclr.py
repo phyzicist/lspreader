@@ -30,7 +30,7 @@ Options:
   --permute -p            Swap the order of axes for 2D data.
 '''
 
-import lspreader as rd;
+import lspreader_old as rd;
 import cPickle;
 import numpy as np;
 import matplotlib.pyplot as plt;

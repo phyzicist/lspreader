@@ -18,7 +18,7 @@ Options:
   --massE=ME                Rest energy of the particle.
   --verbose -v              Print verbose.
 '''
-import lspreader2 as rd;
+import lspreader as rd;
 import cPickle as pickle;
 import numpy as np;
 import itertools as itools;

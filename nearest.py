@@ -69,7 +69,7 @@ Options:
   --zip -z                    Compress for hdf5.
 '''
 
-import lspreader2 as rd;
+import lspreader as rd;
 import cPickle;
 import numpy as np;
 import matplotlib.pyplot as plt;

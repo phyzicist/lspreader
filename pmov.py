@@ -15,7 +15,7 @@ Options:
                    The group will be based on the step.
     --zip -z       Use compression for hdf5.
 '''
-import lspreader2 as rd;
+import lspreader as rd;
 from misc import dump_pickle, h5w;
 from docopt import docopt;
 

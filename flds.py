@@ -16,7 +16,7 @@ Options:
   --zip -z               Compress for hdf5.
 '''
 
-import lspreader2 as rd;
+import lspreader as rd;
 from docopt import docopt;
 from time import time;
 import numpy as np;
