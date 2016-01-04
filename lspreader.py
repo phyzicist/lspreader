@@ -230,11 +230,11 @@ def read(fname,**kw):
             header = get_header(file);
         
         vprint = kw['vprint'] if test(kw, 'vprint') else lambda s: None;
-        
-        if not test(kw, 'var') and 2 <= header['dump_type'] <= 3 :
-            var=[i[0] for i in header['quantities']];
-        else:
-            var=kw['var'];
+        if 2 <= header['dump_type'] <= 3 :
+            if not test(kw, 'var'):
+                var=[i[0] for i in header['quantities']];
+            else:
+                var=kw['var'];
         readers = {
             2: lambda: read_flds(file,header,var, vprint),
             3: lambda: read_sclr(file,header,var, vprint),
