@@ -78,7 +78,7 @@ def get_header(file,**kw):
         header['quantities'] = zip(names,units);
     elif header['dump_type'] == 6:
         #this is a particle movie file
-        d = get_dict(
+        d = get_dict(file,
             'iiii',
             ['geometry','sflagsx','sflagsy','sflagsz']);
         header.update(d);
