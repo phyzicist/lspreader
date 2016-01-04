@@ -55,7 +55,8 @@ def get_header(file,**kw):
     '''gets the header for the .p4 file, note that this
        Advanced the file position to the end of the header.
        
-       Returns the size of the header, and the size of the header, if the header keyword is true.
+       Returns the size of the header, and the size of the header,
+       if the header keyword is true.
     '''
     if type(file) == str:
         #if called with a filename, recall with opened file.
@@ -109,7 +110,10 @@ def get_header(file,**kw):
         return header, file.tell()-size;
     return header;
 
-def read_flds(file, header, var=None, vector=True):
+def read_flds(file, header, var, vprint, vector=True,):
+    '''
+    Read a flds file. Do not call directly
+    '''
     if vector:
         size=3;
         readin = set();
@@ -121,11 +125,6 @@ def read_flds(file, header, var=None, vector=True):
     else:
         size=1;
         readin = set(var);
-    if not var:
-        var = header;
-        header = get_header(file);
-        if header['dump_type'] != 2 or header['dump_type'] != 3:
-            print("warning: reading something that doesn't look like a flds or sclr as such!");
     doms = [];
     qs = [i[0] for i in header['quantities']];
     for i in range(header['domains']):
@@ -135,31 +134,30 @@ def read_flds(file, header, var=None, vector=True):
         nJ = get_int(file); Jp = get_float(file,N=nJ);
         nK = get_int(file); Kp = get_float(file,N=nK);
         nAll = nI*nJ*nK;
-        #self.logprint('Dimensions are {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
+        vprint('reading domain with dimensions {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
         d={}
-        #self.logprint('Making points.');
-        #the way meshgrid works, it has to be in this order.
-        d['y'], d['z'], d['x'] = np.vstack(np.meshgrid(Jp,Kp,Ip)).reshape(3,-1);
+        d['x'], d['y'], d['z'] = np.vstack(np.meshgrid(Ip,Jp,Kp,indexing='ij')).reshape(3,-1);
         for quantity in qs:
             if quantity not in readin:
+                vprint('skipping {}'.format(quantity));
                 file.seek(nAll*4*size,1);
             else:
-                #self.logprint('Reading in {}'.format(quantity));
+                vprint('reading {}'.format(quantity));
                 d[quantity] = get_float(file,N=nAll*size);
                 if size==3:
-                    data=d[quantity].reshape(nAll,size).T;
+                    data=d[quantity].reshape(nAll,3).T;
                     d[quantity+'x'],d[quantity+'y'],d[quantity+'z']= data;
                     del data, d[quantity];
         doms.append(d);
-    #self.logprint('Done! Stringing together.');
-    out = { k : np.concatenate([i[k] for i in doms]) for k in doms[0] };
-    #converting to little endian
+    vprint('Stringing domains together.');
+    out = { k : np.concatenate([d[k] for d in doms]) for k in doms[0] };
+    vprint('Converting to little-endian');
     for k in out:
         out[k] = out[k].astype('<f4');
     return out;
-def read_sclr(file,header,var):
-    return read_flds(file, header, var, False);
 
+def read_sclr(file,header,var, vprint):
+    return read_flds(file, header, var, vprint, False);
 
 def iseof(file):
     c = file.tell();
@@ -202,20 +200,48 @@ def read_pext(file, header):
     out = np.fromfile(file,dtype=dt,count=-1);
     return out;
 
-
 def read(fname,**kw):
-    '''reads an lsp output file into an h5 file.'''
+    '''
+    Reads an lsp output file and returns a raw dump of data,
+    sectioned into quantities either as an dictionary or a typed numpy array.
+
+    Parameters:
+    ----------
+
+    fname: filename of thing to read
+    
+    Keyword Arguments:
+    -----------------
+
+    var:      List of variables to read from a fields or scalar file.
+    vprint:   Verbose printer. Used in scripts
+    override: (type, start) => A tuple of a dump type and a place to start
+              in the passed file, useful to attempting to read semicorrupted
+              files.
+    '''
     with open(fname,'rb') as file:
-        header = get_header(file);
-        if not test(kw, 'var'):
+        if test(kw,'override'):
+            dump, start = kw['override'];
+            file.seek(start);
+            header = {'dump_type': dump};
+            if not test(kw, 'var') and 2 <= header['dump_type'] <= 3 :
+                raise ValueError("If you want to force to read as a scalar, you need to supply the quantities")
+        else:
+            header = get_header(file);
+        
+        vprint = kw['vprint'] if test(kw, 'vprint') else lambda s: None;
+        
+        if not test(kw, 'var') and 2 <= header['dump_type'] <= 3 :
             var=[i[0] for i in header['quantities']];
         else:
             var=kw['var'];
-        readers = {#overkill
-            2: lambda: read_flds(file,header,var),
-            3: lambda: read_sclr(file,header,var),
+        readers = {
+            2: lambda: read_flds(file,header,var, vprint),
+            3: lambda: read_sclr(file,header,var, vprint),
+            6: lambda: read_movie(file, header),
             10:lambda: read_pext(file,header)
         };
+        
         try:
             d = readers[header['dump_type']]();
         except KeyError:
