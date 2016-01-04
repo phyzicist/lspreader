@@ -39,7 +39,7 @@ cp $RDDIR/lspreader2.py $RDDIR/misc.py $RDDIR/colormaps.py $RDDIR/pmov.py $DEST
 cp $RDDIR/pmovie-reader/* $RDDIR/misc.py ./
 
 ./pmovie-pbsgen.py --server=$SERVER --nodes=$NODES $DEST
-PBSES=$(ls | grep .pbs)
+PBSES=$(ls | grep 'pmovie-conv.*.pbs$')
 #generating the reader script. Calling it unleashes the hounds.
 echo "#!/bin/bash
 
