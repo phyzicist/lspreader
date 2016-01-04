@@ -173,7 +173,7 @@ def read_movie(file, header):
     frames=[];
     pos0 = file.tell(); 
     while not iseof(file):
-        d=get_dict('fii',['t','step','pnum']);
+        d=get_dict(file, 'fii',['t','step','pnum']);
         d['pos']=file.tell();
         file.seek(d['pnum']*pbytes,1);
         frames.append(d);
