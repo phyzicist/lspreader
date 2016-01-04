@@ -70,7 +70,10 @@ def h5w(file,d,group='/',compression=None):
     group = file[group];
     for k in d:
         if k in group: del group[k];
+        if type(d[k]) != np.ndarray:
+            cmp = None;
+        else:
+            cmp = compression;
         group.create_dataset(
-            k, data=d[k],
-            compression=compression)
+            k, data=d[k],  compression=cmp)
     pass;

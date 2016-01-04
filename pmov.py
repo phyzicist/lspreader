@@ -14,26 +14,33 @@ Options:
     --hdf -H       Output to hdf5 instead of to a pickle file.
                    The group will be based on the step.
     --zip -z       Use compression for hdf5.
+    --verbose -v   Be verbose.
 '''
 import lspreader as rd;
-from misc import dump_pickle, h5w;
+import h5py as h5;
+from misc import dump_pickle, h5w, mkvprint
 from docopt import docopt;
 import numpy as np;
 
 opts = docopt(__doc__,help=True);
+vprint = mkvprint(opts);
+
 frames=rd.read(opts['<input>']);
 if opts['--sort']: opts['--unique']=True;
 
-for i,frame in enumerate(frames):
-    d = frame['data'];
-    if opts['--unique']:
-        _,uniq = np.unique(d[['xi','yi','zi']]);
-        d = d[uniq];
-    if opts['--sort']:
-        sortedargs = np.lexsort([d['xi'],d['yi'],d['zi']])
-        d = d[sortedargs];
-    frame['data']=d;
-    frames[i]=frame;
+if opts['--unique']:
+    vprint("taking unique entries and sorting...");
+    for i,frame in enumerate(frames):
+        d = frame['data'];
+        if opts['--unique']:
+            _,uniq = np.unique(d[['xi','yi','zi']],return_index=True);
+            d = d[uniq];
+        if opts['--sort']:
+            sortedargs = np.lexsort([d['xi'],d['yi'],d['zi']])
+            d = d[sortedargs];
+        frame['data']=d;
+        frames[i]=frame;
+    vprint("done");
 
 if opts['--hdf']:
     if opts['--zip']:
@@ -43,8 +50,7 @@ if opts['--hdf']:
     with h5.File(opts['<output>'],'a') as f:
         for frame in frames:
             group=str(frame['step']);
-            h5w(f, frame,
-                group=group, compression=c);
+            h5w(f, frame, group=group, compression=c);
 else:
     if not opts['<output>']:
         for frame in frames:
