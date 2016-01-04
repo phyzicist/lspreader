@@ -45,17 +45,17 @@ def h5fields2D(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], f
         # Pre-allocate the HDF5 arrays
         _, xgv, zgv = rd.stitch2D(doms, fld_ids[0]) # Extract the interesting fields and stitch together for a template
        
-        f.create_dataset('times', (nfiles,), compression='gzip', dtype='float32')
-        f.create_dataset('xgv', compression='gzip', data = xgv)
-        f.create_dataset('zgv', compression='gzip', data = zgv)
+        f.create_dataset('times', (nfiles,), compression='gzip', compression_opts=4, dtype='float32')
+        f.create_dataset('xgv', compression='gzip', compression_opts=4, data = xgv)
+        f.create_dataset('zgv', compression='gzip', compression_opts=4, data = zgv)
         f.create_dataset('filenames', data = fns) # A bit overkill to store the full filenames, but who cares? Space is not too bad.
         for k in fld_ids:
-            f.create_dataset(k,(nfiles,len(zgv),len(xgv)), compression='gzip', dtype='float32')
+            f.create_dataset(k,(nfiles,len(zgv),len(xgv)), compression='gzip', compression_opts=4, dtype='float32')
         
         # Read in all the data and fill up the HDF5 file
         for i in range(nfiles): # Iterate over the files
             fn = fns[i]
-            doms, header = rd.read_flds2(fn, flds=['E','B'])
+            doms, header = rd.read_flds2(fn, flds=flds)
             f['times'][i] = header['timestamp']
             for fld_id in fld_ids: # Iterate over the requested fields, stitching then adding them to HDF5 file
                 fld, xgv, zgv = rd.stitch2D(doms, fld_id)
