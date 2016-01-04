@@ -20,10 +20,11 @@ from misc import chunks;
 from pprint import pprint;
 
 opts = docopt(__doc__,help=True);
+workdir = opts['<workdir>'];
 
 def call(cmd):
     return subprocess.check_output(cmd).split('\n');
-ls = call(('ls',))
+ls = call(('ls',workdir))
 # filtering for pmovies
 pmovierx=re.compile(r"pmovie([0-9]+).p4$");
 lspmovies = [(s,int(pmovierx.match(s).group(1))) for s in ls if pmovierx.match(s)];
@@ -59,9 +60,8 @@ pbses = chunks(filesstr, filespernode);
 #if len(filesstr)%subdivs > 0:  filesperproc += 1;
 #pbses=chunks(filesstr, filesperproc);
 
-workdir = opts['<workdir>'];
-postfmt = '{{0:{}}}'.format(len(str(nodes)));
 
+postfmt = '{{0:{}}}'.format(len(str(nodes)));
 #this is the header
 template='''
 #PBS -l walltime={hours}:{mins}:00
