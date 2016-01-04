@@ -4,7 +4,9 @@ Reader for LSP output xdr files (.p4's)
 '''
 import xdrlib as xdr
 import numpy as np
-from misc import test
+
+# Define a basic function for checking (and get rid of misc.py dependency)
+test = lambda d,k: k in d and d[k];
 
 #get basic dtypes
 def get_int(file,N=1,forcearray=False):
