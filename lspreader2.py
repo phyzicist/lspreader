@@ -79,7 +79,7 @@ def get_header(file,**kw):
         n = get_int(file);
         names=[get_str(file) for i in range(n)];
         units=[get_str(file) for i in range(n)];
-        print "Now I'm done reading units!"
+        #print "Now I'm done reading units!"
         header['quantities'] = zip(names,units);
     elif header['dump_type'] == 6:
         #this is a particle movie file
@@ -189,7 +189,8 @@ def read_flds2(fname, flds=None):
         if header['dump_type'] != 2:
             raise TypeError("Invalid fields file: Dump_type of header is not 2, indicating this is something other than a fields file.")
         else:
-            print "Dump type correct for fields file!"
+            #print "Dump type correct for fields file!"
+            pass
             
         # Check that the requested field variables are available in this file (if any is not, abort.)
         qs = [i[0] for i in header['quantities']];
@@ -199,7 +200,7 @@ def read_flds2(fname, flds=None):
             for fld in flds:
                 if qs.count(fld) < 1:
                     raise ValueError("Invalid field request: Field '" + fld + "' is not a stored quantity in this file.")
-        print "All requested fields are available! Reading domains."
+        #print "All requested fields are available! Reading domains."
         
         flds_set = set(flds) # A python set can be an easier type than a list when comparing elements
     
