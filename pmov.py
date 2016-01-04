@@ -18,6 +18,7 @@ Options:
 import lspreader as rd;
 from misc import dump_pickle, h5w;
 from docopt import docopt;
+import numpy as np;
 
 opts = docopt(__doc__,help=True);
 frames=rd.read(opts['<input>']);
