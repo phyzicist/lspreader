@@ -27,10 +27,10 @@ for i,frame in enumerate(frames):
     d = frame['data'];
     if opts['--unique']:
         _,uniq = np.unique(d[['xi','yi','zi']]);
-        frame = frame[uniq];
+        d = d[uniq];
     if opts['--sort']:
         sortedargs = np.lexsort([d['xi'],d['yi'],d['zi']])
-        frame = frame[sortedargs];
+        d = d[sortedargs];
     frame['data']=d;
     frames[i]=frame;
 
