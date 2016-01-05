@@ -4,21 +4,36 @@ Reader for LSP output xdr files (.p4's)
 '''
 import xdrlib as xdr
 import numpy as np
+import gzip as gz # For reading .p4.gz files
+import os # For path splitting
 
 # Define a basic function for checking (and get rid of misc.py dependency)
 test = lambda d,k: k in d and d[k];
 
 #get basic dtypes
-def get_int(file,N=1,forcearray=False):
+def get_int(file,N=1,forcearray=False,lowlev=False):
     # If forcearray is True, the output will always be a numpy array.
-    ret=np.fromfile(file,dtype='>i4',count=N);
+    
+    dtype = np.dtype('>i4')
+    if lowlev:
+        ret=np.fromfile(file,dtype=dtype,count=N)    
+    else:
+        s = file.read(dtype.itemsize * N)  
+        ret=np.fromstring(s, dtype=dtype,count=N)
+        
     if N==1 and not forcearray:
         return ret[0];
     return ret;
 
-def get_float(file,N=1,forcearray=False):
+def get_float(file,N=1,forcearray=False,lowlev=False):
     # If forcearray is True, the output will always be a numpy array.
-    ret=np.fromfile(file,dtype='>f4',count=N);
+    dtype = np.dtype('>f4')
+    if lowlev:
+        ret=np.fromfile(file,dtype=dtype,count=N)    
+    else:
+        s = file.read(dtype.itemsize * N)  
+        ret=np.fromstring(s, dtype=dtype,count=N)
+
     if N==1 and not forcearray:
         return ret[0];
     return ret;
@@ -180,6 +195,10 @@ def read_flds2(fname, flds=None):
     #               Renamed this function read_flds2 to avoid extraneous version jumping.
     # Issues:
     #   * Unknown if this function will work for 3D field dumps. Specifically, the order of the reshaping of fields may be wrong.
+    _, ext = os.path.splitext(fname)
+    
+    if ext == '.gz':
+        open = gz.open # If the file is .p4.gz, open using gunzip
     
     with open(fname, 'rb') as file:
         # Read in the header, and check that this dump is a vector fields file
