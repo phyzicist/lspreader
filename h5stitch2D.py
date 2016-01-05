@@ -11,6 +11,7 @@ Created on Wed Dec 30 15:09:37 2015
 import h5py
 import os
 import lspreader2 as rd
+import shutil
 
 from mpi4py import MPI
 #except:
@@ -79,9 +80,9 @@ def h5fields2D(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], f
                 f[fld_id][i,:,:] = fld
     return h5path
 
-def h5fields2Dpar(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], flds = ['E', 'B']):
+def h5fields2Dpar(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], flds = ['E', 'B'], compress=True):
     """ Parallel HDF5. Read in a folder full of flds*.p4 file, stitching them together assuming 2D assumptions, and create an HDF5 file """
-    # Note that compression filters do not work with parallel I/O as of h5py version 2.5.0
+    # Note that compression filters do not work with parallel I/O as of h5py version 2.5.0. Hence, an extra obnoxious step at the end with a single processor re-saving the files (unless compress=False flag set, which would make the computer time faster)
     if not h5path:
         h5path = os.path.join(folder, 'fields2D.hdf5')
 
@@ -92,9 +93,15 @@ def h5fields2Dpar(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']
     rank = MPI.COMM_WORLD.Get_rank()
     name = MPI.Get_processor_name()
 
-    idx_all = range(nfiles) # This list of indices can be split up later across processors, outside this function
-    idx_chunked = chunkIt(idx_all, nprocs) # Break the list into N chunks, where N = number of processors
-    idx_part = idx_chunked[rank] # Assign each processor one chunk of the list. Therefore, idx_part (list of indices) specifies which elements to analyze here.
+    comm = MPI.COMM_WORLD
+
+    if rank == 0:
+        idx_all = range(nfiles) # This list of indices can be split up later across processors, outside this function
+        idx_chunked = chunkIt(idx_all, nprocs) # Break the list into N chunks, where N = number of processors
+        print "Scattering the fld*.p4 files across " + str(nprocs) + " nodes."
+    else:
+        idx_chunked = None
+    idx_part = comm.scatter(idx_chunked,root=0) # Assign each processor one chunk of the list. Therefore, idx_part (list of indices) specifies which elements to analyze here.
 
     # Open the HDF5 file
     with h5py.File(h5path,'w', driver='mpio', comm=MPI.COMM_WORLD) as f:
@@ -119,5 +126,21 @@ def h5fields2Dpar(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']
             for fld_id in fld_ids: # Iterate over the requested fields, stitching then adding them to HDF5 file
                 fld, xgv, zgv = rd.stitch2D(doms, fld_id)
                 f[fld_id][i,:,:] = fld
-    print "Succeeded in adding " + str(len(idx_part)) + " files on processor " + str(rank)
+        #print "Succeeded in adding " + str(len(idx_part)) + " files on processor " + str(rank)
+
+        idx_complete = comm.gather(idx_part, root=0)
+        if rank == 0:
+            print "Data collection complete into an uncompressed HDF5."
+
+        # If compress=True, use the first core to copy everything into a compressed dataset. Assume all keys are datasets (defined above).
+        if rank == 0 and compress:
+            h5path_tmp = 'tmp.hdf5'
+            print "Converting into a compressed file (will not be necessary in later versions of h5py, where compression filters may be possible during parallel i/o.)."
+            with h5py.File(h5path_tmp, 'w') as f2:
+                for k in f.keys():
+                    f2.create_dataset(k, data=f[k][...], compression='gzip', compression_opts=4)
+    
+    if rank == 0 and compress:
+        shutil.move(h5path_tmp, h5path)
+
     return h5path
