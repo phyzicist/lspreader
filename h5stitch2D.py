@@ -12,6 +12,10 @@ import h5py
 import os
 import lspreader2 as rd
 
+from mpi4py import MPI
+#except:
+#    print "WARNING: Error importing mpi4py. Parallel HDF5 functions will fail."
+
 def getfns(folder, ext = '', prefix = ''):
     """ Get a list of full path filenames for all files in a folder and subfolders having a certain extension"""
     # Inputs:
@@ -26,7 +30,6 @@ def getfns(folder, ext = '', prefix = ''):
         if file.endswith(ext) and file.startswith(prefix):
             fns.append(os.path.join(folder, file))
     return fns
-
 
 
 def chunkIt(seq, num):
@@ -76,54 +79,45 @@ def h5fields2D(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], f
                 f[fld_id][i,:,:] = fld
     return h5path
 
-def h5fields2Da(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], flds = ['E', 'B']):
-    """ Step A of: Read in a folder full of flds*.p4 file, stitching them together assuming 2D assumptions, and create an HDF5 file """
-    # In Step A (to be run on a single processor before any other activity), we make and allocate the HDF5 file.
+def h5fields2Dpar(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], flds = ['E', 'B']):
+    """ Parallel HDF5. Read in a folder full of flds*.p4 file, stitching them together assuming 2D assumptions, and create an HDF5 file """
+    # Note that compression filters do not work with parallel I/O as of h5py version 2.5.0
     if not h5path:
         h5path = os.path.join(folder, 'fields2D.hdf5')
 
     fns = getfns(folder, ext = '.p4', prefix = 'flds')
     nfiles = len(fns)
 
-    
+    nprocs = MPI.COMM_WORLD.Get_size()
+    rank = MPI.COMM_WORLD.Get_rank()
+    name = MPI.Get_processor_name()
+
+    idx_all = range(nfiles) # This list of indices can be split up later across processors, outside this function
+    idx_chunked = chunkIt(idx_all, nprocs) # Break the list into N chunks, where N = number of processors
+    idx_part = idx_chunked[rank] # Assign each processor one chunk of the list. Therefore, idx_part (list of indices) specifies which elements to analyze here.
+
     # Open the HDF5 file
-    with h5py.File(h5path,'w') as f:
+    with h5py.File(h5path,'w', driver='mpio', comm=MPI.COMM_WORLD) as f:
         # Read in the first file as a template
         doms, header = rd.read_flds2(fns[0], flds=flds)
         
         # Pre-allocate the HDF5 arrays
         _, xgv, zgv = rd.stitch2D(doms, fld_ids[0]) # Extract the interesting fields and stitch together for a template
        
-        f.create_dataset('times', (nfiles,), compression='gzip', compression_opts=4, dtype='float32')
-        f.create_dataset('xgv', compression='gzip', compression_opts=4, data = xgv)
-        f.create_dataset('zgv', compression='gzip', compression_opts=4, data = zgv)
+        f.create_dataset('times', (nfiles,), dtype='float32')
+        f.create_dataset('xgv', data = xgv)
+        f.create_dataset('zgv', data = zgv)
         f.create_dataset('filenames', data = fns) # A bit overkill to store the full filenames, but who cares? Space is not too bad.
         for k in fld_ids:
-            f.create_dataset(k,(nfiles,len(zgv),len(xgv)), compression='gzip', compression_opts=4, dtype='float32')
-
-    return h5path
-
-def h5fields2Db(folder, nprocs = 1, rank = 0, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], flds = ['E', 'B']):
-    """ Step B of: Read in a folder full of flds*.p4 file, stitching them together assuming 2D assumptions, and create an HDF5 file """
-    # In Step B (which can be called by many processors, or just one by leaving the defaults), we append the data to the newly-created HDF5 file.
-
-    if not h5path:
-        h5path = os.path.join(folder, 'fields2D.hdf5')
-
-    fns = getfns(folder, ext = '.p4', prefix = 'flds') # the COMPLETE list of filenames (for all processors)
-    nfiles = len(fns) # the total number of files (for all processors)
-
-    idx_all = range(nfiles) # This list of indices can be split up later across processors, outside this function
-    idx_chunked = chunkIt(idx_all, nprocs) # Break the list into N chunks, where N = number of processors
-    idx_part = idx_chunked[rank] # Assign each processor one chunk of the list. Therefore, idx_part (list of indices) specifies which elements to analyze here.
-
-    with h5py.File(h5path,'r+') as f:
+            f.create_dataset(k,(nfiles,len(zgv),len(xgv)), dtype='float32')
+        
         # Read in all the data and fill up the HDF5 file
-        for i in idx_part: # Iterate over the indices given for this processor
+        for i in idx_part: # Iterate over the files for this processor
             fn = fns[i]
             doms, header = rd.read_flds2(fn, flds=flds)
             f['times'][i] = header['timestamp']
             for fld_id in fld_ids: # Iterate over the requested fields, stitching then adding them to HDF5 file
                 fld, xgv, zgv = rd.stitch2D(doms, fld_id)
                 f[fld_id][i,:,:] = fld
-    return h5path, idx_part
+    print "Succeeded in adding " + str(len(idx_part)) + " files on processor " + str(rank)
+    return h5path
