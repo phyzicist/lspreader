@@ -51,13 +51,15 @@ def chunks(l,n):
     #...not that this is hard to understand.
     return [l[x:x+n] for x in xrange(0, len(l), n)];
 
-def mkvprint(opts):
-    def vprint(s):
+def check_vprint(s, vprinter):
+    if vprinter is True:
         print(s);
-    if opts['--verbose']:
-        return vprint;
-    else:
-        return lambda s: None;
+    elif callable(vprinter):
+        vprinter(s);
+
+def mkvprint(opts):
+    return lambda s: check_vprint(s,opts['--verbose']);
+
  
 def h5w(file,d,group='/',compression=None):
     if type(file) == str:

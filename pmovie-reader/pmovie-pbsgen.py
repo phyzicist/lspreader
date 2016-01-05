@@ -74,13 +74,14 @@ source $HOME/.bashrc
 source $HOME/conda
 LOGFILE=pmovie-conv-{post}.log
 cd {workdir}
-
-for i in "{filelist}"; do
-    while [ $(pgrep pmov.py  |  wc -l ) -eq {ppn} ]; do sleep 10; done; 
-    ./pmov.py -s {opts} $i {outdir}/$i.d &>>$LOGFILE&
+>$LOGFILE
+for i in {filelist}; do
+    while [ $(pgrep -f pmov.py  |  wc -l ) -eq {ppn} ]; do sleep 10; done; 
+    echo "running $i">>$LOGFILE
+    ./pmov.py -szH {opts} $i pmovs.h5 --lock=./pmovlock &>>$LOGFILE&
 done
 
-while [ $(pgrep pmov.py | wc -l) -gt 0 ]; do
+while [ $(pgrep -f pmov.py | wc -l) -gt 0 ]; do
     echo "waiting for $(pgrep pmov.py | wc -l) process(es)">>$LOGFILE
     echo "call deq to end">>$LOGFILE
     sleep 10;
@@ -102,5 +103,3 @@ for i,f in enumerate(pbses):
         outdir=opts['--outdir']);
     with open('pmovie-conv-'+post+'.pbs','w') as f:
         f.write(out);
-
-        

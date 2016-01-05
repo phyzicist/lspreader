@@ -5,7 +5,7 @@ the name based on the frame step.
 
 Usage:
     pmov.py [options] <input> [<output>]
-    pmov.py [options] --hdf <input> <output>
+    pmov.py [options] [--hdf | -H ] <input> <output>
 
 Options:
     --help -h      Output this help.
@@ -15,42 +15,53 @@ Options:
                    The group will be based on the step.
     --zip -z       Use compression for hdf5.
     --verbose -v   Be verbose.
+    --lock=L -l L  Specify a lock file for synchronized output for hdf5.
 '''
 import lspreader as rd;
 import h5py as h5;
-from misc import dump_pickle, h5w, mkvprint
+from misc import dump_pickle, h5w, mkvprint;
 from docopt import docopt;
 import numpy as np;
+import fasteners;
 
 opts = docopt(__doc__,help=True);
 vprint = mkvprint(opts);
 
-frames=rd.read(opts['<input>']);
-if opts['--sort']: opts['--unique']=True;
 
-if opts['--unique']:
-    vprint("taking unique entries and sorting...");
-    for i,frame in enumerate(frames):
-        d = frame['data'];
-        if opts['--unique']:
-            _,uniq = np.unique(d[['xi','yi','zi']],return_index=True);
-            d = d[uniq];
-        if opts['--sort']:
-            sortedargs = np.lexsort([d['xi'],d['yi'],d['zi']])
-            d = d[sortedargs];
-        frame['data']=d;
-        frames[i]=frame;
-    vprint("done");
+def sortuniq(frame,sort=False):
+    '''
+    Picks unique particles for a frame
+    '''
+    d = frame['data'];
+    _,uniq = np.unique(d[['xi','yi','zi']],return_index=True);
+    d = d[uniq];
+    if sort:
+        sortedargs = np.lexsort([d['xi'],d['yi'],d['zi']])
+        d = d[sortedargs];
+    #rewriting the pnum since we pruned it.
+    frame['pnum']=len(d);
+    frame['data']=d;
+    return frame;
 
-if opts['--hdf']:
-    if opts['--zip']:
-        c = 'lzf';
-    else:
-        c = None;
-    with h5.File(opts['<output>'],'a') as f:
+def hdfoutput(outname, frames, dozip=False):
+    '''Outputs the frames to an hdf file.'''
+    with h5.File(outname,'a') as f:
         for frame in frames:
             group=str(frame['step']);
-            h5w(f, frame, group=group, compression=c);
+            h5w(f, frame, group=group,
+                compression='lzf' if dozip else None);
+frames=rd.read(opts['<input>']);
+if opts['--sort']: opts['--unique']=True;
+if opts['--unique']:
+    vprint("taking unique entries and sorting...");
+    frames[:] = [sortuniq(frame, sort=opts['--sort'])
+                 for frame in frames];
+    vprint("done");
+if opts['--hdf']:
+    output = lambda :hdfoutput(opts['<output>'], frames, opts['--zip']);
+    if opts['--lock']:
+        output = fasteners.interprocess_locked(opts['--lock'])(output);
+    output();
 else:
     if not opts['<output>']:
         for frame in frames:
@@ -58,4 +69,3 @@ else:
             dump_pickle(outname, frame);
     else:
         dump_pickle(opts['<output>'], frames);
-

@@ -23,7 +23,8 @@ import numpy as np;
 from misc import h5w, mkvprint;
 opts=docopt(__doc__,help=True);
 
-vprint=mkvprint(opts);
+vprint = mkvprint(opts);;
+    
 
 if len(opts['<var>']) == 0:
     opts['<var>'] = False;
