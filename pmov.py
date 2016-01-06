@@ -9,8 +9,7 @@ Usage:
 
 Options:
     --help -h      Output this help.
-    --sort -s      Sort the pmovies by IPP. Implies --unique.
-    --unique -u    Take unique particles.
+    --sort -s      Sort the pmovies by IPP.
     --hdf -H       Output to hdf5 instead of to a pickle file.
                    The group will be based on the step.
     --zip -z       Use compression for hdf5.
@@ -28,18 +27,13 @@ opts = docopt(__doc__,help=True);
 vprint = mkvprint(opts);
 
 
-def sortuniq(frame,sort=False):
+def sortframe(frame):
     '''
-    Picks unique particles for a frame
+    sorts particles for a frame
     '''
     d = frame['data'];
-    _,uniq = np.unique(d[['xi','yi','zi']],return_index=True);
-    d = d[uniq];
-    if sort:
-        sortedargs = np.lexsort([d['xi'],d['yi'],d['zi']])
-        d = d[sortedargs];
-    #rewriting the pnum since we pruned it.
-    frame['pnum']=len(d);
+    sortedargs = np.lexsort([d['xi'],d['yi'],d['zi']])
+    d = d[sortedargs];
     frame['data']=d;
     return frame;
 
@@ -51,11 +45,9 @@ def hdfoutput(outname, frames, dozip=False):
             h5w(f, frame, group=group,
                 compression='lzf' if dozip else None);
 frames=rd.read(opts['<input>']);
-if opts['--sort']: opts['--unique']=True;
-if opts['--unique']:
-    vprint("taking unique entries and sorting...");
-    frames[:] = [sortuniq(frame, sort=opts['--sort'])
-                 for frame in frames];
+if opts['--sort']:
+    vprint("sorting...");
+    frames[:] = [sortframe(frame) for frame in frames];
     vprint("done");
 if opts['--hdf']:
     output = lambda :hdfoutput(opts['<output>'], frames, opts['--zip']);
