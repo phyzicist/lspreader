@@ -13,6 +13,7 @@ Options:
     --hdf -H       Output to hdf5 instead of to a pickle file.
                    The group will be based on the step.
     --zip -z       Use compression for hdf5.
+    --npz -n       Use numpy.savez to save.
     --verbose -v   Be verbose.
     --lock=L -l L  Specify a lock file for synchronized output for hdf5.
 '''
@@ -49,11 +50,21 @@ if opts['--sort']:
     vprint("sorting...");
     frames[:] = [sortframe(frame) for frame in frames];
     vprint("done");
+
+#outputting
 if opts['--hdf']:
     output = lambda :hdfoutput(opts['<output>'], frames, opts['--zip']);
     if opts['--lock']:
         output = fasteners.interprocess_locked(opts['--lock'])(output);
     output();
+elif opts['--npy']:
+    if not opts['<output>']:
+        for frame in frames:
+            outname = "{}.{}".format(opts['<input>'],frame['step']);
+            np.savez(outname, frame['data']);
+    else:
+        np.savez(opts['<output>'], [frame['data'] for frame in frames]);
+
 else:
     if not opts['<output>']:
         for frame in frames:
