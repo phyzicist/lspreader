@@ -80,7 +80,7 @@ def chunkIt(seq, num):
     return out
 
 def h5fields2Dser(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']):
-    """ 100% serial processing. Read in a folder full of flds*.p4 file, stitching them together assuming 2D assumptions, and create an HDF5 file """
+    """ 100% serial processing. Read in a folder full of flds*.p4(.gz) files, stitching them together assuming 2D assumptions, and create an HDF5 file """
     
     # Extract "E" from "Ex" in fld_ids: fields (for read_flds2() call later)    
     flds = list(set(s[:-1] for s in fld_ids)) # we strip the "x","y","z" last character off our fields, then set() gives only unique elements of a list, and list() converts this set back to list
