@@ -84,7 +84,7 @@ def h5fields2Dser(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']
     if not h5path:
         h5path = os.path.join(folder, 'fields2D.hdf5')
 
-    fns = getfnsp4(folder)
+    fns = getfnsp4(folder, 'flds')
     nfiles = len(fns)
 
     
@@ -120,7 +120,7 @@ def h5fields2Dpar(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']
     if not h5path:
         h5path = os.path.join(folder, 'fields2D.hdf5')
 
-    fns = getfnsp4(folder)
+    fns = getfnsp4(folder, 'flds')
     nfiles = len(fns)
 
     nprocs = MPI.COMM_WORLD.Get_size()
