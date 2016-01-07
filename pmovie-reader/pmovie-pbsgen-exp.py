@@ -75,10 +75,12 @@ source $HOME/conda
 LOGFILE=pmovie-conv-{post}.log
 cd {workdir}
 >$LOGFILE
+echo "processing first file...{firstfile}">>$LOGFILE
+./pmov.py --exp-first=./hash.d {opts} {firstfile} {outfile}&>>$LOGFILE
 for i in {filelist}; do
     while [ $(pgrep -f pmov.py  |  wc -l ) -eq {ppn} ]; do sleep 10; done; 
     echo "running $i">>$LOGFILE
-    ./pmov.py {opts} {opts} $i {outfile} --lock=./pmovlock &>>$LOGFILE&
+    ./pmov.py {opts} --exp-d=./hash.d $i {outfile}&>>$LOGFILE&
 done
 
 while [ $(pgrep -f pmov.py | wc -l) -gt 0 ]; do
@@ -92,16 +94,16 @@ pbsouts=[];
 for i,f in enumerate(pbses):
     post = postfmt.format(i);
     files = ' '.join(f);
-    opts=''
+    xopts=''
     #handle hdf output
     if opts['--hdf']:
-        opts+=' -H '
+        xopts+=' -H '
         outfile='pmovs.h5'
     else:
         outfile='';
     #ramses hack
     if opts['--server'] and opts['--ramses-node']:
-        ramsesnode=opts['--ramses-node'];
+        ramsesnode=':'+opts['--ramses-node'];
     else:
         ramsesnode='';
     out = template.format(
@@ -110,10 +112,11 @@ for i,f in enumerate(pbses):
         mins=mins,
         post=post,
         workdir=workdir,
-        filelist=files,
-        opts=opts['--extra-opts'],
+        firstfile=files[0],
+        filelist=files[1:],
+        opts=xopts+opts['--extra-opts'],
         outfile=outfile,
-        opts=''
+        opts='',
         ramsesnode=ramsesnode);
     with open(opts['--outdir']+'/pmovie-conv-'+post+'.pbs','w') as f:
         f.write(out);

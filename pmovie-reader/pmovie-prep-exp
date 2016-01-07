@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+USAGE="Copies pmovie reading scripts and makes pbs files.
+
+usage: ./pmovie-prep [-h -n <numberofnodes> -s <server> -N <ramsesnode> ] <pmovie-dir> [<lspreader-dir> [<pbsoutput-dir>]]"
+NODES=1
+SERVER="ramses"
+RAMSESNODE=
+while getopts ':hn:s:' opt; do
+      case $opt in
+          h)
+              echo "Script to prepare pmovies for trajectories."
+              echo
+              echo $USAGE
+              exit 0
+              ;;
+          n)
+              NODES=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+          N)
+              RAMSESNODE=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+          s)
+              SERVER=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+              
+          \?)
+              echo "Invalid option: $OPTARG">&2
+              exit 1
+              ;;
+          :)
+              echo "Option -$OPTARG requires an argument.">&2
+              exit 1
+              ;;
+      esac
+done
+
+DEST=$( [ -n "$1" ] && echo $1)
+[ -z "$DEST" ] && echo $USAGE && exit 1;
+RDDIR=$( [ -n "$2" ]  && echo $2 || echo ".." )
+OUTDIR=$( [ -n "$3" ] && echo $3 ||  echo "." )
+cp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pmov.py $DEST
+cp $RDDIR/pmovie-reader/* $RDDIR/misc.py $OUTDIR/
+if [ $SERVER == "ramses" ] && [ -n "$RAMSESNODE" ]; then
+    RAMSESNODE="--ramses-node=$RAMSESNODE";
+fi
+
+./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OURDIR \
+                       --ramses-node=$RAMSESNODE $DEST
+PBSES=$(ls | grep 'pmovie-conv.*.pbs$')
+#generating the reader script. Calling it unleashes the hounds.
+echo "#!/bin/bash
+
+for i in $PBSES; do
+    qsub \$i;
+done;
+">pmovreader.sh
+chmod +x pmovreader.sh
