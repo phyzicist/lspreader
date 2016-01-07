@@ -107,16 +107,15 @@ for i,f in enumerate(pbses):
     else:
         ramsesnode='';
     out = template.format(
-        ppn=ppn,
         hours=hours,
         mins=mins,
+        ppn=ppn,
+        ramsesnode=ramsesnode
         post=post,
         workdir=workdir,
         firstfile=files[0],
         filelist=files[1:],
         opts=xopts+opts['--extra-opts'],
-        outfile=outfile,
-        opts='',
-        ramsesnode=ramsesnode);
+        outfile=outfile);
     with open(opts['--outdir']+'/pmovie-conv-'+post+'.pbs','w') as f:
         f.write(out);
