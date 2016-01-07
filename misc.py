@@ -1,5 +1,5 @@
 '''
-Miscellaneous definitions.
+Miscellaneous shared definitions.
 '''
 
 import cPickle as pickle;
