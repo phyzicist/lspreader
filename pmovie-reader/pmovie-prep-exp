@@ -1,15 +1,24 @@
 #!/usr/bin/env bash
 USAGE="Copies pmovie reading scripts and makes pbs files.
 
-usage: ./pmovie-prep [-h -n <numberofnodes> -s <server> -N <ramsesnode> ] <pmovie-dir> [<lspreader-dir> [<pbsoutput-dir>]]"
+Usage: 
+    ./pmovie-prep [options] <pmovie-dir> [<lspreader-dir> [<pbsoutput-dir>]]
+Options:
+    -h                   Print help
+    -n N                 Specify number N of nodes. 1 is usually enough for
+                         2D sims and is the default.
+    -s SERVER            Specify server. Current valid ones are \"ramses\" and \"glenn\".
+                         \"ramses\" is default.
+    -N RAMSESNODE        Run only on the node RAMSESNODE. Default does not use this.
+"
 NODES=1
 SERVER="ramses"
+RDDIR="/home/ngirmang.1/lspreader"
+CONDA="/home/ngirmang.1/conda"
 RAMSESNODE=
 while getopts ':hn:s:' opt; do
       case $opt in
           h)
-              echo "Script to prepare pmovies for trajectories."
-              echo
               echo $USAGE
               exit 0
               ;;
@@ -37,6 +46,7 @@ while getopts ':hn:s:' opt; do
       esac
 done
 
+source $CONDA
 DEST=$( [ -n "$1" ] && echo $1)
 [ -z "$DEST" ] && echo $USAGE && exit 1;
 RDDIR=$( [ -n "$2" ]  && echo $2 || echo ".." )
