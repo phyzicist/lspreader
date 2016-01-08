@@ -98,7 +98,7 @@ echo "processing first file...{firstfile}">>$LOGFILE
 for i in {filelist}; do
     while [ $(pgrep -f pmov.py  |  wc -l ) -eq {ppn} ]; do sleep 10; done; 
     echo "running $i">>$LOGFILE
-    ./pmov.py {opts} -n --exp-d=./hash.d {outfile}&>>$LOGFILE&
+    ./pmov.py {opts} -n --exp-d=./hash.d $i {outfile}&>>$LOGFILE&
 done
 
 while [ $(pgrep -f pmov.py | wc -l) -gt 0 ]; do
