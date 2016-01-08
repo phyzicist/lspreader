@@ -57,7 +57,7 @@ if [ $SERVER == "ramses" ] && [ -n "$RAMSESNODE" ]; then
     RAMSESNODE="--ramses-node=$RAMSESNODE";
 fi
 
-./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OURDIR \
+./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
                        --ramses-node=$RAMSESNODE $DEST
 PBSES=$(ls | grep 'pmovie-conv.*.pbs$')
 #generating the reader script. Calling it unleashes the hounds.
