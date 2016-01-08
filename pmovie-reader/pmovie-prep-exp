@@ -52,9 +52,9 @@ DEST=$( [ -n "$1" ] && echo $1)
 RDDIR=$( [ -n "$2" ]  && echo $2 || echo ".." )
 OUTDIR=$( [ -n "$3" ] && echo $3 ||  echo "." )
 cp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pmov.py $DEST
-cp $RDDIR/pmovie-reader/* $RDDIR/misc.py $OUTDIR/
+cp $RDDIR/pmovie-reader/pmovie-pbsgen-exp.py $RDDIR/misc.py $OUTDIR/
 if [ $SERVER == "ramses" ] && [ -n "$RAMSESNODE" ]; then
-    RAMSESNODE="--ramses-node=$RAMSESNODE";
+    RAMSESNODE="$RAMSESNODE";
 fi
 
 ./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
@@ -66,5 +66,5 @@ echo "#!/bin/bash
 for i in $PBSES; do
     qsub \$i;
 done;
-">pmovreader.sh
-chmod +x pmovreader.sh
+">pmoviereader.sh
+chmod +x pmoviereader.sh
