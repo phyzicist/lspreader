@@ -1,7 +1,8 @@
 #!/usr/bin/env python2
 '''
 Read a pmovie. In the absense of an output name, output
-the name based on the frame step.
+the name based on the frame step. With an output name, and
+when not outputting directly to hdf, output using dump_pickle.
 
 Usage:
     pmov.py [options] <input> [<output>]
@@ -13,7 +14,6 @@ Options:
     --hdf -H          Output to hdf5 instead of to a pickle file.
                       The group will be based on the step.
     --zip -c          Use compression for hdf5.
-    --npy -n          Use numpy.save to save.
     --verbose -v      Be verbose.
     --lock=L -l L     Specify a lock file for synchronized output for hdf5.
     --exp-d=DFILE     Experimental hashing. It might work only for uniform
@@ -22,6 +22,7 @@ Options:
     --exp-first=DFILE Experimental hashing, see above. Use this file as the
                       first file to generate the hash specification from and
                       output to DFILE.
+    --dir=D -D D      Output to this directory if given not <output> name.
     --X -x            Use X as a spatial dimension. Similar options below are
                       for Y and Z. If none are passed, assume 3D cartesian.
     --Y -y            See above.
@@ -173,17 +174,11 @@ if __name__=='__main__':
         if opts['--lock']:
             output = fasteners.interprocess_locked(opts['--lock'])(output);
         output();
-    elif opts['--npy']:
-        if not opts['<output>']:
-            for frame in frames:
-                outname = "{}.{}".format(opts['<input>'],frame['step']);
-                np.save(outname, frame['data']);
-        else:
-            np.save(opts['<output>'], [frame['data'] for frame in frames]);
+    elif not opts['<output>']:
+        for frame in frames:
+            outname = "{}.{}".format(opts['<input>'],frame['step']);
+            if opts['--dir']:
+                outname = '{}/{}'.format(opts['--dir'], outname);
+            np.savez(outname, **frame);
     else:
-        if not opts['<output>']:
-            for frame in frames:
-                outname = "{}.{}".format(opts['<input>'],frame['step']);
-                dump_pickle(outname, frame);
-        else:
-            dump_pickle(opts['<output>'], frames);
+        dump_pickle(opts['<output>'], frames);

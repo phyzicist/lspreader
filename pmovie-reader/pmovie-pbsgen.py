@@ -74,11 +74,15 @@ source $HOME/.bashrc
 source $HOME/conda
 LOGFILE=pmovie-conv-{post}.log
 cd {workdir}
+
+if [ -d pmovie-conv ]; then
+    mkdir pmovie-conv;
+fi
 >$LOGFILE
 for i in {filelist}; do
     while [ $(pgrep -f pmov.py  |  wc -l ) -eq {ppn} ]; do sleep 10; done; 
     echo "running $i">>$LOGFILE
-    ./pmov.py {opts} {opts} $i {outfile} --lock=./pmovlock &>>$LOGFILE&
+    ./pmov.py {opts} $i -d pmovie-conv {outfile} --lock=./pmovlock &>>$LOGFILE&
 done
 
 while [ $(pgrep -f pmov.py | wc -l) -gt 0 ]; do
