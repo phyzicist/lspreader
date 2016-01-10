@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 USAGE="Copies pmovie reading scripts and makes pbs files.
 
-Usage: 
+Usage:
     ./pmovie-prep [options] <pmovie-dir> [<lspreader-dir> [<pbsoutput-dir>]]
 Options:
     -h                   Print help
@@ -19,7 +19,7 @@ RAMSESNODE=
 while getopts ':hn:s:N:' opt; do
       case $opt in
           h)
-              echo $USAGE
+              echo "$USAGE"
               exit 0
               ;;
           n)
@@ -51,14 +51,25 @@ DEST=$( [ -n "$1" ] && echo $1)
 [ -z "$DEST" ] && echo $USAGE && exit 1;
 RDDIR=$( [ -n "$2" ]  && echo $2 || echo ".." )
 OUTDIR=$( [ -n "$3" ] && echo $3 ||  echo "." )
-cp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pmov.py $DEST
-cp $RDDIR/pmovie-reader/pmovie-pbsgen-exp.py $RDDIR/misc.py $OUTDIR/
+
+#checking for remote node
+if [ -n "$( echo "$DEST" | grep \: )" ]; then
+    RAMSESNODE=$(echo "$DEST" | sed 's/@\{0,1\}\([A-Z,a-z,0-9]\+\):.*/\1/');
+fi
+rcp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pmov.py $DEST
+rcp $RDDIR/pmovie-reader/pmovie-pbsgen-exp.py $RDDIR/misc.py $OUTDIR/
 if [ $SERVER == "ramses" ] && [ -n "$RAMSESNODE" ]; then
-    RAMSESNODE="$RAMSESNODE";
+    DIRONNODE=$(echo "$DEST" | sed 's/@\{0,1\}[A-Z,a-z,0-9]\+:\(.*\)/\1/');
+    rsh $RAMSESNODE ls "$DIRONNODE">.lsfiles
+    rcp "$DEST/*.lsp" ./.destlsp
+    ./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
+                           --dotlsp=.destlsp --fileslist=.lsfiles
+                           --ramses-node=$RAMSESNODE $DEST
+else
+    ./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
+                           --ramses-node=$RAMSESNODE $DEST
 fi
 
-./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
-                       --ramses-node=$RAMSESNODE $DEST
 PBSES=$(ls | grep 'pmovie-conv.*.pbs$')
 #generating the reader script. Calling it unleashes the hounds.
 echo "#!/bin/bash
