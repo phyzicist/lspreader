@@ -161,12 +161,12 @@ if __name__=='__main__':
         vprint("done");
     #experimental hashing
     if opts['--exp-first']:
-        d=firsthash(frames[0],dims);
+        d=firsthash(frames[0],dims, removedupes=True);
         dump_pickle(opts['--exp-first'], d);
-        frames[:] = [addhash(frame,d) for frame in frames];
+        frames[:] = [addhash(frame,d,removedupes=True) for frame in frames];
     elif opts['--exp-d']:
         d = readfile(opts['--exp-d'],dumpfull=True);
-        frames[:] = [addhash(frame,d) for frame in frames];
+        frames[:] = [addhash(frame,d,removedupes=True) for frame in frames];
     #outputting.
     if opts['--hdf']:
         import fasteners;
