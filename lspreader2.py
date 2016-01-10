@@ -198,9 +198,11 @@ def read_flds2(fname, flds=None):
     _, ext = os.path.splitext(fname)
     
     if ext == '.gz':
-        open = gz.open # If the file is .p4.gz, open using gunzip
-    
-    with open(fname, 'rb') as file:
+        myopen = gz.open # If the file is .p4.gz, open using gunzip
+    else:
+		myopen = open
+	
+    with myopen(fname, 'rb') as file:
         # Read in the header, and check that this dump is a vector fields file
         size = 3;    
         header = get_header(file) # Gets the header, and advances the file cursor to after the header
