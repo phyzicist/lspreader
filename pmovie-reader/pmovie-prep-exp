@@ -63,7 +63,7 @@ if [ $SERVER == "ramses" ] && [ -n "$RAMSESNODE" ]; then
     rsh $RAMSESNODE ls "$DIRONNODE">.lsfiles
     rcp "$DEST/*.lsp" ./.destlsp
     ./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
-                           --dotlsp=.destlsp --fileslist=.lsfiles
+                           --dotlsp=.destlsp --filelist=.lsfiles \
                            --ramses-node=$RAMSESNODE $DEST
 else
     ./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
