@@ -37,14 +37,14 @@ def call(cmd):
 def filelines(fname,strip=False):
     with open(fname,'r') as f:
         lines = f.readlines();
-    if chomp:
-        lines[:] = [lines.strip() for line in lines]
+    if strip:
+        lines[:] = [line.strip() for line in lines]
     return lines;
 
 if not opts['--filelist']:
     ls = call(('ls',workdir))
 else:
-    ls = fileslines(opts['--filelist']);
+    ls = filelines(opts['--filelist'],strip=True);
 # filtering for pmovies
 pmovierx=re.compile(r"pmovie([0-9]+).p4$");
 lspmovies = [(s, int(pmovierx.match(s).group(1)))
@@ -59,7 +59,7 @@ if not opts['--dotlsp']:
     dotlsp = [s for s in ls if dotlsprx.match(s)][0];
 else:
     dotlsp = opts['--dotlsp'];
-dotlsp = fileslines(dotlsp);
+dotlsp = filelines(dotlsp,strip=True);
 
 #Figure out the dimensionality of the simulation.
 #Another possiblity is to read the output dir which
@@ -107,7 +107,7 @@ MAXPROC={maxproc}
 cd {workdir}
 >$LOGFILE
 
-if [ -d pmovie-conv ]; then
+if [ ! -d pmovie-conv ]; then
     mkdir pmovie-conv;
 fi
 
@@ -116,7 +116,7 @@ echo "processing first file...">>$LOGFILE
 for i in {filelist}; do
     while [ $(pgrep -f pmov.py  |  wc -l ) -eq $MAXPROC ]; do sleep 10; done; 
     echo "running $i">>$LOGFILE
-    ./pmov.py {opts} -n -D pmovie-conv  --exp-d=./hash.d $i {outfile}&>>$LOGFILE&
+    ./pmov.py {opts} -D pmovie-conv  --exp-d=./hash.d $i {outfile}&>>$LOGFILE&
 done
 
 while [ $(pgrep -f pmov.py | wc -l) -gt 0 ]; do
@@ -126,7 +126,7 @@ while [ $(pgrep -f pmov.py | wc -l) -gt 0 ]; do
 done
 '''
 
-firstfiletmpl="./pmov.py {opts} -n -D pmovie-conv --exp-first=./hash.d {firstfile} {outfile}&>>$LOGFILE"
+firstfiletmpl="./pmov.py {opts} -D pmovie-conv --exp-first=./hash.d {firstfile} {outfile}&>>$LOGFILE"
 for i,f in enumerate(pbses):
     post = postfmt.format(i);
     xopts=''+dims_flag; #for copy so we don't write to dims_flag

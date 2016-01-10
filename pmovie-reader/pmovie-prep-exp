@@ -2,7 +2,7 @@
 USAGE="Copies pmovie reading scripts and makes pbs files.
 
 Usage:
-    ./pmovie-prep [options] <pmovie-dir> [<lspreader-dir> [<pbsoutput-dir>]]
+    ./pmovie-prep-exp [options] <pmovie-dir> [<lspreader-dir> [<pbsoutput-dir>]]
 Options:
     -h                   Print help
     -n N                 Specify number N of nodes. 1 is usually enough for
@@ -64,7 +64,7 @@ if [ $SERVER == "ramses" ] && [ -n "$RAMSESNODE" ]; then
     rcp "$DEST/*.lsp" ./.destlsp
     ./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
                            --dotlsp=.destlsp --filelist=.lsfiles \
-                           --ramses-node=$RAMSESNODE $DEST
+                           --ramses-node=$RAMSESNODE $DIRONNODE
 else
     ./pmovie-pbsgen-exp.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
                            --ramses-node=$RAMSESNODE $DEST
