@@ -76,12 +76,12 @@ dims_flag = ' -{} '.format(''.join(dims));
 #providing for different settings which varies
 #by server.
 server_settings = {
-    #           ppn  hours  mins
-    'ramses': [48,   999,      0],
-    'glenn':  [ 8,    48,      0]
+    #          maxproc ppn  hours  mins
+    'ramses': [23,     48,   999,      0],
+    'glenn':  [8,       8,    48,      0]
 };
 try:
-    ppn,hours,mins = server_settings[opts['--server']];
+    maxproc,ppn,hours,mins = server_settings[opts['--server']];
 except KeyError as k:
     print('Invalid server "{}"'.format(k));
     exit(1);
@@ -114,8 +114,9 @@ fi
 echo "processing first file...">>$LOGFILE
 {firstfile}
 for i in {filelist}; do
-    while [ $(pgrep -f pmov.py  |  wc -l ) -eq $MAXPROC ]; do sleep 10; done; 
+    while [ $(pgrep -f pmov.py  |  wc -l ) -gt $MAXPROC ]; do sleep 10; done; 
     echo "running $i">>$LOGFILE
+    sleep 1;
     ./pmov.py {opts} -D pmovie-conv  --exp-d=./hash.d $i {outfile}&>>$LOGFILE&
 done
 
@@ -160,7 +161,7 @@ for i,f in enumerate(pbses):
         firstfile=firstfile,
         filelist=files,
         opts=xopts+opts['--extra-opts'],
-        maxproc=ppn-3,
+        maxproc=maxproc,
         outfile=outfile);
     with open(opts['--outdir']+'/pmovie-conv-'+post+'.pbs','w') as f:
         f.write(out);
