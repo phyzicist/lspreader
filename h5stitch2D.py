@@ -82,7 +82,7 @@ def chunkIt(seq, num):
     return out
 
 def h5fields2D(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']):
-    """ 100% serial processing, but parallel processing is available. Creates the HDF5 file without all the pain. """
+    """ 100% serial processing. Works great. Creates the HDF5 file without all the pain. """
     if not h5path:
         h5path = os.path.join(folder, 'fields2D.hdf5')
     fns = getfnsp4(folder)
@@ -99,6 +99,7 @@ def h5fields2D(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']):
         for k in data:
             f.create_dataset(k, data = data[k], compression='gzip', compression_opts=4)
     print "All done!"
+    return h5path
 
 def h5fields2Dpar2(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']):
     """ Parallel processing. DOES NOT WORK IN CURRENT FORM. Creates the HDF5 file with less pain. However, you need lots of RAM on node0 to hold all the data."""
