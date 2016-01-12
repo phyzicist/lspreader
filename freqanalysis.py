@@ -235,7 +235,8 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False):
     if alltime: # If this is the all-time rather than time-resolved analysis, put a different label on plot
         maxtime = np.max(times)
         mintime = np.min(times)
-        tstring = "All time"
+        #tstring = r"All time ($\Delta$t =" + "{:.0f}".format(maxtime - mintime) + ' fs)'
+        tstring = r"All time (" + "{:.0f}".format(maxtime - mintime) + ' fs total)'
     else: # Otherwise, put the standard "t = XX fs +/- 20 fs" label.
         meantime = np.mean(times)
         tplus = np.max(times) - np.mean(times)
