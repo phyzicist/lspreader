@@ -114,7 +114,7 @@ def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = 
     for fld_id in fld_ids:
         data2 = freqanalyze(fns, fld_id = fld_id, data = data, pool = pool, divsp = divsp)
         pltdict = getPltDict(data2) # Get the maxima/minima across multiple files, for homogeneous plotting across time steps
-        h5path = freqSave(data2, outdir = outdir, alltime=alltime) # Save frequency analysis results to hdf5
+        h5path = freqSave(data2, outdir = outdir, fld_id = fld_id, alltime=alltime) # Save frequency analysis results to hdf5
         if alltime: # Since we're plotting over all time, no need to normalize to anything else. Just make the plots.
             plotme(data2, outdir=outdir, pltdict=pltdict, fld_id = fld_id, alltime=alltime) # Make plots and save to png
         data2_dict[fld_id] = data2
@@ -152,7 +152,6 @@ def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp = 1, pool = N
         print "Reading ", len(fns), "files."
         # Load in the data
         data = fields2D(fns, fld_ids = [fld_id], pool = pool)
-        #print "Data read in."
         times = data['times']*1e6 # times, converted to fs
         fns = data['filenames']
         xgv = data['xgv'][::divsp]*1e4 # spatial X, converted to microns
@@ -165,15 +164,7 @@ def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp = 1, pool = N
     data2['zgv_um'] = zgv
     data2['fns'] = fns
 
-    #print "times, fns, xgv, zgv, Ez"
-    #print times.shape
-    #print fns.shape
-    #print xgv.shape
-    #print zgv.shape
-    #print Ez.shape
-
     # Assume equal spacing in time and space, and get the deltas
-    #print "Calculating dt, dx, dz"
     dt = np.mean(np.diff(times))
     dx = np.mean(np.diff(xgv))
     dz = np.mean(np.diff(zgv))
@@ -233,7 +224,7 @@ def myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,fignum):
     im.set_clim(vmin=cmin, vmax=cmax)
     return fig
 
-def plotme(data2, outdir='', pltdict = None, fld_id = 'Field', alltime=False):
+def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False):
     """ Plots a variety of parameters found in the outputs of frequency analysis, then saves a png of each."""
     xgv = data2['xgv_um']
     zgv = data2['zgv_um']
@@ -241,10 +232,15 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Field', alltime=False):
     times = data2['times_fs']
     pwr_sum = data2['pwr_sum']
 
-    meantime = np.mean(times)
-    tplus = np.max(times) - np.mean(times)
-    tstring = 't=' + "{:.1f}".format(meantime) + " fs $\pm$ " + "{:.1f}".format(tplus) + " fs"
-    
+    if alltime: # If this is the all-time rather than time-resolved analysis, put a different label on plot
+        maxtime = np.max(times)
+        mintime = np.min(times)
+        tstring = "All time"
+    else: # Otherwise, put the standard "t = XX fs +/- 20 fs" label.
+        meantime = np.mean(times)
+        tplus = np.max(times) - np.mean(times)
+        tstring = 't=' + "{:.1f}".format(meantime) + " fs $\pm$ " + "{:.1f}".format(tplus) + " fs"
+
     # Make some plots
     #print "Making plots."
     figs = [] # Figure handles
@@ -256,17 +252,23 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Field', alltime=False):
     figs.append(fig) # Add the figure to the figures list
     labs.append(label)
     plt.clf() # Clear the figure
+    if pltdict:
+        ymax = np.log10(pltdict['pwr_sum']['max'])
+        ymin = ymax - 3 # Give 3 orders of magnitude
+    else:
+        ymax = np.log10(np.max(pwr_sum))
+        ymin = ymax - 3 # Give 3 orders of magnitude
+    xmin = 0
+    xmax = 2.5
     ax = plt.subplot(111)
     ax.plot(freq, np.log10(pwr_sum))
     ax.set_xlabel('Frequency (normalized to laser fundamental)')
     ax.set_ylabel('Log$_{10}$(Spectral power density) (a.u.)')
-    ax.set_title(fld_id + ', Log of Power spectrum at ' + tstring, fontsize=16)
-    ax.set_xlim(0, 2.5)
+    ax.set_title('Power spectrum (Log scale), ' + tstring, fontsize=16)
+    ax.set_xlim(xmin, xmax)
     ax.xaxis.grid() # vertical lines
-    if pltdict:
-        ymin = np.log10(pltdict['pwr_sum']['min'])
-        ymax = np.log10(pltdict['pwr_sum']['max'])
-        ax.set_ylim(ymin, ymax)
+    ax.text(xmax - (xmax - xmin)/7, ymin + (ymax - ymin)/16, fld_id, fontsize=44, color='black')
+    ax.set_ylim(ymin, ymax)
 
     # All frequencies map
     label = 'Intensity'
@@ -340,10 +342,11 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Field', alltime=False):
     else: # Otherwise, do the normal labeling
         tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
 
-    plotpath = subdir(outdir, 'FreqPlots')
+    plotdir = subdir(outdir, 'FreqPlots')
+    flddir = subdir(plotdir, fld_id)
     for i in range(len(figs)):
-        figpath = subdir(plotpath, fld_id + ' - ' + str(i) + ' - ' + labs[i])
-        fn = os.path.join(figpath, tlabel + '.png') # For example, store the figure as '[outdir]/FreqPlots/fig1/00512.png'
+        figdir = subdir(flddir, fld_id + ' -' + str(i) + '- ' + labs[i])
+        fn = os.path.join(figdir, tlabel + '.png') # For example, store the figure as '[outdir]/FreqPlots/Ex/Ex -2- Half omega/00512.png'
         figs[i].savefig(fn)
 
     #plt.close('all') # This is nice but not necessary, since I numbered the figures (they will be re-used across calls)
@@ -361,15 +364,17 @@ def subdir(folder, name):
         os.mkdir(subpath)
     return subpath
 
-def freqSave(data2, outdir = '', alltime=False):
+def freqSave(data2, outdir = '', fld_id = '', alltime=False):
     """Save the data used in frequency plots to an hdf5 file."""
     if alltime: # If this is the "All times" analysis, label the file with "00000.*"
         tlabel = ''.zfill(5)
     else: # Otherwise, do the normal labeling
         meantime = np.mean(data2['times_fs'])
         tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
-    plotpath = subdir(outdir, 'FreqData')
-    h5path = saveData(data2, plotpath, tlabel + '.hdf5')
+
+    plotdir = subdir(outdir, 'FreqData')
+    flddir = subdir(plotdir, fld_id)
+    h5path = saveData(data2, flddir, tlabel + '.hdf5') # E.g. save the file as '[outdir]/FreqData/Ex/00512.hdf5'
     return h5path
 
     
