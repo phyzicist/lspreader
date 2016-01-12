@@ -22,10 +22,11 @@ def fftser(Ei):
 
 if __name__ == '__main__':
     #myarr = np.array([[1,1,2],[2,3,3],[3,5,6],[2,3,4]])
-    Ein = np.ones((10,10000,200))
+    Ein = np.ones((10,10000,2000))
 
     #print myarr
 
-    Epar = fftpar(Ein)
+    #Epar = fftpar(Ein)
+    Epar = np.fft.rfft(Ein, axis=0)
 
-    print Epar.shape
+    print Epar.shape, np.real(Epar).dtype

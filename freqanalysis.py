@@ -13,6 +13,8 @@ import numpy as np
 from h5stitch2D import chunkIt, getfnsp4, fields2D, h5fields2D, h5fields2Dpar2, getTimes
 import gzip
 from copy import deepcopy
+import timeit
+import shutil
 
 # Matplotlib stuff
 import matplotlib as mpl
@@ -28,30 +30,118 @@ if LooseVersion(mpl.__version__) < LooseVersion('1.5.0'):
     plt.register_cmap(name='magma', cmap=cmaps.magma)
     plt.register_cmap(name='plasma', cmap=cmaps.plasma)
 
+
+# Parallel processing stuff
+from multiprocessing import Pool
 try:
     from mpi4py import MPI
 except:
-    print "WARNING: MPI4PY FAILED TO LOAD. DO NOT CALL PARALLEL FUNCTIONS."
+    print "WARNING: MPI4PY FAILED TO LOAD. DO NOT CALL MPI-BASED FUNCTIONS."
     
+# Done with importing modules! Let the games begin.
+
+def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], npool = 1):
+    """ Perform frequency analysis of Ez, Ex, and By (and/or beyond) on many batches of .p4 or .p4.gz; that is, on an entire folder. Analysis can be in parallel or serial."""
+    # Inputs:
+    #   p4dir: folder containing .p4 and/or .p4.gz field files
+    #   outdir: the full path of where the .png plots and their .hdf5 data will be saved
+    #   divsp: an integer factor by which to decimate the spatial resolution of the field arrays.
+    #   fld_ids: a list of field identifiers (as seen by readflds()) upon which fields frequency analysis will be done
+    #   npool: integer number of threads desired in the parallel pool. If npool <= 1, analysis is done in serial
+    #   nbatch: the number of files upon which each frequency analysis is performed. Smaller gives better time resolution, but larger gives better frequency resolution.
+    # Outputs:
+    #   .png and .hdf5 files (with which revised plots can be made) are saved in subdirectories of "outdir"
+
+    print "BEGINNING FREQUENCY ANALYSIS OF DATASET."
+    # Start a parallel pool of processors. If npool is 1, run the whole analysis in serial. 
+    if npool > 1:
+        print "Starting parallel pool of", npool, "threads for this analysis."
+        pool = Pool(npool)
+    else:
+        print "Serial analysis requested (so no pool started)."
+        pool = None
+
+    # Look at the files in the folder, and split them into good-sized batches for analysis
+    fns_all = getfnsp4(p4dir)
+
+    # Split the filenames list into batches of size nbatch (each batch will be fourier-analyzed)
+    main_batched = chunkFx(fns_all, nbatch)
+    # Make some sub-batches
+    alt_batched = chunkFx(fns_all[int(round(nbatch/2)):], nbatch) # Same as above, but offset
+    fns_batched = main_batched + alt_batched
+
+
+    print "Split files into", len(fns_batched), "small batches of", nbatch, "files and one large batch of", len(fns_all)
     
-def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp=2):
+    ## Analyze the ALL TIMES batch, making plots
+    print "Starting with the 'All times' frequency analysis."
+    freqBatch(fns_all,outdir = outdir, divsp = divsp,  fld_ids = fld_ids, pool = pool, alltime=True) # Will make the plots as well in this case
+
+    ## Analyze all the TIME-RESOLVED batches, and make plots with consistent colorbar limits
+    # Pre-allocate data structures  
+    pltdicts = {} # A dictionary with keys "fld_ids", and each key unlocks a list of plot dictionaries (one for each file)
+    for fld_id in fld_ids:
+        pltdicts[fld_id] = [None]*len(fns_batched) # Pre-allocate the lists of plot dictionaries
+
+    data2s_dict = [None]*len(fns_batched) # A list with each element being a dictionary, and each dictionary having keys "fld_ids", and each key unlocking a data2 dict (which holds the entire result of frequency analysis). Could this become a memory problem? Perhaps.
+
+    for i in range(len(fns_batched)):
+        print "Small batch frequency analysis", i, "of", len(fns_batched)
+        data2s_dict[i], pltdict_dict = freqBatch(fns_batched[i], outdir = outdir, divsp = divsp,  fld_ids = fld_ids, pool = pool)
+        for fld_id in pltdict_dict:
+            pltdicts[fld_id][i] = pltdict_dict[fld_id] # Fill in the i-th element in this field's list of plot dictionaries
+
+    # Extract normalization max and min between all time-resolved frequency analyses, for consistent plots across all files
+    pltdict = {} # A dictionary with keys "fld_ids", and each key unlocks a single plot dictionary (the best max/min of all files)
+    for fld_id in fld_ids:
+        pltdict[fld_id] = bestPltDict(pltdicts[fld_id]) # Get the best max and min for plotting
+
+    # Make plots for the time-resolved frequency analyses and save them to file
+    for i in range(len(fns_batched)):
+        for fld_id in fld_ids:    
+            plotme(data2s_dict[i][fld_id], outdir=outdir, pltdict=pltdict[fld_id], fld_id = fld_id) # Make plots and save to png
+    plt.close('all') # We are done with plots, so close any that are still open."
+
+    return outdir
+
+
+def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = None, alltime=False):
+    """ Perform frequency analysis of Ez, Ex, and By (and/or beyond) on a single batch of .p4 or .p4.gz files. Does not make plots, unless alltime = True. Does save the data to .hdf5 files."""
+    data2_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective data2 dictionary.
+    pltdict_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective pltdict dictionary.
+ 
+    data = fields2D(fns, fld_ids = fld_ids, pool = pool)
+    for fld_id in fld_ids:
+        data2 = freqanalyze(fns, fld_id = fld_id, data = data, pool = pool, divsp = divsp)
+        pltdict = getPltDict(data2) # Get the maxima/minima across multiple files, for homogeneous plotting across time steps
+        h5path = freqSave(data2, outdir = outdir, alltime=alltime) # Save frequency analysis results to hdf5
+        if alltime: # Since we're plotting over all time, no need to normalize to anything else. Just make the plots.
+            plotme(data2, outdir=outdir, pltdict=pltdict, fld_id = fld_id, alltime=alltime) # Make plots and save to png
+        data2_dict[fld_id] = data2
+        pltdict_dict[fld_id] = pltdict
+
+    return data2_dict, pltdict_dict
+
+def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp = 1, pool = None):
     # Inputs:
     #   divsp: integer, divisor by which to reduce the spatial resolution (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
     #   data: (Optional) A python dictionary returned by h5stitch2D.py "fields2D()". If none is supplied, it will be read in by reading from datah5 (fields2D.hdf5) or by looking at p4 filenames.
     #   datpath: (Optional) A string path of the hdf5 file from which data can be loaded.
     #   fns: list of filenames to analyze, if neither data nor datah5 are given.
-    #   h5path 
+    #   pool: The pool multiprocessing threads to use when doing the FFT step. If pool = None (default), just use serial processing.
     #   fld_id: A string specifying the field component to analyze. This field must be contained within the "data" dictionary
-    
+
+    # Decide how to read in the data
     if data:
-        print "Data supplied at input to freqanalyze(), so no need to read in the files. Moving on to frequency analysis."
+        #Data supplied at input to freqanalyze(), so no need to read in the files.
+        print "Extracting fields data directly from python Data dict."
         times = data['times']*1e6 # times, converted to fs
         fns = data['filenames']
         xgv = data['xgv'][::divsp]*1e4 # spatial X, converted to microns
         zgv = data['zgv'][::divsp]*1e4 # spatial Z, converted to microns
         Ez = data[fld_id][:,::divsp,::divsp] ## I call it "Ez" as a variable name, but this could be any field.
     elif datpath:
-        print "Will read fields2D data from the HDF5 file."
+        print "Reading fields2D data from the HDF5 file."
         with h5py.File(datpath, 'r') as data:
             times = data['times'][...]*1e6 # times, converted to fs
             fns = data['filenames'][...]
@@ -59,9 +149,9 @@ def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp=2):
             zgv = data['zgv'][::divsp][...]*1e4 # spatial Z, converted to microns
             Ez = data[fld_id][:,::divsp,::divsp][...] ## I call it "Ez" as a variable name, but this could be any field.
     else:
-        print "Will read ", len(fns), "files."
+        print "Reading ", len(fns), "files."
         # Load in the data
-        data = fields2D(fns, fld_ids = [fld_id])
+        data = fields2D(fns, fld_ids = [fld_id], pool = pool)
         #print "Data read in."
         times = data['times']*1e6 # times, converted to fs
         fns = data['filenames']
@@ -100,59 +190,56 @@ def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp=2):
 
     data2['freq'] = freq
 
-    # Make some interesting maps
-    Imap = np.zeros((Ez.shape[1],Ez.shape[2])) # An intensity map
-    FTmap1 = np.zeros((Ez.shape[1],Ez.shape[2])) # An intensity map, but only over certain frequencies
-    FTmap2 = np.zeros((Ez.shape[1],Ez.shape[2])) # An intensity map, but only over certain frequencies
-    FTmap3 = np.zeros((Ez.shape[1],Ez.shape[2])) # An intensity map, but only over certain frequencies
-    FTmap4 = np.zeros((Ez.shape[1],Ez.shape[2])) # An intensity map, but only over certain frequencies
-    pwr_sum = np.zeros(freq.shape)
-
-    map1_condit = np.logical_and(freq > 0.3, freq < 0.7)
-    map2_condit = np.logical_and(freq > 0.9, freq < 1.1)
-    map3_condit = np.logical_and(freq > 1.3, freq < 1.7)
-    map4_condit = np.logical_and(freq > 1.8, freq < 2.3)
-
     #print "Doing calculations"
-    for i in range(len(zgv)):
-        for j in range(len(xgv)):
-            tline = Ez[:,i,j]
-            
-            # Make a simple intensity map        
-            esum = np.sum(tline**2)
-            Imap[i,j] = esum
-            
-            # Make a more complex ftransform map
-            time_ft = np.fft.rfft(tline)
-            pwr = np.abs(time_ft)**2
-            FTmap1[i,j] = np.sum(pwr[map1_condit])
-            FTmap2[i,j] = np.sum(pwr[map2_condit])
-            FTmap3[i,j] = np.sum(pwr[map3_condit])
-            FTmap4[i,j] = np.sum(pwr[map4_condit])
-            pwr_sum = pwr_sum + pwr;
+    if pool:    
+        print "Parallel FFT started."
+        Eft = fftpar(Ez, pool) # PARALLEL FFT OPTION
+    else:
+        print "Serial FFT started."
+        Eft = np.fft.rfft(Ez, axis = 0) # SERIAL FFT OPTION
 
-
-
-    data2['pwr_sum'] = pwr_sum
-    data2['Imap'] = Imap
-    data2['FTmap_0_5'] = FTmap1
-    data2['FTmap_1'] = FTmap2
-    data2['FTmap_1_5'] = FTmap3
-    data2['FTmap_2'] = FTmap4
+    # Output a variety of analyzed data for plotting
+    data2['Imap'] = np.sum(Ez**2,0)
+    pwr = np.absolute(Eft)**2
+    data2['FTmap_0_5'] = np.sum(pwr[np.logical_and(freq > 0.3, freq < 0.7)],0)
+    data2['FTmap_1'] = np.sum(pwr[np.logical_and(freq > 0.9, freq < 1.1)],0)
+    data2['FTmap_1_5'] = np.sum(pwr[np.logical_and(freq > 1.3, freq < 1.7)],0)
+    data2['FTmap_2'] = np.sum(pwr[np.logical_and(freq > 1.8, freq < 2.3)],0)
+    data2['FTmap_0_85'] = np.sum(pwr[np.logical_and(freq > 0.7, freq < 0.9)],0)
+    data2['pwr_sum'] = np.sum(pwr, (1,2))
 
     return data2
 
-def plotme(data2, folder='', pltdict = None):
+def myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,fignum):
+    """A very custom plot for color plots of field values cut at frequency bands."""
+    fig = plt.figure(fignum)
+    plt.clf() # Clear the figure
+    C = data2[mapID]
+    if pltdict:
+        cmin = pltdict[mapID]['min']
+        cmax = pltdict[mapID]['max']
+    else:
+        cmin = np.min(C)
+        cmax = np.max(C)
+    ax = plt.subplot(111)
+    im = ax.pcolorfast(xgv,zgv,C, cmap='viridis')
+    ax.set_xlabel(r'X ($\mu m$)')
+    ax.set_ylabel(r'Z ($\mu m$)')
+    ax.set_title(title, fontsize=20)
+    ax.text(np.min(xgv) + 1, np.max(zgv) - 3, tstring, fontsize=24, color='white')
+    ax.text(np.max(xgv) - 6, np.min(zgv) + 2, fld_id, fontsize=44, color='white')
+    ax.text(np.min(xgv) + 1, np.min(zgv) + 2, sticker, fontsize=44, color='white')
+    cbar = fig.colorbar(im, label=r'Power density (a.u.)')
+    im.set_clim(vmin=cmin, vmax=cmax)
+    return fig
+
+def plotme(data2, outdir='', pltdict = None, fld_id = 'Field', alltime=False):
+    """ Plots a variety of parameters found in the outputs of frequency analysis, then saves a png of each."""
     xgv = data2['xgv_um']
     zgv = data2['zgv_um']
     freq = data2['freq']
     times = data2['times_fs']
     pwr_sum = data2['pwr_sum']
-    Imap = data2['Imap']
-    FTmap1 = data2['FTmap_0_5']
-    FTmap2 = data2['FTmap_1']
-    FTmap3 = data2['FTmap_1_5']
-    FTmap4 = data2['FTmap_2']
 
     meantime = np.mean(times)
     tplus = np.max(times) - np.mean(times)
@@ -160,114 +247,117 @@ def plotme(data2, folder='', pltdict = None):
     
     # Make some plots
     #print "Making plots."
-    figs = []
-
-    # Time-integrated intensity map (a.u.)
-    fig = plt.figure(1)
-    figs.append(fig)
-    plt.clf() # Clear the figure
-    ax = plt.subplot(111)
-    im = ax.pcolorfast(xgv,zgv,Imap, cmap='gray')
-    ax.set_xlabel('X (um)')
-    ax.set_ylabel('Z (um)')
-    ax.set_title('Integrated power from Ez (a.u.)')
-    X,Z = np.meshgrid(xgv,zgv)
-    plt.contour(X,Z,Imap, cmap='viridis')
-    ax.text(-19, 17, tstring, fontsize=24, color='white')
-    if pltdict:
-        cmin = pltdict['Imap']['min']
-        cmax = pltdict['Imap']['max']
-        im.set_clim(vmin=cmin, vmax=cmax)
+    figs = [] # Figure handles
+    labs = [] # Plot labels
 
     # Power spectrum
-    fig = plt.figure(2)
+    fig = plt.figure(0)
     figs.append(fig) # Add the figure to the figures list
     plt.clf() # Clear the figure
     ax = plt.subplot(111)
     ax.plot(freq, np.log10(pwr_sum))
     ax.set_xlabel('Frequency (normalized to laser fundamental)')
-    ax.set_ylabel('Log10(Power spectrum) of Ez (a.u.)')
-    ax.set_title('Log of Power spectrum at ' + tstring)
+    ax.set_ylabel('Log$_{10}$(Spectral power density) (a.u.)')
+    ax.set_title(fld_id + ', Log of Power spectrum at ' + tstring, fontsize=16)
     ax.set_xlim(0, 2.5)
     ax.xaxis.grid() # vertical lines
     if pltdict:
         ymin = np.log10(pltdict['pwr_sum']['min'])
         ymax = np.log10(pltdict['pwr_sum']['max'])
         ax.set_ylim(ymin, ymax)
+
+    # All frequencies map
+    sticker = r'$I$'
+    title = fld_id + r', Intensity map'
+    mapID = 'Imap'
+
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,1)
+    figs.append(fig)
     
-    # Fourier transform subset map 1
-    fig = plt.figure(3)
-    figs.append(fig)
-    plt.clf() # Clear the figure
-    ax = plt.subplot(111)
-    im = ax.pcolorfast(xgv,zgv,FTmap1, cmap='viridis')
-    ax.set_xlabel('X (um)')
-    ax.set_ylabel('Z (um)')
-    ax.set_title('Ez, Half omega map (0.3 to 0.7 x fundamental) (a.u.)')
-    ax.text(-19, 17, tstring, fontsize=24, color='white')
-    fig.colorbar(im, label='Frequency-cut power spectrum integral (a.u.)')
-    if pltdict:
-        cmin = pltdict['FTmap_0_5']['min']
-        cmax = pltdict['FTmap_0_5']['max']
-        im.set_clim(vmin=cmin, vmax=cmax)
+    # Half omega map
+    sticker = r'$\omega/2$'
+    title = fld_id + r', 0.3 to 0.7 $\omega$'
+    mapID = 'FTmap_0_5'
 
-    # Fourier transform subset map 2
-    fig = plt.figure(4)
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,2)
     figs.append(fig)
-    plt.clf() # Clear the figure
-    ax = plt.subplot(111)
-    im = ax.pcolorfast(xgv,zgv,FTmap2, cmap='viridis')
-    ax.set_xlabel('X (um)')
-    ax.set_ylabel('Z (um)')
-    ax.set_title('Ez, Fundamental map (0.9 to 1.1 x fundamental) (a.u.)')
-    ax.text(-19, 17, tstring, fontsize=24, color='white')
-    fig.colorbar(im, label='Frequency-cut power spectrum integral (a.u.)')
-    if pltdict:
-        cmin = pltdict['FTmap_1']['min']
-        cmax = pltdict['FTmap_1']['max']
-        im.set_clim(vmin=cmin, vmax=cmax)
 
-    # Fourier transform subset map 3
-    fig = plt.figure(5)
-    figs.append(fig)
-    plt.clf() # Clear the figure
-    ax = plt.subplot(111)
-    im = ax.pcolorfast(xgv,zgv,FTmap3, cmap='viridis')
-    ax.set_xlabel('X (um)')
-    ax.set_ylabel('Z (um)')
-    ax.set_title('Ez, Three-halves omega map (1.3 to 1.7 x fundamental) (a.u.)')
-    ax.text(-19, 17, tstring, fontsize=24, color='white')
-    fig.colorbar(im, label='Frequency-cut power spectrum integral (a.u.)')
-    if pltdict:
-        cmin = pltdict['FTmap_1_5']['min']
-        cmax = pltdict['FTmap_1_5']['max']
-        im.set_clim(vmin=cmin, vmax=cmax)
+    # Omega map
+    sticker = r'$1\omega$'
+    title = fld_id + r', 0.9 to 1.1 $\omega$'
+    mapID = 'FTmap_1'
 
-    # Fourier transform subset map 4
-    fig = plt.figure(6)
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,3)
     figs.append(fig)
-    plt.clf() # Clear the figure
-    ax = plt.subplot(111)
-    im = ax.pcolorfast(xgv,zgv,FTmap4, cmap='viridis')
-    ax.set_xlabel('X (um)')
-    ax.set_ylabel('Z (um)')
-    ax.set_title('Ez, Two omega map (1.8 to 2.3 x fundamental) (a.u.)')
-    ax.text(-19, 17, tstring, fontsize=24, color='white')
-    fig.colorbar(im, label='Frequency-cut power spectrum integral (a.u.)')
-    if pltdict:
-        cmin = pltdict['FTmap_2']['min']
-        cmax = pltdict['FTmap_2']['max']
-        im.set_clim(vmin=cmin, vmax=cmax)
+
+    # Three-halves omega map
+    sticker = r'$3\omega/2$'
+    title = fld_id + r', 1.3 to 1.7 $\omega$'
+    mapID = 'FTmap_1_5'
+
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,4)
+    figs.append(fig)
+
+    # Two omega map
+    sticker = r'$2\omega$'
+    title = fld_id + r', 1.8 to 2.3 $\omega$'
+    mapID = 'FTmap_2'
+
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,5)
+    figs.append(fig)
+
+
+    # 0.85x omega map
+    sticker = r'$0.85\omega$'
+    title = fld_id + r', 0.7 to 0.9 $\omega$'
+    mapID = 'FTmap_0_85'
+
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,6)
+    figs.append(fig)
+
 
     print "Saving figures"
+    # Save the figures into custom folders and with time-based filenames.
+    if alltime: # If this is the "All times" analysis, label the file with "00000.*"
+        tlabel = ''.zfill(5)
+    else: # Otherwise, do the normal labeling
+        tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
+
+    plotpath = subdir(outdir, 'FreqPlots')
     for i in range(len(figs)):
-        fn = os.path.join(folder, 'fig' + str(i) + '.png')
+        figpath = subdir(plotpath, 'fig' + str(i))
+        fn = os.path.join(figpath, tlabel + '.png') # For example, store the figure as '[outdir]/FreqPlots/fig1/00512.png'
         figs[i].savefig(fn)
 
-    return figs
+    #plt.close('all') # This is nice but not necessary, since I numbered the figures (they will be re-used across calls)
 
-def saveData2(data2, folder = '', name = 'data2.hdf5'):
-    """Save the data2 dictionary to an HDF5 file, assuming it contains only NumPy arrays"""
+def fftpar(Ei, pool):
+    """ Parallel temporal fast fourier transform on a (time x space x space) field array. Returns a (freq x space x space) array."""
+    # It may not actually be all that efficient to spin off a bunch of threads for this calculation, but it is still a lot faster than one thread.
+    # Prior to calling, get your pool via: pool = Pool(10) for a 10-thread pool
+    return np.swapaxes(np.array((pool.map(np.fft.rfft, Ei.swapaxes(0,2)))),0,2)
+
+def subdir(folder, name):
+    """ Make a subdirectory in the specified folder, if it doesn't already exist"""
+    subpath = os.path.join(folder,name)
+    if not os.path.exists(subpath):
+        os.mkdir(subpath)
+    return subpath
+
+def freqSave(data2, outdir = '', alltime=False):
+    """Save the data used in frequency plots to an hdf5 file."""
+    if alltime: # If this is the "All times" analysis, label the file with "00000.*"
+        tlabel = ''.zfill(5)
+    else: # Otherwise, do the normal labeling
+        meantime = np.mean(data2['times_fs'])
+        tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
+    plotpath = subdir(outdir, 'FreqData')
+    h5path = saveData(data2, plotpath, tlabel + '.hdf5')
+    return h5path
+
+    
+def saveData(data2, folder = '', name = 'data2.hdf5'):
+    """Save a python dictionary containing only top-level NumPy arrays (example: data2 in this document) to an HDF5 file, with moderate gzip compression"""
     print "Saving HDF5 file."
     h5path = os.path.join(folder, name)
     with h5py.File(h5path, 'w') as f:
@@ -276,8 +366,8 @@ def saveData2(data2, folder = '', name = 'data2.hdf5'):
 
     return h5path
 
-def loadData2(h5path):
-    """Read the data2 HDF5 file back into the data2 array"""
+def loadData(h5path):
+    """Read a simple HDF5 file containing only top-level arrays back into a python dict of NumPy arrays"""
     print "Reading in HDF5 file."
     data2 = {}
     with h5py.File(h5path, 'r') as f:
