@@ -213,7 +213,9 @@ def myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,fignum):
         cmin = np.min(C)
         cmax = np.max(C)
     ax = plt.subplot(111)
-    im = ax.pcolorfast(xgv,zgv,C, cmap='viridis')
+    xr = [xgv[0],xgv[-1]] # min and max of xgv, needed for pcolorfast
+    zr = [zgv[0],zgv[-1]]
+    im = ax.pcolorfast(xr,zr,C, cmap='viridis')
     ax.set_xlabel(r'X ($\mu m$)')
     ax.set_ylabel(r'Z ($\mu m$)')
     ax.set_title(title, fontsize=20)
