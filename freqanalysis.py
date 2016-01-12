@@ -248,11 +248,13 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Field', alltime=False):
     # Make some plots
     #print "Making plots."
     figs = [] # Figure handles
-    labs = [] # Plot labels
+    labs = [] # Plot name labels
 
     # Power spectrum
+    label = 'Power spectrum'
     fig = plt.figure(0)
     figs.append(fig) # Add the figure to the figures list
+    labs.append(label)
     plt.clf() # Clear the figure
     ax = plt.subplot(111)
     ax.plot(freq, np.log10(pwr_sum))
@@ -267,53 +269,68 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Field', alltime=False):
         ax.set_ylim(ymin, ymax)
 
     # All frequencies map
+    label = 'Intensity'
     sticker = r'$I$'
     title = fld_id + r', Intensity map'
     mapID = 'Imap'
 
     fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,1)
     figs.append(fig)
+    labs.append(label)
+
     
     # Half omega map
+    label = 'Half omega'
     sticker = r'$\omega/2$'
     title = fld_id + r', 0.3 to 0.7 $\omega$'
     mapID = 'FTmap_0_5'
 
     fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,2)
     figs.append(fig)
+    labs.append(label)
+
 
     # Omega map
+    label = 'Omega'
     sticker = r'$1\omega$'
     title = fld_id + r', 0.9 to 1.1 $\omega$'
     mapID = 'FTmap_1'
 
     fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,3)
     figs.append(fig)
+    labs.append(label)
+
 
     # Three-halves omega map
+    label = 'Three-halves omega'
     sticker = r'$3\omega/2$'
     title = fld_id + r', 1.3 to 1.7 $\omega$'
     mapID = 'FTmap_1_5'
 
     fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,4)
     figs.append(fig)
+    labs.append(label)
 
     # Two omega map
+    label = 'Two omega'
     sticker = r'$2\omega$'
     title = fld_id + r', 1.8 to 2.3 $\omega$'
     mapID = 'FTmap_2'
 
     fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,5)
     figs.append(fig)
+    labs.append(label)
 
 
     # 0.85x omega map
+    label = '0_85 omega'
     sticker = r'$0.85\omega$'
     title = fld_id + r', 0.7 to 0.9 $\omega$'
     mapID = 'FTmap_0_85'
 
     fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,6)
     figs.append(fig)
+    labs.append(label)
 
 
     print "Saving figures"
@@ -325,7 +342,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Field', alltime=False):
 
     plotpath = subdir(outdir, 'FreqPlots')
     for i in range(len(figs)):
-        figpath = subdir(plotpath, 'fig' + str(i))
+        figpath = subdir(plotpath, fld_id + ' - ' + str(i) + ' - ' + labs[i])
         fn = os.path.join(figpath, tlabel + '.png') # For example, store the figure as '[outdir]/FreqPlots/fig1/00512.png'
         figs[i].savefig(fn)
 
