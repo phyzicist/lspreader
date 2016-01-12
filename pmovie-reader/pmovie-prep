@@ -1,19 +1,33 @@
 #!/usr/bin/env bash
 USAGE="Copies pmovie reading scripts and makes pbs files.
 
-usage: ./pmovie-prep [-h -n <numberofnodes> -s <server>] <pmovie-dir> [<lspreader-dir> [<pbsoutput-dir>]]"
+Usage:
+    ./pmovie-prep [options] <pmovie-dir> [<lspreader-dir> [<pbsoutput-dir>]]
+Options:
+    -h                   Print help
+    -n N                 Specify number N of nodes. 1 is usually enough for
+                         2D sims and is the default.
+    -s SERVER            Specify server. Current valid ones are \"ramses\" and \"glenn\".
+                         \"ramses\" is default.
+    -N RAMSESNODE        Run only on the node RAMSESNODE. Default does not use this.
+"
 NODES=1
 SERVER="ramses"
-while getopts ':hn:s:' opt; do
+RDDIR="/home/ngirmang.1/lspreader"
+CONDA="/home/ngirmang.1/conda"
+RAMSESNODE=
+while getopts ':hn:s:N:' opt; do
       case $opt in
           h)
-              echo "Script to prepare pmovies for trajectories."
-              echo
-              echo $USAGE
+              echo "$USAGE"
               exit 0
               ;;
           n)
               NODES=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+          N)
+              RAMSESNODE=$OPTARG
               shift $((OPTIND-1))
               ;;
           s)
@@ -32,14 +46,30 @@ while getopts ':hn:s:' opt; do
       esac
 done
 
+source $CONDA
 DEST=$( [ -n "$1" ] && echo $1)
 [ -z "$DEST" ] && echo $USAGE && exit 1;
-RDDIR=$( [ -n "$2" ]  && echo $2 || echo ".." )
+[ -n "$2" ]  && RDDIR="$2";
 OUTDIR=$( [ -n "$3" ] && echo $3 ||  echo "." )
-cp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pmov.py $DEST
-cp $RDDIR/pmovie-reader/* $RDDIR/misc.py $OUTDIR/
 
-./pmovie-pbsgen.py --server=$SERVER --nodes=$NODES --outdir=$OURDIR $DEST
+#checking for remote node
+if [ -n "$( echo "$DEST" | grep \: )" ]; then
+    RAMSESNODE=$(echo "$DEST" | sed 's/@\{0,1\}\([A-Z,a-z,0-9]\+\):.*/\1/');
+fi
+rcp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pmov.py $DEST
+rcp $RDDIR/pmovie-reader/pmovie-pbsgen.py $OUTDIR/
+if [ $SERVER == "ramses" ] && [ -n "$RAMSESNODE" ]; then
+    DIRONNODE=$(echo "$DEST" | sed 's/@\{0,1\}[A-Z,a-z,0-9]\+:\(.*\)/\1/');
+    rsh $RAMSESNODE ls "$DIRONNODE">.lsfiles
+    rcp "$DEST/*.lsp" ./.destlsp
+    ./pmovie-pbsgen.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
+                           --dotlsp=.destlsp --filelist=.lsfiles \
+                           --ramses-node=$RAMSESNODE $DIRONNODE
+else
+    ./pmovie-pbsgen.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
+                           --ramses-node=$RAMSESNODE $DEST
+fi
+
 PBSES=$(ls | grep 'pmovie-conv.*.pbs$')
 #generating the reader script. Calling it unleashes the hounds.
 echo "#!/bin/bash
@@ -47,5 +77,5 @@ echo "#!/bin/bash
 for i in $PBSES; do
     qsub \$i;
 done;
-">pmovreader.sh
-chmod +x pmovreader.sh
+">pmoviereader.sh
+chmod +x pmoviereader.sh
