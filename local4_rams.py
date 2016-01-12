@@ -6,7 +6,7 @@ import os
 #outdir = r'/data/feister.7/lsp/runs/2d-nosolid_foc-10' # This folder already exists and will store the files in subfolders
 
 
-name = r'2d-nosolid_foc-10-'
+name = r'2d-nosolid_focp5-'
 
 analydir = r'/data/feister.7/lsp/analysis'
 dumpdir = r'/data/feister.7/lspdump'

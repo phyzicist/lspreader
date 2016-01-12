@@ -255,10 +255,10 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False):
     plt.clf() # Clear the figure
     if pltdict:
         ymax = np.log10(pltdict['pwr_sum']['max'])
-        ymin = ymax - 3 # Give 3 orders of magnitude
+        ymin = ymax - 4 # Give 4 orders of magnitude
     else:
         ymax = np.log10(np.max(pwr_sum))
-        ymin = ymax - 3 # Give 3 orders of magnitude
+        ymin = ymax - 4 # Give 4 orders of magnitude
     xmin = 0
     xmax = 2.5
     ax = plt.subplot(111)
