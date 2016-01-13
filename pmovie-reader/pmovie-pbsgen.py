@@ -1,17 +1,18 @@
 #!/usr/bin/env python2
 '''
-An attempt to formalize the parsing of pmovies.
+Generate a monolithic pbs script for a reading pmovies.
 
 Usage: 
     ./pmovie-prep.py [options] <workdir>
 
 Options:
     --help -h                  Print this help.
-    --nodes=N -n N             Number of utilized nodes [default: 1]
-    --server=SERVER            Tune for this server [default: ramses]
-    --extra-opts=OPTS -x OPTS  Add these opts to pmov.py [default: ]
-    --outdir=OUT               Specify an output directory for pbs scripts [default: .]
-    --hdf                      Use hdf5 as output.
+    --nodes=N -n N             Number of utilized nodes. [default: 1]
+    --server=SERVER            Tune for this server. [default: ramses]
+    --scanner=SCANSCRIPT       Use this scan script. [default: Escan.py]
+    --conv-opts=OPTS           Add these opts to pmov.py. [default: ]
+    --scan-opts=OPTS           Add these opts to the chosen scanner. [default: ]
+    --outdir=OUT -o OUT        Specify an output directory for pbsscripts [default: .]
     --ramses-node=NODE         Submit to a specific ramses node.
     --filelist=LS -l LS        Supply a directory listing if the directory is
                                unreachable for this script.
@@ -25,11 +26,6 @@ from docopt import docopt;
 
 opts = docopt(__doc__,help=True);
 workdir = opts['<workdir>'];
-
-def chunks(l,n):
-    #http://stackoverflow.com/a/3226719
-    #...not that this is hard to understand.
-    return [l[x:x+n] for x in xrange(0, len(l), n)];
 
 def call(cmd):
     return subprocess.check_output(cmd).split('\n');
@@ -52,7 +48,7 @@ lspmovies = [(s, int(pmovierx.match(s).group(1)))
 lspmovies.sort(key=lambda i: i[1]);
 if len(ls) == 0:
     raise ValueError("I see no pmovies in {}.".format(workdir));
-filesstr = [i[0] for i in lspmovies];
+sortedmovies = [i[0] for i in lspmovies];
 #reading .lsp file to find information
 if not opts['--dotlsp']:
     dotlsprx = re.compile(r".*\.lsp");
@@ -85,15 +81,9 @@ try:
 except KeyError as k:
     print('Invalid server "{}"'.format(k));
     exit(1);
-#determining subdivisions
-nodes = int(opts['--nodes']);
-filespernode = len(filesstr)/nodes;
-if len(filesstr)%nodes > 0: filespernode+=1;
-pbses = chunks(filesstr, filespernode);
-postfmt = '{{0:{}}}'.format(len(str(nodes)));
 
 #template for PBS script output
-template='''
+headert='''
 #PBS -l walltime={hours}:{mins}:00
 #PBS -l nodes=1:ppn={ppn}{ramsesnode}
 #PBS -S /bin/bash
@@ -104,64 +94,138 @@ source $HOME/.bashrc
 source $HOME/conda
 LOGFILE=$PBS_O_WORKDIR/pmovie-conv-{post}.log
 MAXPROC={maxproc}
-cd {workdir}
+WORKDIR={workdir}
+cd $WORKDIR
 >$LOGFILE
+'''
+#what follows are different sections of the pbscript
 
-if [ ! -d pmovie-conv ]; then
-    mkdir pmovie-conv;
-fi
 
-echo "processing first file...">>$LOGFILE
-{firstfile}
-for i in {filelist}; do
-    while [ $(pgrep -f pmov.py  |  wc -l ) -gt $MAXPROC ]; do sleep 10; done; 
-    echo "running $i">>$LOGFILE
-    sleep 1;
-    ./pmov.py {opts} -D pmovie-conv  --exp-d=./hash.d $i {outfile}&>>$LOGFILE&
+#conversion
+#convert first file
+convertt_first='''
+PMOVDIR=$WORKDIR/pmovie-conv
+[ ! -d $PMOVDIR ] && mkdir $PMOVDIR;
+
+FIRSTPMOV={firstfile}
+./pmov.py {convopts} -D $PMOVDIR --exp-first=./hash.d $FIRSTPMOV
+#get first file in case first file has multiple frames
+
+FIRSTNPZ=$(ls $PMOVDIR | grep '{firstfile}.*\.npz$' | head -n 1)
+./orig.py $PMOVDIR/$FIRSTNPZ orig
+'''
+
+convertt='''
+echo "starting mass conversion at $(date)">>$LOGFILE
+#these are files other than the first
+FILES=$(ls $WORKDIR | grep -v $FIRSTPMOV )
+for i in $FILES; do
+    while [ $(pgrep -f pmov.py  |  wc -l ) -ge $MAXPROC ]; do sleep 5; done; 
+    echo "convert: running $i">>$LOGFILE
+    sleep 0.2;
+    ./pmov.py {convopts} -D pmovie-conv  --exp-d=./hash.d $i &
 done
 
 while [ $(pgrep -f pmov.py | wc -l) -gt 0 ]; do
     echo "waiting for $(pgrep -f pmov.py | wc -l) process(es)">>$LOGFILE
     echo "call deq to end">>$LOGFILE
-    sleep 10;
+    sleep 5;
 done
 '''
 
-firstfiletmpl="./pmov.py {opts} -D pmovie-conv --exp-first=./hash.d {firstfile} {outfile}&>>$LOGFILE"
-for i,f in enumerate(pbses):
-    post = postfmt.format(i);
-    xopts=''+dims_flag; #for copy so we don't write to dims_flag
-    #handle hdf output
-    if opts['--hdf']:
-        xopts+=' -H '
-        outfile='pmovs.h5'
-    else:
-        outfile='';
-    #ramses hack
-    if opts['--server'] and opts['--ramses-node']:
-        ramsesnode=':'+opts['--ramses-node'];
-    else:
-        ramsesnode='';
-    if i==0:
-        firstfile = firstfiletmpl.format(
-            opts=xopts,
-            firstfile=f[0],
-            outfile=outfile);
-        files=' '.join(f[1:]);
-    else:
-        firstfile='';
-        files = ' '.join(f);
-    out = template.format(
-        hours=hours,
-        mins=mins,
-        ppn=ppn,
-        ramsesnode=ramsesnode,
-        post=post,
-        workdir=workdir,
-        firstfile=firstfile,
-        filelist=files,
-        opts=xopts+opts['--extra-opts'],
-        maxproc=maxproc,
-        outfile=outfile);
-    with open(opts['--outdir']+'/pmovie-conv-'+post+'.pbs','w') as f:
-        f.write(out);
+#global scans
+scant='''
+FILES="$(ls $PMOVDIR | grep .npz);"
+SCANSCRIPT={scanscript}
+SCANDIR=pmovie-scan
+[ ! -d $PMOVDIR ] && mkdir $SCANDIR;
+
+echo "scanning files at $(date)">>$LOGFILE
+for i in $FILES; do
+    while [ $(pgrep -f $SCANSCRIPT  |  wc -l ) -ge $MAXPROC ]; do sleep 5; done;
+    OUTNAME="found$(echo $i | sed 's/^.*p4\.\([0-9]\+\).npz$/\1/')"
+    echo "scan: running $i into $OUTNAME">>$LOGFILE
+    sleep 0.2;
+    ./$SCANSCRIPT {scanopts} $PMOVDIR/$i $SCANDIR/$OUTNAME &
+done
+while [ $(pgrep -f $SCANSCRIPT | wc -l) -gt 0 ]; do
+    echo "waiting for $(pgrep -f Escan.py | wc -l) process(es)">>$LOGFILE
+    echo "call deq to end">>$LOGFILE
+    sleep 5;
+done
+'''
+
+gathert='''
+#now, gather the matches
+echo "gathering searches at $(date)">>$LOGFILE
+./gather.py -ui ./orig.npy $SCANDIR'found.*.npy' $SCANDIR/selected.npy &>>$LOGFILE
+rm "$SCANDIR/found*.npy
+'''
+#trajectory finding
+searcht='''
+FILES=$(ls $PMOVDIR | grep .npz);
+#now, we search
+echo "searching for files at $(date)">>$LOGFILE
+for i in $FILES; do
+    while [ $(pgrep -f search.py  |  wc -l ) -ge $MAXPROC ]; do sleep 5; done;
+    OUTNAME="traj$(echo $i | sed 's/^.*p4\.\([0-9]\+\).npz$/\1/')"
+    echo "search: searching $i into $OUTNAME">>$LOGFILE
+    sleep 0.2;
+    ./search.py $PMOVDIR/$i $SCANDIR/selected.npy $SCANDIR/$OUTNAME &
+done
+while [ $(pgrep -f search.py | wc -l) -gt 0 ]; do
+    echo "waiting for $(pgrep -f search.py | wc -l) process(es)">>$LOGFILE
+    echo "call deq to end">>$LOGFILE
+    sleep 5;
+done
+'''
+trajt='''
+echo "gathering for trajectories $(date)">>$LOGFILE
+#finally, we gather trajectories
+./traj.py $SCANDIR/'traj.*.npz' trajectories >>$LOGFILE
+rm  $SCANDIR/*.npz $SCANDIR/selected.npy
+echo "done at $(date)">>$LOGFILE
+if [ -f tranjectories.npz ]; then
+    echo "file is available at $HOSTNAME:$PWD/trajectories.npz"
+else
+    echo "trajectories is not found, check the log for errors."
+fi;
+'''
+post = postfmt.format(0);
+xopts=''+dims_flag; #for copy so we don't write to dims_flag
+#ramses hack
+if opts['--server'] and opts['--ramses-node']:
+    ramsesnode=':'+opts['--ramses-node'];
+else:
+    ramsesnode='';
+convopts=xopts+opts['--extra-opts'];
+scanopts = opts['--scan-opts'];
+scanscript=opts['--scanner'];
+
+#header
+header = headert.format(
+    hours=hours,mins=mins,ppn=ppn,
+    ramsesnode=ramsesnode,post=post,
+    workdir=workdir,
+    maxproc=maxproc);
+#conversion
+#creating pbs script.
+convert_first = convertt_first.format(
+    convopts = convopts,
+    firstfile=sortedmovies[0])
+
+convert = convertt.format(
+    convopts=convopts);
+
+#scanning
+scan = scant.format(
+    scanscript=scanscript,
+    scanopts=scanopts);
+#no format needed for the following.
+gather=gathert;
+search=searcht;
+traj =trajt;
+out = ''.join([header,convert_first,convert,scan,gather,search,traj]);
+
+with open(opts['--outdir']+'/pmovie-conv-'+post+'.pbs','w') as f:
+    f.write(out);
