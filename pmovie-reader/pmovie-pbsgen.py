@@ -191,7 +191,7 @@ else
     echo "trajectories is not found, check the log for errors."
 fi;
 '''
-post = postfmt.format(0);
+post = '0';
 xopts=''+dims_flag; #for copy so we don't write to dims_flag
 #ramses hack
 if opts['--server'] and opts['--ramses-node']:
