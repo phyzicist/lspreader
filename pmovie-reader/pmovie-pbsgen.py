@@ -198,7 +198,7 @@ if opts['--server'] and opts['--ramses-node']:
     ramsesnode=':'+opts['--ramses-node'];
 else:
     ramsesnode='';
-convopts=xopts+opts['--extra-opts'];
+convopts=xopts+opts['--conv-opts'];
 scanopts = opts['--scan-opts'];
 scanscript=opts['--scanner'];
 
