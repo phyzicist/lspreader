@@ -27,10 +27,11 @@ Options:
   --cmap=CMAP                 Use the following cmap [default: pastel].
   --e-direction=ANGLE         The angle for the radial labels.
   --e-units=UNIT              The units for the radial labels.
+  --agg                       Use the agg backend.
 '''
 import numpy as np;
+import matplotlib;
 import matplotlib.pyplot as plt;
-import matplotlib
 import matplotlib.patheffects as pe;
 import cPickle as pickle;
 from matplotlib import colors;
@@ -121,8 +122,9 @@ def prep(opts):
 def main():
     opts=docopt(__doc__,help=True);
     s,phi,e,kw,_ = prep(opts);
+    if opts['<output>'] and opts['--agg']:
+        plt.change_backend('agg');
     angular(s,phi,e,**kw);
-    
     if opts['<output>']:
         if opts['--high-res']:
             plt.savefig(opts['<output>'],dpi=1000);

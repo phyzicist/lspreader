@@ -87,16 +87,16 @@ numpy arrays, so you're free to plot them up in anyway you like.
 Exiting the angular.py script will exit this tutorial."
 waitforit
 echo ""
-echo \$ ./angular.py pext.pi
+echo \$ ./angular.py pext.pi 
 ./angular.py pext.pi
 
+if [ $! -ne 0 ]; then
+    echo "
+It looks like I failed to draw the file. It might be because
+you are plotting on a machine without a graphical backend. In
+that case, I'll call ./angular.py with the agg backend.
 
-exit 2;
-
-for i in {1..6}; do
-    ./pext.py -r pextcat/pext${i}.d pexts1/pext${i}.p4 pexts3/pext${i}.p4;
-done;
-./dictcat.py pextcat/*.d >pext.pickle
-./dictrestrict.py pext.pickle y '(-1e-4,1e-4)' -o pext-restricted.pickle
-
+It will save it to out.png"
+    ./angular.py --agg  pext.pi out.png
+fi;
 
