@@ -90,7 +90,7 @@ echo ""
 echo \$ ./angular.py pext.pi 
 ./angular.py pext.pi
 
-if [ $! -ne 0 ]; then
+if [ $? -ne 0 ]; then
     echo "
 It looks like I failed to draw the file. It might be because
 you are plotting on a machine without a graphical backend. In
@@ -98,5 +98,6 @@ that case, I'll call ./angular.py with the agg backend.
 
 It will save it to out.png"
     ./angular.py --agg  pext.pi out.png
+    echo \$ ./angular.py --agg pext.pi out.png
 fi;
 
