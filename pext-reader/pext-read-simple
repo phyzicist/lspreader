@@ -4,7 +4,7 @@ USAGE="Generates pext data from a single, no restart run.
 Meant to be run from ramses if possible.
 
 Usage:
-    ./pmovie-prep [options] [<pext-dir> [<lspreader-dir>]]
+    ./pext-read-simple [options] [<pext-dir> [<lspreader-dir>]]
 
 For <pext-dir>, it accepts a valid directory within reach of rcp and rsh.
 For example, for /tmp/foo node02 on ramses, specify the path as
@@ -84,3 +84,5 @@ echo \"concatenating\"
 ">gen
 chmod +x gen
 ./gen
+
+./angular.py --agg -n pext.npy angular.png
