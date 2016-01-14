@@ -67,6 +67,8 @@ cp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pext.py $RDDIR/cmaps.py \
 echo "\
 #!/usr/bin/env bash
 
+[ -n \"$CONDA\" ] && source $CONDA
+
 PFILES=\$(ls | grep 'pext[0-9]\+.p4$' )
 echo \"converting\"
 for i in \$PFILES; do
