@@ -47,8 +47,9 @@ def totalKE(d, ecut=0, anglecut=None,return_bools=False):
             raise ValueError("anglecut is not None, '2D' or '3D'");
     KE = (np.abs(d['q'][good]*1e-6)*d['KE'][good]).sum();
     if return_bools:
-        return KE,good
-    else
+        return KE,good;
+    else:
+        return KE;
     
 def laserE(E_0, T, w,dim="3D"):
     '''
@@ -80,12 +81,13 @@ if __name__ == "__main__":
     w    = float(opts['--W']);
     T    = float(opts['--T']);
     d = np.load(opts['<input>'],allow_pickle=True);
+    angle = float(opts['--angle']);
     dim  = "2D" if opts['--2D'] else "3D";
-    KE, good = totalKE(d, ecut, (dim, opts['--angle']),return_bools=True);
+    KE, good = totalKE(d, ecut, (angle,dim),return_bools=True);
     LE = laserE(E_0, w, T, dim=dim);
     totalq = d['q'][good].sum()*1e12;
     print('total charge: {} {}'.format(totalq,'pC/cm' if opts['--2D'] else 'pC'));
     print("total energy: {} J".format(KE));
     print('pulse energy: {} J'.format(LE));
-    print('efficiency is {}'.format(KE/LE);
+    print('efficiency is {}'.format(KE/LE));
 
