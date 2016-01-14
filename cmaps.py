@@ -23,6 +23,7 @@
 #
 # You should have received a copy of the CC0 legalcode along with this
 # work.  If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+import numpy as np;
 
 _magma_data = [[0.001462, 0.000466, 0.013866],
                [0.002258, 0.001295, 0.018331],
@@ -1051,8 +1052,8 @@ _viridis_data = [[0.267004, 0.004874, 0.329415],
                  [0.974417, 0.903590, 0.130215],
                  [0.983868, 0.904867, 0.136897],
                  [0.993248, 0.906157, 0.143936]]
-
-from matplotlib.colors import ListedColormap
+import matplotlib.colors as colors;
+ListedColormap = colors.ListedColormap;
 
 cmaps = {}
 for (name, data) in (('magma', _magma_data),
@@ -1113,19 +1114,19 @@ _p_hsv = np.array([_p_h,_p_s,_p_v]);
 _p_rgb= rgbfromhsv(_p_hsv);
 _p_rgb,_p_a =whiteoutzero(_p_rgb,alpha=True);
 
-_pl_rgb_r,_pl_a_r = whiteoutzero(colormaps._plasma_data[::-1],alpha=True);
+_pl_rgb_r,_pl_a_r = whiteoutzero(_plasma_data[::-1],alpha=True);
 
-_vi_rgb,_vi_a = whiteoutzero(colormaps._viridis_data,alpha=True);
-_vi_rgb_r,_vi_a_r = whiteoutzero(colormaps._viridis_data[::-2],alpha=True);
+_vi_rgb,_vi_a = whiteoutzero(_viridis_data,alpha=True);
+_vi_rgb_r,_vi_a_r = whiteoutzero(_viridis_data[::-2],alpha=True);
 
 pastel        = cmap(_p_rgb);
 pastel_clear  = cmap(_p_rgb,a=_p_a);
-plasma_clear  =  listtoclear(colormaps._plasma_data);
-plasma_clear_r = listtoclear(colormaps._plasma_data[::-1]);
-magma_clear  =  listtoclear(colormaps._magma_data);
-magma_clear_r = listtoclear(colormaps._magma_data[::-1]);
-viridis_clear =  listtoclear(colormaps._viridis_data);
-viridis_clear_r =listtoclear(colormaps._viridis_data[::-1]);
+plasma_clear  =  listtoclear(_plasma_data);
+plasma_clear_r = listtoclear(_plasma_data[::-1]);
+magma_clear  =  listtoclear(_magma_data);
+magma_clear_r = listtoclear(_magma_data[::-1]);
+viridis_clear =  listtoclear(_viridis_data);
+viridis_clear_r =listtoclear(_viridis_data[::-1]);
 def mkstrip(rgb,vmin,vmax,val,
             strip=[1.0,0.0,0.0],log10=False):
     if log10:

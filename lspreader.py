@@ -137,6 +137,7 @@ def read_flds(file, header, var, vprint, vector=True,removedupes=False):
         vprint('reading domain with dimensions {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
         d={}
         d['xs'], d['ys'], d['zs'] = Ip, Jp, Kp;
+        d['x'], d['y'], d['z'] = np.vstack(np.meshgrid(Ip,Jp,Kp,indexing='ij')).reshape(3,-1);
         for quantity in qs:
             if quantity not in readin:
                 vprint('skipping {}'.format(quantity));
@@ -150,7 +151,7 @@ def read_flds(file, header, var, vprint, vector=True,removedupes=False):
                     del data, d[quantity];
         doms.append(d);
     if removedupes:
-        for dom in doms:
+        pass;
     vprint('Stringing domains together.');
     out = { k : np.concatenate([d[k] for d in doms]) for k in doms[0] };
     vprint('Converting to little-endian');

@@ -36,8 +36,9 @@ import matplotlib.patheffects as pe;
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
-from misc import conv, test;
+from misc import conv, test, readfile
 from cmaps import pastel_clear,plasma_clear,viridis_clear,magma_clear_r;
+import re;
 
 def prep(opts):
     '''I put this here in order to reuse this'''
@@ -50,8 +51,8 @@ def prep(opts):
     maxQ = float(opts['--max-q']) if opts['--max-q'] else None;
     Estep = conv(opts['--e-step'],default=(250 if opts['--KeV'] else 1.0),func=float); 
     F = float(opts['--factor']);
-    with open(inname,'r') as f:
-        d = pickle.load(f);
+    d = np.load(inname, allow_pickle=True);
+    
     e = d['KE'];
     if opts['--KeV']:
         e/=1e3;
