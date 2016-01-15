@@ -62,9 +62,12 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'TEST' #'a80f-14_hres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3e18 W cm-2, 3.0um scale plasma, focus at X=-14um' # Simulation title
+    shortname = 'a50fp10_hres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3e18 W cm-2, 5.0um scale plasma, focus at X=+10um' # Simulation title
     
+    scale = 5.0#um # Exponential scale length of pre-plasma
+    focx = 10#um # X position of best laser focus, in microns
+
     # Simulation temporal
     t_f = 300#fs # maximum time, in fs
     tres = 32 # Laser cycles per timestep 
@@ -78,7 +81,6 @@ if __name__ == "__main__":
     # Pre-plasma spatial/density
     pc_xdims = (-30, 0)#um # X limits to simulation particle creation space, in microns
     pc_zdims = (-15, 15)#um # Z limits to simulation particle creation space, in microns
-    scale = 8.0#um # Exponential scale length of pre-plasma
     columndat = 'watercolumn.dat' # filename of .dat defining electron density vs. X (file will be created below)
     
     # Laser
@@ -87,7 +89,6 @@ if __name__ == "__main__":
     Emax = 4.763e7 # Peak electric field of laser, in kV/cm
     wlen = 800#nm # Laser wavelength, in nm
     spot = 2.26#um # Laser spot size, in microns
-    focx = -14#um # X position of best laser focus, in microns
 
     # P4 outputs:
     fld = True # True if flds*.p4 outputs desired
