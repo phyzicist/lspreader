@@ -1,0 +1,33 @@
+#PBS -l walltime=<HOURS>:00:00
+#PBS -l nodes=<NODES>:ppn=<PPN>
+#PBS -N <SIMNAME>
+#PBS -S /bin/bash
+#PBS -j oe
+#PBS -m ae
+#PBS -M feister.7@osu.edu
+
+# TEMPLATE FOR LSP SUBMISSION BY SCOTT ONTO RAMSUSII. Some elements are specific to his folder structure.
+set -x
+SIMNAME=<SIMNAME>
+DATE=`date +%Y-%m-%d_%H%M` # Date string, e.g. "2015-01-16_1632" for 4:32 PM on January 16, 2016
+D=/data/feister.7/lspdump/$SIMNAME-$DATE # Output folder for .p4, etc. files.
+echo D
+module load openmpi-1.4.3-gnu
+
+mkdir $PBS_O_WORKDIR/$DATE
+mkdir $D
+
+cd $PBS_O_WORKDIR
+#This outputs the name of the root node to the directory where you submitted this PBS job
+echo $HOSTNAME > $DATE/hostname.txt   
+cat $PBS_NODEFILE | uniq > $DATE/cat_nodefile.txt
+
+cp *.lsp *.dat $D/ # Copy lsp parameter and data files
+cp $HOME/lsp/lsp-10 $D/lsp-10 # Copy lsp executable from my folder on Ramsusii
+cd $D
+echo `ls` >> $PBS_O_WORKDIR/$DATE/pwd
+mpirun -np <NPROCS> <HOSTOPT>./lsp-10 $SIMNAME.lsp >$PBS_O_WORKDIR/$DATE/$SIMNAME.o.txt
+
+# Zip up all the files. May not be the best use of all these processors!
+parallel gzip ::: *.p4
+parallel gzip ::: restar*.dat

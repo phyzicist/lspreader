@@ -123,14 +123,15 @@ def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = 
     return data2_dict, pltdict_dict
 
 def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp = 1, pool = None):
-    # Inputs:
-    #   divsp: integer, divisor by which to reduce the spatial resolution (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
-    #   data: (Optional) A python dictionary returned by h5stitch2D.py "fields2D()". If none is supplied, it will be read in by reading from datah5 (fields2D.hdf5) or by looking at p4 filenames.
-    #   datpath: (Optional) A string path of the hdf5 file from which data can be loaded.
-    #   fns: list of filenames to analyze, if neither data nor datah5 are given.
-    #   pool: The pool multiprocessing threads to use when doing the FFT step. If pool = None (default), just use serial processing.
-    #   fld_id: A string specifying the field component to analyze. This field must be contained within the "data" dictionary
-
+    """ Analyze a list of filenames (alternatively, already loaded data) and output frequency plots, etc. to file.
+    Inputs:
+        divsp: integer, divisor by which to reduce the spatial resolution (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
+        data: (Optional) A python dictionary returned by h5stitch2D.py "fields2D()". If none is supplied, it will be read in by reading from datah5 (fields2D.hdf5) or by looking at p4 filenames.
+        datpath: (Optional) A string path of the hdf5 file from which data can be loaded.
+        fns: list of filenames to analyze, if neither data nor datah5 are given.
+        pool: The pool multiprocessing threads to use when doing the FFT step. If pool = None (default), just use serial processing.
+        fld_id: A string specifying the field component to analyze. This field must be contained within the "data" dictionary
+    """
     # Decide how to read in the data
     if data:
         #Data supplied at input to freqanalyze(), so no need to read in the files.
@@ -442,7 +443,10 @@ def bestPltDict(pltdicts):
             pltdict[k]['min'] = min(pltdicts[i][k]['min'], pltdict[k]['min'])
     return pltdict
 
+
+## DINOSAUR FUNCTIONS NO LONGER IN USE
 def mainPar():
+    """DINOSAUR FUNCTION, no longer in use. Retained as an example of using MPI."""
     p4dir = r'/tmp/ngirmang.1-2d-nosolid-151113/' # This folder contains the p4 files
     outdir = r'/home/feister.7/lsp/runs/greg_run' # This folder already exists and will store the files in subfolders
     
@@ -516,6 +520,7 @@ def mainPar():
         plotme(data2, folder=outsubdir, pltdict = pltdict_final)
 
 def totalSer():
+    """DINOSAUR function, no longer in use. Retained as an example of not using MPI."""
     p4dir = r'/tmp/ngirmang.1-2d-nosolid-151113/' # This folder contains the p4 files
     outdir = r'/home/feister.7/lsp/runs/greg_run' # This folder already exists and will store the files in subfolders
     fns = getfnsp4(p4dir)
@@ -531,9 +536,4 @@ def totalSer():
     pltdict = getPltDict(data2)
     h5path = saveData2(data2, folder=outsubdir)
     plotme(data2, folder=outsubdir, pltdict=pltdict)
-
-if __name__ == "__main__":
-    ## MAIN PROGRAM
-    #mainPar() # Frequency analysis of the folder, in multiple steps
-    totalSer() # Freqency analysis of all data as a whole
 
