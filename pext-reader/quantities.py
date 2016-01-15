@@ -15,7 +15,6 @@ Options:
   --angle=ANGLE -a ANGLE     Restrict the angle. In 2D, this is just phi; in 3D, it is solid angle.
 '''
 import numpy as np;
-from misc import conv;
 
 e_0 = 8.85418782e-12;
 c = 2.99792458e8;
@@ -81,9 +80,14 @@ if __name__ == "__main__":
     w    = float(opts['--W']);
     T    = float(opts['--T']);
     d = np.load(opts['<input>'],allow_pickle=True);
-    angle = float(opts['--angle']);
+
     dim  = "2D" if opts['--2D'] else "3D";
-    KE, good = totalKE(d, ecut, (angle,dim),return_bools=True);
+    if opts['--angle']:
+        angle = float(opts['--angle']);
+        angleopt = (angle,dim);
+    else:
+        angleopt = None;
+    KE, good = totalKE(d, ecut, angleopt, return_bools=True);
     LE = laserE(E_0, w, T, dim=dim);
     totalq = d['q'][good].sum()*1e12;
     print('total charge: {} {}'.format(totalq,'pC/cm' if opts['--2D'] else 'pC'));
