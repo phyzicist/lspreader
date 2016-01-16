@@ -1,8 +1,6 @@
 #!/usr/bin/env python2
 '''
-Parse a lsp fields or scalar file and output it as an hd5 file.
-
-There are currently no known limitations of this script.
+Parse a lsp fields or scalar file.
 
 Usage:
   flds.py [options] <input> <output>
@@ -11,35 +9,52 @@ Usage:
 Options:
   --help -h              Show this help.
   --verbose -v           Turn on verbosity.
-  --sort=SFILE -s SFILE  Sort using the given index file.
-  --hdf -H               Output to hdf instead of pickle.
-  --zip -z               Compress for hdf5.
+  --npz -n               Use compressed npz over pickle.
+  --reshape -r           Use rectangular reshaping for contiguous simulations.
 '''
-
-import lspreader as rd;
-from docopt import docopt;
 from time import time;
 import numpy as np;
-from misc import h5w, mkvprint;
-opts=docopt(__doc__,help=True);
 
-vprint = mkvprint(opts);;
+def rect_flds(d):
+    dims = ['xs', 'ys', 'zs'];
+    labels = [ key for key in d.keys()
+               if key not in dims ];
+    shape = [ len( np.unique(d[l]) )
+              for l in dims ];
+    for l in labels:
+        d[l].reshape(shape);
+    for l in dims:
+        del d[l];
+    return d;
+
+if __name__ == "__main__":
+    from docopt import docopt;
+    from misc import dump_pickle;
+    import lspreader as rd;
     
-
-if len(opts['<var>']) == 0:
-    opts['<var>'] = False;
-b=time();
-d=rd.read(opts['<input>'],var=opts['<var>']);
-vprint("time to read file {}: {}".format(opts['<input>'],time()-b));
-vprint("read: {}".format(",".join(d.keys())));
-if opts['--sort']:
-    vprint("sorting using {}".format(opts['--sort']));
-    sortargs = np.load(opts['--sort']);
-    for k in d:
-        d[k] = d[k][sortargs];
-vprint("outputting to {}".format(opts['<output>']));
-if opts['--hdf']:
-    h5w(opts['<output>'], d,
-        compression='lzf' if opts['--zip'] else None);
-else:
-    dump_pickle(opts['<output>'], d);
+    vprint = mkvprint(opts);
+    opts=docopt(__doc__,help=True);
+    if len(opts['<var>']) == 0:
+        opts['<var>'] = False;
+    b=time();
+    d=rd.read(opts['<input>'],var=opts['<var>'],vprint=vprint);
+    vprint("time to read file {}: {}".format(opts['<input>'],time()-b));
+    vprint("read: {}".format(",".join(d.keys())));
+    if opts['--reshape']:
+        d = rect_flds(d);
+    if opts['--npz']:
+        dims = ['xs', 'ys', 'zs'];
+        labels = [ key for key in d.keys()
+                 if key not in dims ];
+        dtype = [ (l,'f4') for l in labels ];
+        dim = np.array(
+            [d[l] for l in dims],
+            dtype=[ (l, 'f4') for l in dims ]);
+        d = np.array(
+            [d[l] for l in labels],
+            dtype=dtype);
+        np.savez_compressed(opts['<output>'],
+                            dims=dim,
+                            data=d);
+    else:
+        dump_pickle(opts['<output>'],d);

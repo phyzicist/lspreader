@@ -110,7 +110,7 @@ def get_header(file,**kw):
         return header, file.tell()-size;
     return header;
 
-def read_flds(file, header, var, vprint, vector=True,removedupes=False):
+def read_flds(file, header, var, vprint, vector=True,remove_edges=False):
     '''
     Read a flds file. Do not call directly
     '''
@@ -150,17 +150,36 @@ def read_flds(file, header, var, vprint, vector=True,removedupes=False):
                     d[quantity+'x'],d[quantity+'y'],d[quantity+'z']= data;
                     del data, d[quantity];
         doms.append(d);
-    if removedupes:
+    if remove_edges:
+        dims = ['xs','ys','zs'];
+        if type(removedups) is str:
+            pass;
+        else:
+            def getmins(l):
+                return min([d[l].min() for d in doms]);
+            def getmaxs(l):
+                return max([d[l].max() for d in doms]);
+            mins = [getmins(l) for l in dims];
+            maxs = [getmaxs(l) for l in dims];
+            def cutdom(d):
+                #determine
+                cuts = [ np.isclose(d[l][0], smin)
+                         for l,smin in zip(dims,mins) ];
+                cuts[:] = [1 if i else None
+                           for i in cuts];
+                for quantity in qs:
+                    d[quantity] = d[quantity][cuts[0]:,cuts[1]:,cuts[2]:]
+                for l,cut in zip(dims,cut):
+                    d[l] = d[l][cut:];
+                return d;
+            doms[:] = [cutdom(d) for d in doms];
         pass;
     vprint('Stringing domains together.');
     out = { k : np.concatenate([d[k] for d in doms]) for k in doms[0] };
     vprint('Converting to little-endian');
     for k in out:
-        out[k] = out[k].astype('<f4');
+        out[k] = out[k].astype('f4');
     return out;
-
-def read_sclr(file,header,var, vprint):
-    return read_flds(file, header, var, vprint, False);
 
 def iseof(file):
     c = file.tell();
@@ -209,18 +228,25 @@ def read(fname,**kw):
     sectioned into quantities either as an dictionary or a typed numpy array.
 
     Parameters:
-    ----------
+    -----------
 
-    fname: filename of thing to read
+    fname -- filename of thing to read
     
     Keyword Arguments:
-    -----------------
+    ------------------
 
-    var:      List of variables to read from a fields or scalar file.
-    vprint:   Verbose printer. Used in scripts
-    override: (type, start) => A tuple of a dump type and a place to start
-              in the passed file, useful to attempting to read semicorrupted
-              files.
+    vprint   --  Verbose printer. Used in scripts
+    override --  (type, start) => A tuple of a dump type and a place to start
+                 in the passed file, useful to attempting to read semicorrupted
+                 files.
+
+    flds/sclr Specific Arguments:
+    -----------------------------
+    var          -- list of quantities to be read. For fields, this can consist
+                    of strings that include vector components, e.g., 'Ex'. If 
+                    None (default), read all quantities.
+    remove_edges -- If set to truthy, then remove the edges from domains before
+                    concatenation.
     '''
     with open(fname,'rb') as file:
         if test(kw,'override'):
@@ -238,9 +264,13 @@ def read(fname,**kw):
                 var=[i[0] for i in header['quantities']];
             else:
                 var=kw['var'];
+            if test(kw, 'remove_edges'):
+                remove_edges=True;
+            else:
+                remove_edges=False;
         readers = {
-            2: lambda: read_flds(file,header,var, vprint),
-            3: lambda: read_sclr(file,header,var, vprint),
+            2: lambda: read_flds(file,header,var, vprint, remove_edges=remove_edges),
+            3: lambda: read_sclr(file,header,var, vprint, remove_edges=remove_edges),
             6: lambda: read_movie(file, header),
             10:lambda: read_pext(file,header)
         };
