@@ -6,15 +6,15 @@ import xdrlib as xdr;
 import numpy as np;
 from misc import test;
 #get basic dtypes
-def get_int(file,N=1):
+def get_int(file,N=1,forcearray=False):
     ret=np.fromfile(file,dtype='>i4',count=N);
-    if N==1:
+    if N==1 and not forcearray:
         return ret[0];
     return ret;
 
-def get_float(file,N=1):
+def get_float(file,N=1,forcearray=False):
     ret=np.fromfile(file,dtype='>f4',count=N);
-    if N==1:
+    if N==1 and not forcearray:
         return ret[0];
     return ret;
 
@@ -130,14 +130,16 @@ def read_flds(file, header, var, vprint, vector=True,remove_edges=False):
     for i in range(header['domains']):
         iR, jR, kR = get_int(file, N=3);
         #getting grid parameters (real coordinates)
-        nI = get_int(file); Ip = get_float(file,N=nI);
-        nJ = get_int(file); Jp = get_float(file,N=nJ);
-        nK = get_int(file); Kp = get_float(file,N=nK);
+        nI = get_int(file); Ip = get_float(file,N=nI, forcearray=True);
+        nJ = get_int(file); Jp = get_float(file,N=nJ, forcearray=True);
+        nK = get_int(file); Kp = get_float(file,N=nK, forcearray=True);
         nAll = nI*nJ*nK;
         vprint('reading domain with dimensions {}x{}x{}={}.'.format(nI,nJ,nK,nAll));
         d={}
         d['xs'], d['ys'], d['zs'] = Ip, Jp, Kp;
-        d['x'], d['y'], d['z'] = np.vstack(np.meshgrid(Ip,Jp,Kp,indexing='ij')).reshape(3,-1);
+        #d['x'], d['y'], d['z'] = np.vstack(np.meshgrid(Ip,Jp,Kp,indexing='ij')).reshape(3,-1);
+        d['z'], d['y'], d['x'] = np.meshgrid(Kp,Jp,Ip,indexing='ij')
+        d['z'], d['y'], d['x'] = d['z'].ravel(), d['y'].ravel(), d['x'].ravel();
         for quantity in qs:
             if quantity not in readin:
                 vprint('skipping {}'.format(quantity));
@@ -151,29 +153,25 @@ def read_flds(file, header, var, vprint, vector=True,remove_edges=False):
                     del data, d[quantity];
         doms.append(d);
     if remove_edges:
+        vprint("removing edges");
         dims = ['xs','ys','zs'];
-        if type(removedups) is str:
-            pass;
-        else:
-            def getmins(l):
-                return min([d[l].min() for d in doms]);
-            def getmaxs(l):
-                return max([d[l].max() for d in doms]);
-            mins = [getmins(l) for l in dims];
-            maxs = [getmaxs(l) for l in dims];
-            def cutdom(d):
-                #determine
-                cuts = [ np.isclose(d[l][0], smin)
-                         for l,smin in zip(dims,mins) ];
-                cuts[:] = [1 if i else None
-                           for i in cuts];
-                for quantity in qs:
-                    d[quantity] = d[quantity][cuts[0]:,cuts[1]:,cuts[2]:]
-                for l,cut in zip(dims,cut):
-                    d[l] = d[l][cut:];
-                return d;
-            doms[:] = [cutdom(d) for d in doms];
-        pass;
+        readqs = [k for k in doms[0].keys()
+                  if k not in dims ] if len(doms) > 0 else None;
+        mins = [ min([d[l].min() for d in doms])
+                 for l in dims ];
+        def cutdom(d):
+            ldim = [len(d[l]) for l in dims];
+            cuts = [ np.isclose(d[l][0], smin)
+                     for l,smin in zip(dims,mins) ];
+            cuts[:] = [None if i else 1
+                       for i in cuts];
+            for quantity in readqs:
+                d[quantity]=d[quantity].reshape((ldim[2],ldim[1],ldim[0]));
+                d[quantity]=d[quantity][cuts[2]:,cuts[1]:,cuts[0]:].ravel();
+            for l,cut in zip(dims,cuts):
+                d[l] = d[l][cut:];
+            return d;
+        doms[:] = [cutdom(d) for d in doms];
     vprint('Stringing domains together.');
     out = { k : np.concatenate([d[k] for d in doms]) for k in doms[0] };
     vprint('Converting to little-endian');

@@ -21,40 +21,30 @@ def rect_flds(d):
                if key not in dims ];
     shape = [ len( np.unique(d[l]) )
               for l in dims ];
+    s = np.lexsort((d['z'],d['y'],d['x']));
     for l in labels:
-        d[l].reshape(shape);
-    for l in dims:
-        del d[l];
+        d[l] = d[l][s].reshape(shape);
     return d;
 
 if __name__ == "__main__":
     from docopt import docopt;
-    from misc import dump_pickle;
+    from misc import dump_pickle,mkvprint;
     import lspreader as rd;
     
-    vprint = mkvprint(opts);
     opts=docopt(__doc__,help=True);
+    vprint = mkvprint(opts);
     if len(opts['<var>']) == 0:
         opts['<var>'] = False;
     b=time();
-    d=rd.read(opts['<input>'],var=opts['<var>'],vprint=vprint);
+    d=rd.read(opts['<input>'],
+              var=opts['<var>'],vprint=vprint,
+              remove_edges=opts['--reshape']);
+    
     vprint("time to read file {}: {}".format(opts['<input>'],time()-b));
     vprint("read: {}".format(",".join(d.keys())));
     if opts['--reshape']:
         d = rect_flds(d);
     if opts['--npz']:
-        dims = ['xs', 'ys', 'zs'];
-        labels = [ key for key in d.keys()
-                 if key not in dims ];
-        dtype = [ (l,'f4') for l in labels ];
-        dim = np.array(
-            [d[l] for l in dims],
-            dtype=[ (l, 'f4') for l in dims ]);
-        d = np.array(
-            [d[l] for l in labels],
-            dtype=dtype);
-        np.savez_compressed(opts['<output>'],
-                            dims=dim,
-                            data=d);
+        np.savez_compressed(opts['<output>'],**d);
     else:
         dump_pickle(opts['<output>'],d);
