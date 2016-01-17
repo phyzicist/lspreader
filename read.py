@@ -4,7 +4,7 @@ Extract data directly.
 
 Usage: read.py <input> <output>
 '''
-import lspreader2 as rd;
+import lspreader as rd;
 from misc import dump_pickle;
 from docopt import docopt;
 

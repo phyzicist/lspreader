@@ -31,7 +31,8 @@ import cPickle as pickle;
 from matplotlib import colors;
 import matplotlib.animation as anim;
 from docopt import docopt;
-from misc import conv,pastel,pastel_b2r,test;
+from misc import conv,test;
+from cmaps import pastel,pastel_b2r;
 from angular import angular,prep;
 
 opts = docopt(__doc__,help=True);

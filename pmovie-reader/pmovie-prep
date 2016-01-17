@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+USAGE="Copies pmovie reading scripts and makes pbs files.
+
+Usage:
+    ./pmovie-prep [options] <pmovie-dir> [<pbsoutput-dir> [<lspreader-dir>]]
+
+For <pmovie-dir>, it accepts a valid directory within reach of rcp and rsh.
+For example, for /tmp/foo node02 on ramses, specify the path as
+\"node02:/tmp/foo\".
+
+Options:
+    -h                   Print help
+    -s SERVER            Specify server. Current valid ones are \"ramses\" and \"glenn\".
+                         \"ramses\" is default.
+    -N RAMSESNODE        Run only on the node RAMSESNODE. Usually, the generating
+                         pbs script will run on a node specified in the <pmovie-dir>
+                         argument.
+    -S SCANSCRIPT        Specify global scan type which performs a global
+                         filter on the pmovies before creating the final trajectories
+                         file. Defaults to Escan.py
+    -o SCANOPTS          Passes this string as an option to the scan script.
+"
+NODES=1
+SERVER="ramses"
+RDDIR="/home/ngirmang.1/lspreader"
+CONDA="/home/ngirmang.1/conda"
+RAMSESNODE=
+SCANSCRIPT="Escan.py"
+SCANOPTS=
+while getopts ':hS:s:N:o:' opt; do
+      case $opt in
+          h)
+              echo "$USAGE"
+              exit 0
+              ;;
+          N)
+              RAMSESNODE=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+          s)
+              SERVER=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+          S)
+              case $OPTARG in
+                  Escan.py)
+                      SCANSCRIPT=$OPTARG
+                      shift $((OPTIND-1))
+                      ;;
+                  *)
+                      echo "Invalid scanner: $OPTARG">&2
+                      exit 1
+                      ;;
+              esac
+              ;;
+          o)
+              SCANOPTS=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+          \?)
+              echo "Invalid option: $OPTARG">&2
+              exit 1
+              ;;
+          :)
+              echo "Option -$OPTARG requires an argument.">&2
+              exit 1
+              ;;
+      esac
+done
+
+source $CONDA
+DEST=$( [ -n "$1" ] && echo $1)
+[ -z "$DEST" ] && echo $USAGE && exit 1;
+[ -n "$2" ]  && RDDIR="$2";
+OUTDIR=$( [ -n "$3" ] && echo $3 ||  echo "." )
+
+#checking for remote node
+if [ -n "$( echo "$DEST" | grep \: )" ]; then
+    RAMSESNODE=$(echo "$DEST" | sed 's/@\{0,1\}\([A-Z,a-z,0-9]\+\):.*/\1/');
+fi
+#copying files to the working directory
+rcp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pmov.py \
+    $RDDIR/pmovie-reader/search.py $RDDIR/pmovie-reader/gather.py \
+    $RDDIR/pmovie-reader/traj.py $RDDIR/pmovie-reader/orig.py \
+    $RDDIR/pmovie-reader/scan/$SCANSCRIPT \
+    $DEST
+#copying the pmovie-pbsgen.py generator to the directory to make the pbs script
+rcp $RDDIR/pmovie-reader/pmovie-pbsgen.py $OUTDIR/
+if [ $SERVER == "ramses" ] && [ -n "$RAMSESNODE" ]; then
+    DIRONNODE=$(echo "$DEST" | sed 's/@\{0,1\}[A-Z,a-z,0-9]\+:\(.*\)/\1/');
+    rsh $RAMSESNODE ls "$DIRONNODE">.lsfiles
+    rcp "$DEST/*.lsp" ./.destlsp
+    ./pmovie-pbsgen.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
+                       --dotlsp=.destlsp --filelist=.lsfiles \
+                       --scanner=$SCANSCRIPT --scan-opts=$SCANOPTS \
+                       --ramses-node=$RAMSESNODE $DIRONNODE
+else
+    ./pmovie-pbsgen.py --server=$SERVER --nodes=$NODES --outdir=$OUTDIR \
+                       --scanner=$SCANSCRIPT --scan-opts=$SCANOPTS \
+                       --ramses-node=$RAMSESNODE $DEST
+fi
+
+PBSES=$(ls | grep 'pmovie-conv.*.pbs$')
+#generating the reader script. Calling it unleashes the hounds.
+echo "#!/bin/bash
+
+for i in $PBSES; do
+    qsub \$i;
+done;
+">pmoviereader.sh
+chmod +x pmoviereader.sh

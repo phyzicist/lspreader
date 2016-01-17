@@ -1,0 +1,90 @@
+#!/bin/bash
+
+USAGE="Generates pext data from a single, no restart run. 
+Meant to be run from ramses if possible.
+
+Usage:
+    ./pext-read-simple [options] [<pext-dir> [<lspreader-dir>]]
+
+For <pext-dir>, it accepts a valid directory within reach of rcp and rsh.
+For example, for /tmp/foo node02 on ramses, specify the path as
+\"node02:/tmp/foo\".
+
+If <pext-dir> is not included, it will attempt to read from the current
+directory. Copy the .lsp file to the current directory as well.
+
+Options:
+    -h                   Print help
+    -t TIMECHOMP         Cut out particles after this time. Useful for comparing
+                         with an incomplete simulation.
+    -r                   Swap z and y when calculating angles.
+"
+RDDIR="/home/ngirmang.1/lspreader"
+CONDA="/home/ngirmang.1/conda"
+MAXTIME=
+REVERSE=
+while getopts ':hrt:' opt; do
+      case $opt in
+          h)
+              echo "$USAGE"
+              exit 0
+              ;;
+          t)
+              MAXTIME=$OPTARG
+              shift $((OPTIND-1))
+              ;;
+          r)
+              REVERSE="-r"
+              ;;
+          \?)
+              echo "Invalid option: $OPTARG">&2
+              exit 1
+              ;;
+          :)
+              echo "Option -$OPTARG requires an argument.">&2
+              exit 1
+              ;;
+      esac
+done
+source $CONDA
+PEXTDIR=$( [ -n "$1" ] && echo $1 || echo "." )
+[ -n "$2" ]  && RDDIR="$2";
+if [ ! $PEXTDIR == "." ]; then
+    rcp $PEXTDIR/pext*.p4 ./
+    rcp $PEXTDIR/*.lsp ./
+fi
+
+USEX=$([ -n "$(cat *.lsp | grep "x-cells")" ] && echo "x" || echo "")
+USEY=$([ -n "$(cat *.lsp | grep "y-cells")" ] && echo "y" || echo "")
+USEZ=$([ -n "$(cat *.lsp | grep "z-cells")" ] && echo "z" || echo "")
+
+[ -n "$MAXTIME" ] && TIMEARG="-l $MAXTIME"
+
+DIMS=-$USEX$USEY$USEZ
+cp $RDDIR/lspreader.py $RDDIR/misc.py $RDDIR/pext.py $RDDIR/cmaps.py \
+   $RDDIR/angular.py $RDDIR/quantities.py $RDDIR/arrcat.py \
+   .
+echo "\
+#!/usr/bin/env bash
+
+[ -n \"$CONDA\" ] && source $CONDA
+
+PFILES=\$(ls | grep 'pext[0-9]\+.p4$' )
+echo \"converting\"
+for i in \$PFILES; do
+    echo \$i
+    sleep 0.2;
+    ./pext.py $DIMS $REVERSE $TIMEARG \$i \$i &
+done
+while [ \$( pgrep -f pext.py  | wc -l ) -gt 0 ]; do
+    printf .
+    sleep 1; 
+done;
+echo \"\"
+echo \"concatenating\"
+./arrcat.py pext \$( ls | grep 'pext[0-9]\+.p4.npy$' );
+">gen
+chmod +x gen
+./gen
+
+./angular.py --agg -n pext.npy angular.png

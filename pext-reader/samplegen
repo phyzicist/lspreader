@@ -31,7 +31,7 @@ waitforit(){
 	read -t20 -n1 -r -p "$PROMPT"
 }
 
-pych "pext.py" &&  pych "dictcat.py" && pych "angular.py" || exit 123
+pych "pext.py" &&  pych "arrcat.py" && pych "angular.py" || exit 123
 
 echo "\
 Essentially, we call the script \"pext.py\" which converts the p4's to
@@ -46,8 +46,8 @@ for i in $PFILES; do
 	echo "
 ========="
 	echo "Calling pext.py with $i";
-	echo \$ ./pext.py -rxz $i.d $i
-	./pext.py -rxz $i.d $i
+	echo \$ ./pext.py -rxz $i $i
+	./pext.py -rxz $i $i
 done;
 
 waitforit
@@ -55,17 +55,17 @@ echo "
 
 Now, let's look:
 "
-ls -la | grep p4.d
+ls -la | grep p4.npy
 echo "
-The generated files (shown here) that I've artificially have given .d
-suffixes are basically dictionaries of each pext plane's captured particles.
+The generated files (shown here)  are basically structured arrays
+of each pext plane's captured particles.
 "
 waitforit
 echo "
 
-One more admonishment. We can concatenate the files by using dictcat.py"
-echo \$ ./dictcat.py *.d \>pext.pi
-./dictcat.py *.d>pext.pi
+One more admonishment. We can concatenate the files by using arrcat.py"
+echo \$ ./arrcat.py *.d \>pext.pi
+./arrcat.py *.d>pext.pi
 echo "
 Now, we created a new file
 "
@@ -87,16 +87,17 @@ numpy arrays, so you're free to plot them up in anyway you like.
 Exiting the angular.py script will exit this tutorial."
 waitforit
 echo ""
-echo \$ ./angular.py pext.pi
-./angular.py pext.pi
+echo \$ ./angular.py pext.npy
+./angular.py pext.npy
 
+if [ $? -ne 0 ]; then
+    echo "
+It looks like I failed to draw the file. It might be because
+you are plotting on a machine without a graphical backend. In
+that case, I'll call ./angular.py with the agg backend.
 
-exit 2;
-
-for i in {1..6}; do
-    ./pext.py -r pextcat/pext${i}.d pexts1/pext${i}.p4 pexts3/pext${i}.p4;
-done;
-./dictcat.py pextcat/*.d >pext.pickle
-./dictrestrict.py pext.pickle y '(-1e-4,1e-4)' -o pext-restricted.pickle
-
+It will save it to out.png"
+    ./angular.py --agg  pext.npy out.png
+    echo \$ ./angular.py --agg pext.npy out.png
+fi;
 

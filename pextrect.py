@@ -25,7 +25,8 @@ import numpy as np;
 import matplotlib.pyplot as plt;
 import cPickle as pickle;
 from docopt import docopt;
-from misc import conv,pastel,test;
+from misc import conv,test;
+from cmaps import pastel;
 
 def restrict(x,xlim):
     return x[good];

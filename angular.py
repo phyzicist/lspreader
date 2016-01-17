@@ -27,15 +27,18 @@ Options:
   --cmap=CMAP                 Use the following cmap [default: pastel].
   --e-direction=ANGLE         The angle for the radial labels.
   --e-units=UNIT              The units for the radial labels.
+  --agg                       Use the agg backend.
 '''
 import numpy as np;
+import matplotlib;
 import matplotlib.pyplot as plt;
-import matplotlib
 import matplotlib.patheffects as pe;
 import cPickle as pickle;
 from matplotlib import colors;
 from docopt import docopt;
-from misc import conv,pastel_clear,plasma_clear,viridis_clear,magma_clear_r,test;
+from misc import conv, test, readfile
+from cmaps import pastel_clear,plasma_clear,viridis_clear,magma_clear_r;
+import re;
 
 def prep(opts):
     '''I put this here in order to reuse this'''
@@ -48,8 +51,8 @@ def prep(opts):
     maxQ = float(opts['--max-q']) if opts['--max-q'] else None;
     Estep = conv(opts['--e-step'],default=(250 if opts['--KeV'] else 1.0),func=float); 
     F = float(opts['--factor']);
-    with open(inname,'r') as f:
-        d = pickle.load(f);
+    d = np.load(inname, allow_pickle=True);
+    
     e = d['KE'];
     if opts['--KeV']:
         e/=1e3;
@@ -120,8 +123,9 @@ def prep(opts):
 def main():
     opts=docopt(__doc__,help=True);
     s,phi,e,kw,_ = prep(opts);
+    if opts['<output>'] and opts['--agg']:
+        plt.change_backend('agg');
     angular(s,phi,e,**kw);
-    
     if opts['<output>']:
         if opts['--high-res']:
             plt.savefig(opts['<output>'],dpi=1000);
