@@ -1,10 +1,7 @@
 '''
 Reader for LSP output xdr files (.p4's)
-<<<<<<< HEAD
 
-=======
 SCOTT'S MODIFIED VERSION. Reads .p4.gz, etc.
->>>>>>> origin/master
 '''
 import xdrlib as xdr
 import numpy as np
