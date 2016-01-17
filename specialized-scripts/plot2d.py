@@ -29,6 +29,7 @@ import cPickle as pickle;
 import math;
 from docopt import docopt;
 import misc as m;
+import cmaps as cm;
 
 def main():
     opts=docopt(__doc__,help=True);
@@ -81,9 +82,9 @@ def main():
     Y,X = np.mgrid[ ymin:ymax:len(SP[:,0])*1j,xmin:xmax:len(SP[0,:])*1j];
     if opts['--highlight']:
         val = float(opts['--highlight']);
-        cmap = m.mkstrip_cmap(vmin,vmax,val,[0.6,0.3,0.0],log10=not opts['--no-log']);
+        cmap = cm.mkstrip_cmap(vmin,vmax,val,[0.6,0.3,0.0],log10=not opts['--no-log']);
     else:
-        cmap = m.pastel;
+        cmap = cm.pastel;
     ax = plt.subplot(111);
     plt.pcolormesh(X, Y, SP,norm=norm,vmin=vmin,vmax=vmax,cmap=cmap);
     plt.xlim(xmin,xmax);
