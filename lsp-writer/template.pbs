@@ -11,7 +11,7 @@ set -x
 SIMNAME=<SIMNAME>
 DATE=`date +%Y-%m-%d_%H%M` # Date string, e.g. "2015-01-16_1632" for 4:32 PM on January 16, 2016
 D=/data/feister.7/lspdump/$SIMNAME-$DATE # Output folder for .p4, etc. files.
-echo D
+echo $D
 module load openmpi-1.4.3-gnu
 
 mkdir $PBS_O_WORKDIR/$DATE
@@ -21,6 +21,7 @@ cd $PBS_O_WORKDIR
 #This outputs the name of the root node to the directory where you submitted this PBS job
 echo $HOSTNAME > $DATE/hostname.txt   
 cat $PBS_NODEFILE | uniq > $DATE/cat_nodefile.txt
+MYHOSTS=$PBS_O_WORKDIR/$DATE/cat_nodefile.txt
 
 cp *.lsp *.dat $D/ # Copy lsp parameter and data files
 cp $HOME/lsp/lsp-10 $D/lsp-10 # Copy lsp executable from my folder on Ramsusii

@@ -62,21 +62,24 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'a50fp10_hres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3e18 W cm-2, 5.0um scale plasma, focus at X=+10um' # Simulation title
+    shortname = 'a50fp10_lres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3e18 W cm-2, 5.0um scale, focus X=+10um, lam/8' # Simulation title
     
     scale = 5.0#um # Exponential scale length of pre-plasma
     focx = 10#um # X position of best laser focus, in microns
 
     # Simulation temporal
-    t_f = 300#fs # maximum time, in fs
-    tres = 32 # Laser cycles per timestep 
+    t_f = 400#fs # maximum time, in fs
+    tres = 8 # Laser cycles per timestep 
+    skipt = 1 # time skip interval for field/scalar dumps. First one is always dumped.
     
     # Grid spatial
     xdims = (-35, 5)#um # X limits to simulation grid space, in microns
-    xres = 32 # Laser wavelengths per cell, in X direction
+    xres = 8 # Laser wavelengths per cell, in X direction
+    skipx = 2 # X skip interval for field/scalar dumps
     zdims = (-20, 20)#um # Z limits to simulation grid space, in microns
-    zres = 32 # Laser wavelengths per cell, in Z direction 
+    zres = 8 # Laser wavelengths per cell, in Z direction 
+    skipz = 2 # Z skip interval for field/scalar dumps
     
     # Pre-plasma spatial/density
     pc_xdims = (-30, 0)#um # X limits to simulation particle creation space, in microns
@@ -95,9 +98,6 @@ if __name__ == "__main__":
     scl = True # True if scl*.p4 outputs desired
     pmov = False # True if pmov*.p4 outputs desired (note: these are big)
     pmov_step = 0.2#fs # Pmovie timestep interval, in fs. Only applied if pmov = True.
-    skipt = 1 # time skip interval for field/scalar dumps. First one is always dumped.
-    skipx = 10 # X skip interval for field/scalar dumps
-    skipz = 10 # Z skip interval for field/scalar dumps
         
     # Supercomputer
     nodes = 1 # Number of nodes
@@ -115,9 +115,10 @@ if __name__ == "__main__":
     pb['SIMNAME'] = shortname
     pb['NODES'] = str(int(nodes)) # Number of nodes allocated
     pb['PPN'] = str(int(ppn)) # Number of nodes allocated
-    pb['HOURS'] = str(int(48))
+    pb['HOURS'] = str(int(168)) # 1-week (168 hours) maximum sim length
     pb['NPROCS'] = str(int(nodes*ppn)) # Number of processors on which to run the sim
-    pb['HOSTOPT'] = '-hostfile $PBS_NODEFILE ' if (nodes>1) else '' # An added flag used only when sim spans multiple nodes
+    pb['HOSTOPT'] = '' # An added flag used only when sim spans multiple nodes    
+    #pb['HOSTOPT'] = '--hostfile $MYHOSTS ' if (nodes>1) else '' # An added flag used only when sim spans multiple nodes
 
     ## BUILD LSP SUBSTITUTION DICT
     # a python dictionary of strings defining things in LSP language
