@@ -300,19 +300,23 @@ def read_movie(file, header):
         del frames[i]['pos'];
     return frames;
 
-def read_pext(file, header):
-    nparams = len(header['quantities']);
-    params = ['t','q','x','y','z','ux','uy','uz'];
+def read_pext(file, header, lowlev=False):
+    nparams = len(header['quantities'])
+    params = ['t','q','x','y','z','ux','uy','uz']
     if nparams == 9:
-        params+=['E'];
+        params+=['E']
     elif nparams == 11:
-        params+=['xi','yi','zi'];
+        params+=['xi','yi','zi']
     elif nparams == 12:
-        params+=['E','xi','yi','zi'];
+        params+=['E','xi','yi','zi']
     #it's just floats here on out
-    dt = list(zip(params, ['>f4']*len(params)));
-    out = np.fromfile(file,dtype=dt,count=-1);
-    return out;
+    dt = list(zip(params, ['>f4']*len(params)))
+    if lowlev: # more efficient, but does not work with .p4.gz file handles
+        out = np.fromfile(file,dtype=dt,count=-1)
+    else: # works with all file handles
+        s = file.read()
+        out=np.fromstring(s, dtype=dt,count=-1)
+    return out
 
 
 def read(fname,**kw):
