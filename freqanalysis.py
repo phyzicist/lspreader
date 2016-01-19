@@ -40,7 +40,7 @@ except:
     
 # Done with importing modules! Let the games begin.
 
-def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], npool = 1):
+def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], npool = 1, h5save=False):
     """ Perform frequency analysis of Ez, Ex, and By (and/or beyond) on many batches of .p4 or .p4.gz; that is, on an entire folder. Analysis can be in parallel or serial."""
     # Inputs:
     #   p4dir: folder containing .p4 and/or .p4.gz field files
@@ -49,6 +49,7 @@ def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 
     #   fld_ids: a list of field identifiers (as seen by readflds()) upon which fields frequency analysis will be done
     #   npool: integer number of threads desired in the parallel pool. If npool <= 1, analysis is done in serial
     #   nbatch: the number of files upon which each frequency analysis is performed. Smaller gives better time resolution, but larger gives better frequency resolution.
+    #   h5save: bool, if True then an HDF5 file containing data needed to make the plots is saved alongside the PNG plots
     # Outputs:
     #   .png and .hdf5 files (with which revised plots can be made) are saved in subdirectories of "outdir"
 
@@ -75,7 +76,7 @@ def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 
     
     ## Analyze the ALL TIMES batch, making plots
     print "Starting with the 'All times' frequency analysis."
-    freqBatch(fns_all,outdir = outdir, divsp = divsp,  fld_ids = fld_ids, pool = pool, alltime=True) # Will make the plots as well in this case
+    freqBatch(fns_all,outdir = outdir, divsp = divsp,  fld_ids = fld_ids, pool = pool, alltime=True, h5save=h5save) # Will make the plots as well in this case
 
     ## Analyze all the TIME-RESOLVED batches, and make plots with consistent colorbar limits
     # Pre-allocate data structures  
@@ -87,7 +88,7 @@ def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 
 
     for i in range(len(fns_batched)):
         print "Small batch frequency analysis", i, "of", len(fns_batched)
-        data2s_dict[i], pltdict_dict = freqBatch(fns_batched[i], outdir = outdir, divsp = divsp,  fld_ids = fld_ids, pool = pool)
+        data2s_dict[i], pltdict_dict = freqBatch(fns_batched[i], outdir = outdir, divsp = divsp,  fld_ids = fld_ids, pool = pool, h5save = h5save)
         for fld_id in pltdict_dict:
             pltdicts[fld_id][i] = pltdict_dict[fld_id] # Fill in the i-th element in this field's list of plot dictionaries
 
