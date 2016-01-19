@@ -16,7 +16,10 @@ from pext import pextanalysis
 import freqanalysis
 import os
 import re
+import numpy as np
+
 import sftools as sf
+import lstools as ls
 
 def stripJunk(name):
     """ Strips a date string off the end of a folder name, giving a "shorter" version of the name.
@@ -32,7 +35,7 @@ def stripJunk(name):
         shortname = name
     return shortname
 
-def analyzeAll(p4root, outroot, pextOn=True, freqOn=True):
+def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = False, freqOn=True):
     namelist = next(os.walk(p4root))[1] # Looks for all files in this list
     
     for name in namelist:
@@ -43,6 +46,10 @@ def analyzeAll(p4root, outroot, pextOn=True, freqOn=True):
             print "Analyzing directory: " + shortname
             if pextOn:
                 pextanalysis.pextFull(p4dir, outdir=outdir, shortname=shortname) # Particle extraction analysis
+            if fldsclOn:
+                data = ls.readFldScl(p4dir) # Read all the files involved in matching field/scalar analysis into a single data array.
+                print 'Data keys:', data.keys()
+                freqanalysis.freqBatch2(data, outdir=outdir, alltime=True)
             if freqOn:
                 freqanalysis.freqFull(p4dir, outdir, nbatch = 80, divsp = 1, npool = 1) # Frequency analysis
         except (KeyboardInterrupt, SystemExit):
@@ -50,6 +57,7 @@ def analyzeAll(p4root, outroot, pextOn=True, freqOn=True):
         except:
             # Report error and proceed
             print "Error noted. Directory: " + shortname
+            raise
             pass # Move right along.
     
 if __name__=='__main__':

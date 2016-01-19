@@ -6,6 +6,9 @@ Renamed from h5stitch2D.py.
 
 Created on Wed Dec 30 15:09:37 2015
 
+Changelog:
+    2015-01-09: Updated the way the 'x' is stripped off 'Ex' to work with scalars, too
+    
 @author: Scott
 """
 
@@ -16,6 +19,7 @@ import lspreader2 as rd
 import numpy as np
 import re
 import gzip
+import re
 
 try:
     from mpi4py import MPI
@@ -52,18 +56,103 @@ def getp4(folder, prefix = 'flds'):
     fns = np.array(fns)[idx].tolist() # Convert filenames list to a numpy string array for advanced indexing, then convert back to a python list
     return fns
 
+
+def getFldScl(p4dir):
+    """ Get a 1-to-1 list of fields and scalars filenames in a directory; that is, exclude any fld or scl files that are missing their partner. """
+    fld = getp4(p4dir, 'flds')
+    scl = getp4(p4dir, 'sclr')
+    
+    fns_fld = []
+    fns_scl = []
+
+    for fn_scl in scl:
+        folder, name = os.path.split(fn_scl)
+        name_fld = name.replace('sclr','flds')
+        fn_fld = os.path.join(folder, name_fld)
+        if fn_fld in fld:
+            fns_fld.append(fn_fld)
+            fns_scl.append(fn_scl)
+    
+    return fns_fld, fns_scl
+
+def readFldScl(p4dir):
+    """ Read matching field and scalar files (default fld_ids) in a directory into a single data array """
+    ## READ MATCHING FIELDS AND SCALARS INTO DATA ARRAY
+    fns_fld, fns_scl = getFldScl(p4dir)
+    
+    data_fld = fields2D(fns_fld)
+    data_scl = scalars2D(fns_scl)
+    
+    # Sanity check that times, xgv, and zgv are essentially identical between the two
+    if np.max(np.abs(data_scl['xgv'] - data_fld['xgv'])) + np.max(np.abs(data_scl['zgv'] - data_fld['zgv'])) + np.max(np.abs(data_scl['times'] - data_fld['times'])) > 0.000001:
+        raise Exception("Scalar and field files grid vectors (or times) do not match!! This shouldn't be the case. Major problem with file choice or with lspreader.")
+    
+    data = {} # The merged data array. Note that no copies of arrays will be made, just pointers shuffled around.
+    for k in data_fld.keys():
+        data[k] = data_fld[k]
+    for k in set(data_scl.keys()).difference(data_fld.keys()): # Add only those keys not already in the key list
+        data[k] = data_scl[k]
+    
+    return data
+    
+def subData(data, startwith, stopbefore, skip = 1):
+    """ Get a subset of the data dict, along the time axis. (Not a deep copy; just shuffling pointers. That is: you change data_sub elements, you change data.)
+    Inputs:
+        data: dictionary of numpy arrays, of the form of the output from fields2D()
+        startwith, stopbefore, skip: The indices with which to slice time. If 'times' were a NumPy array:
+            then what you get out is eqivalent to times[startwith:stopbefore:skip]. By default, skip over no data (skip=1).
+    Outputs:
+        data_sub: array of the same form as data, but smaller along the time axis. Now has time length 'stop - start'
+    Example call:
+        data = fields2D(filenames) # data dict is as many times steps long as there are filenames
+        data_sub1 = subData(data, 0, 3, skip = 1) # data_sub1 dict contains only steps 0, 1, and 2
+        data_sub2 = subData(data, 1, 11, skip = 3) # data_sub2 dict contains only steps 1, 4, 7, and 10
+    """    
+    data_sub = {}
+    for k in data.keys():
+        if k in set(['xgv','ygv','zgv']):
+            data_sub[k] = data[k] # No time axis exists in these arrays. Place into data_sub without modification.
+        else:
+            data_sub[k] = data[k][startwith:stopbefore:skip] # Get a subset along the time axis (axis 0), then place into data_sub.
+    return data_sub
+
+def chunkData(data, chk_fs):
+    """Break data along the time step axis into fixed, n-sized chunks (where n is determined by desired chunk size in fs).
+    The final element of the new list will be n-sized as well; some leftover frames at the end will not be included.
+    
+    Inputs:
+        data: the usual data dict (which is N frames long)
+        chk_fs: desired chunk size, in femtoseconds
+    Outputs:
+        chunks: list of data dicts  (each being n frames long, where n <= N)       
+    """
+    # Modified from http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
+    dt_fs = np.mean(np.diff(data['times']*1e6)) # Femtoseconds between frames in data (assumed fixed)
+    n = int(np.ceil(chk_fs / dt_fs)) # Desired # frames per chunk, based on desired fs per chunk
+    N = len(data['times']) # Total number frames in the data dict
+    
+    chunks = [] # The output will be a list of data dicts
+    for i in range(0, N + 1 - n, n):
+        chunk = subData(data, i, i + n)
+        chunks.append(chunk)
+    return chunks
+
 def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], pool = None):
-    """ Read in the flds*.p4(.gz) files in the list fns, stitching them together assuming 2D assumptions, and create output arrays. The read-in occurs in parallel if the input parameter pool is set (Pool of multiprocessing threads e.g. via Pool(10)). """
+    """ Read in the flds*.p4(.gz) files in the list fns, stitching them together assuming 2D assumptions, and create output arrays. The read-in occurs in parallel if the input parameter pool is set (Pool of multiprocessing threads e.g. via Pool(10)). 
+    Changelog:
+        2016-01-19 Should also work with scalar input filenames, as needed.
+    """
     # The first dimension of each array must be nfiles long.
     
     ## Extract "E" from "Ex" in fld_ids (for rd.read_flds2() call later)    
-    flds = list(set(s[:-1] for s in fld_ids)) # we strip the "x","y","z" last character off our fields, then set() gives only unique elements of a list, and list() converts this set back to list
+    flds = list(set([re.sub('[xyz]$','',s) for s in fld_ids])) # we strip the "x","y","z" last character off our fields, then set() gives only unique elements of a list, and list() converts this set back to list
     # E.g. if fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], flds = ['E','B']
-
-    nfiles = len(fns) # Count the number of files we need to read
-
+    # Alternatively, if fld_ids = ['RhoxN1', 'RhoxN2'], flds = ['RhoxN1', 'RhoxN2']
+        
     ## Read in the first file as a template for data array pre-allocations
     doms, header = rd.read_flds2(fns[0], flds=flds)
+        
+    nfiles = len(fns) # Count the number of files we need to read
     
     ## Pre-allocate the NumPy arrays inside an output dict called 'data'
     data = {} # define 'data' as a python dictionary that will store all the data read in, including fields, as NumPy arrays    
@@ -104,6 +193,11 @@ def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], pool = None):
 
     return data
 
+def scalars2D(fns, fld_ids = ['RhoN1', 'RhoN10',  'RhoN11'], pool = None):
+    """ A wrapper for fields2D, with default inputs better suited for scalar filenames input."""
+    # ['RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'] Each corresponding to density of species 1, 2, 3..., 11
+    return fields2D(fns, fld_ids = fld_ids, pool = pool)
+    
 def readOne(args):
     """ Helper function for multiprocessing Pool.map() call of Parallel read for fields2D. Reads in the fields from one file."""
     # Pool.map cannot have more than one input; hence, we have an input that is tuple of (filename, fld_ids, flds).

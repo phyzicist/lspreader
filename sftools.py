@@ -7,6 +7,8 @@ General tools used by Scott Feister (SF).
 @author: Scott
 """
 
+import os
+
 def getfns(folder, ext = '', prefix = ''):
     """ Get a list of full path filenames for all files in a folder and subfolders having a certain extension
     Inputs:

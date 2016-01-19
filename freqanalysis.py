@@ -9,7 +9,6 @@ Created on Wed Dec 30 15:09:37 2015
 import h5py
 import os
 import numpy as np
-from lstools import getfnsp4, fields2D # local functions
 import sftools as sf
 import lstools as ls
 
@@ -110,7 +109,7 @@ def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = 
  
     data = ls.fields2D(fns, fld_ids = fld_ids, pool = pool)
     for fld_id in fld_ids:
-        data2 = freqanalyze(fns, fld_id = fld_id, data = data, pool = pool, divsp = divsp)
+        data2 = freqanalyze(data, fld_id = fld_id, pool = pool, divsp = divsp)
         pltdict = getPltDict(data2) # Get the maxima/minima across multiple files, for homogeneous plotting across time steps
         if h5save:
             h5path = freqSave(data2, outdir = outdir, fld_id = fld_id, alltime=alltime) # Save frequency analysis results to hdf5
@@ -121,42 +120,38 @@ def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = 
 
     return data2_dict, pltdict_dict
 
-def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp = 1, pool = None):
-    """ Analyze a list of filenames (alternatively, already loaded data) and output frequency plots, etc. to file.
+def freqBatch2(data, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = None, alltime=False, h5save=False):
+    """ Perform frequency analysis of Ez, Ex, and By (and/or beyond) on a single set of 'data'. Data should contain fld_ids. Does not make plots, unless alltime = True. Does save the data to .hdf5 files."""
+    data2_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective data2 dictionary.
+    pltdict_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective pltdict dictionary.
+ 
+    for fld_id in fld_ids:
+        data2 = freqanalyze(data, fld_id = fld_id, pool = pool, divsp = divsp)
+        pltdict = getPltDict(data2) # Get the maxima/minima across multiple files, for homogeneous plotting across time steps
+        if h5save:
+            h5path = freqSave(data2, outdir = outdir, fld_id = fld_id, alltime=alltime) # Save frequency analysis results to hdf5
+        if alltime: # Since we're plotting over all time, no need to normalize to anything else. Just make the plots.
+            plotme(data2, outdir=outdir, pltdict=pltdict, fld_id = fld_id, alltime=alltime, mksub=False) # Make plots and save to png
+        data2_dict[fld_id] = data2
+        pltdict_dict[fld_id] = pltdict
+
+    return data2_dict, pltdict_dict
+
+def freqanalyze(data, fld_id = 'Ez', divsp = 1, pool = None):
+    """ Analyze a set (or subset) of already loaded data and output frequency plots, etc. to file.
     Inputs:
-        divsp: integer, divisor by which to reduce the spatial resolution (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
-        data: (Optional) A python dictionary returned by lstools.py "ls.fields2D()". If none is supplied, it will be read in by reading from datah5 (fields2D.hdf5) or by looking at p4 filenames.
-        datpath: (Optional) A string path of the hdf5 file from which data can be loaded.
-        fns: list of filenames to analyze, if neither data nor datah5 are given.
+        data: A python dictionary returned by lstools.py "ls.fields2D()", so some subset.
+        divsp: integer, divisor by which to reduce the spatial resolution from data, for this analysis (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
         pool: The pool multiprocessing threads to use when doing the FFT step. If pool = None (default), just use serial processing.
         fld_id: A string specifying the field component to analyze. This field must be contained within the "data" dictionary
     """
-    # Decide how to read in the data
-    if data:
-        #Data supplied at input to freqanalyze(), so no need to read in the files.
-        print "Extracting fields data directly from python Data dict."
-        times = data['times']*1e6 # times, converted to fs
-        fns = data['filenames']
-        xgv = data['xgv'][::divsp]*1e4 # spatial X, converted to microns
-        zgv = data['zgv'][::divsp]*1e4 # spatial Z, converted to microns
-        Ez = data[fld_id][:,::divsp,::divsp] ## I call it "Ez" as a variable name, but this could be any field.
-    elif datpath:
-        print "Reading fields2D data from the HDF5 file."
-        with h5py.File(datpath, 'r') as data:
-            times = data['times'][...]*1e6 # times, converted to fs
-            fns = data['filenames'][...]
-            xgv = data['xgv'][::divsp][...]*1e4 # spatial X, converted to microns
-            zgv = data['zgv'][::divsp][...]*1e4 # spatial Z, converted to microns
-            Ez = data[fld_id][:,::divsp,::divsp][...] ## I call it "Ez" as a variable name, but this could be any field.
-    else:
-        print "Reading ", len(fns), "files."
-        # Load in the data
-        data = ls.fields2D(fns, fld_ids = [fld_id], pool = pool)
-        times = data['times']*1e6 # times, converted to fs
-        fns = data['filenames']
-        xgv = data['xgv'][::divsp]*1e4 # spatial X, converted to microns
-        zgv = data['zgv'][::divsp]*1e4 # spatial Z, converted to microns
-        Ez = data[fld_id][:,::divsp,::divsp] ## I call it "Ez" as a variable name, but this could be any field.
+    # Data supplied at input to freqanalyze(), so no need to read in the files a second time.
+    print "Extracting fields data directly from python Data dict."
+    times = data['times']*1e6 # times, converted to fs
+    fns = data['filenames']
+    xgv = data['xgv'][::divsp]*1e4 # spatial X, converted to microns
+    zgv = data['zgv'][::divsp]*1e4 # spatial Z, converted to microns
+    Ez = data[fld_id][:,::divsp,::divsp] ## I call it "Ez" as a variable name, but this could be any field.
 
     data2 = {}
     data2['times_fs'] = times

@@ -263,6 +263,87 @@ except:
     print "WARNING: MPI4PY FAILED TO LOAD. DO NOT CALL MPI-BASED FUNCTIONS."
 
 ## DINOSAUR FUNCTIONS NO LONGER IN USE
+
+
+def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp = 1, pool = None):
+    """ Analyze a list of filenames (alternatively, already loaded data) and output frequency plots, etc. to file.
+    Inputs:
+        divsp: integer, divisor by which to reduce the spatial resolution (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
+        data: (Optional) A python dictionary returned by lstools.py "ls.fields2D()". If none is supplied, it will be read in by reading from datah5 (fields2D.hdf5) or by looking at p4 filenames.
+        datpath: (Optional) A string path of the hdf5 file from which data can be loaded.
+        fns: list of filenames to analyze, if neither data nor datah5 are given.
+        pool: The pool multiprocessing threads to use when doing the FFT step. If pool = None (default), just use serial processing.
+        fld_id: A string specifying the field component to analyze. This field must be contained within the "data" dictionary
+    """
+    # Decide how to read in the data
+    if data:
+        #Data supplied at input to freqanalyze(), so no need to read in the files.
+        print "Extracting fields data directly from python Data dict."
+        times = data['times']*1e6 # times, converted to fs
+        fns = data['filenames']
+        xgv = data['xgv'][::divsp]*1e4 # spatial X, converted to microns
+        zgv = data['zgv'][::divsp]*1e4 # spatial Z, converted to microns
+        Ez = data[fld_id][:,::divsp,::divsp] ## I call it "Ez" as a variable name, but this could be any field.
+    elif datpath:
+        print "Reading fields2D data from the HDF5 file."
+        with h5py.File(datpath, 'r') as data:
+            times = data['times'][...]*1e6 # times, converted to fs
+            fns = data['filenames'][...]
+            xgv = data['xgv'][::divsp][...]*1e4 # spatial X, converted to microns
+            zgv = data['zgv'][::divsp][...]*1e4 # spatial Z, converted to microns
+            Ez = data[fld_id][:,::divsp,::divsp][...] ## I call it "Ez" as a variable name, but this could be any field.
+    else:
+        print "Reading ", len(fns), "files."
+        # Load in the data
+        data = ls.fields2D(fns, fld_ids = [fld_id], pool = pool)
+        times = data['times']*1e6 # times, converted to fs
+        fns = data['filenames']
+        xgv = data['xgv'][::divsp]*1e4 # spatial X, converted to microns
+        zgv = data['zgv'][::divsp]*1e4 # spatial Z, converted to microns
+        Ez = data[fld_id][:,::divsp,::divsp] ## I call it "Ez" as a variable name, but this could be any field.
+
+    data2 = {}
+    data2['times_fs'] = times
+    data2['xgv_um'] = xgv
+    data2['zgv_um'] = zgv
+    data2['fns'] = fns
+
+    # Assume equal spacing in time and space, and get the deltas
+    dt = np.mean(np.diff(times))
+    dx = np.mean(np.diff(xgv))
+    dz = np.mean(np.diff(zgv))
+
+    #print dt, dx, dz
+
+    # Calculate the frequency of the laser from its wavelength (800 nm)
+    c = 3e8 # Speed of light in m/s
+    wl = 0.8e-6 # Wavelength of laser in m
+    fr_fund = c/wl # Frequency of the laser (the 'fundamental'), in Hz
+
+    freqHz = np.fft.rfftfreq(len(times), d = dt/1e15) # Frequencies in Hz, for upcoming real FFT
+    freq = freqHz/fr_fund # Frequencies in units of the fundamental
+
+    data2['freq'] = freq
+
+    #print "Doing calculations"
+    if pool:    
+        print "Parallel FFT started."
+        Eft = fftpar(Ez, pool) # PARALLEL FFT OPTION
+    else:
+        print "Serial FFT started."
+        Eft = np.fft.rfft(Ez, axis = 0) # SERIAL FFT OPTION
+
+    # Output a variety of analyzed data for plotting
+    data2['Imap'] = np.sum(Ez**2,0)
+    pwr = np.absolute(Eft)**2
+    data2['FTmap_0_5'] = np.sum(pwr[np.logical_and(freq > 0.3, freq < 0.7)],0)
+    data2['FTmap_1'] = np.sum(pwr[np.logical_and(freq > 0.9, freq < 1.1)],0)
+    data2['FTmap_1_5'] = np.sum(pwr[np.logical_and(freq > 1.3, freq < 1.7)],0)
+    data2['FTmap_2'] = np.sum(pwr[np.logical_and(freq > 1.8, freq < 2.3)],0)
+    data2['FTmap_0_85'] = np.sum(pwr[np.logical_and(freq > 0.7, freq < 0.9)],0)
+    data2['pwr_sum'] = np.sum(pwr, (1,2))
+
+    return data2
 def mainPar():
     """DINOSAUR FUNCTION, no longer in use. Retained as an example of using MPI."""
     p4dir = r'/tmp/ngirmang.1-2d-nosolid-151113/' # This folder contains the p4 files

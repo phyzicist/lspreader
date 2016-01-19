@@ -25,10 +25,11 @@ if LooseVersion(mpl.__version__) < LooseVersion('1.5.0'):
 
 # Other dependencies
 import numpy as np
-import angular # Radial histogram plot, from Gregory's local file 'angular.py'
 import os
+
+import angular # Radial histogram plot, from Gregory's local file 'angular.py'
 import lspreader2 as rd # Hope this works!
-import h5stitch2D as hs
+import lstools as ls # local
 
 def pextFull(p4dir, outdir = '.', shortname = 'Sim'):
     """ Perform the full-blown analysis of pext*.p4(.gz) files from a simulation. 
@@ -40,7 +41,7 @@ def pextFull(p4dir, outdir = '.', shortname = 'Sim'):
         Saves a bunch of well-labeled PNG plot files into the folder 'outdir'
     """
     
-    fns = hs.getfnsp4(p4dir, prefix='pext')
+    fns = ls.getp4(p4dir, prefix='pext')
     if len(fns) < 1:
         msg = "No pext*.p4(.gz) files found in the directory: " + p4dir
         raise Exception(msg)
