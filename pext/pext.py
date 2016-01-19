@@ -51,15 +51,16 @@ def add_quantities(d, coords=None):
     '''
     quants = {}
     quants['u_norm'] = np.sqrt(d['ux']**2+d['uy']**2+d['uz']**2)
-    quants['KE']     =(np.sqrt(quants['u_norm']**2+1)-1)*massE;
-    coords[:] = ['u'+coord for coord in coords];
+    quants['KE']     =(np.sqrt(quants['u_norm']**2+1)-1)*massE; # in eV??? -Scott
     if not coords:
         pass;
     elif len(coords) == 3:
+        coords[:] = ['u'+coord for coord in coords];
         quants['theta'] = np.arccos(d[coords[2]]/quants['u_norm']);
         quants['phi']   = np.arctan2(d[coords[1]],d[coords[0]]);
         quants['phi_n'] = np.arctan2(d[coords[2]],d[coords[0]]);
     elif len(coords) == 2:
+        coords[:] = ['u'+coord for coord in coords];
         quants['phi']   = np.arctan2(d[coords[0]],d[coords[1]]);
     keys,items = zip(*quants.items());
     return rfn.rec_append_fields(

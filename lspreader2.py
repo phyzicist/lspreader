@@ -4,7 +4,7 @@ Reader for LSP output xdr files (.p4's)
 '''
 import xdrlib as xdr
 import numpy as np
-import gzip as gz # For reading .p4.gz files
+import gzip # For reading .p4.gz files
 import os # For path splitting
 
 # Define a basic function for checking (and get rid of misc.py dependency)
@@ -199,7 +199,7 @@ def read_flds2(fname, flds=None):
     _, ext = os.path.splitext(fname)
     
     if ext == '.gz':
-        myopen = gz.open # If the file is .p4.gz, open using gunzip
+        myopen = gzip.open # If the file is .p4.gz, open using gunzip
     else:
         myopen = open
 	
@@ -318,6 +318,25 @@ def read_pext(file, header, lowlev=False):
         out=np.fromstring(s, dtype=dt,count=-1)
     return out
 
+def read_pext2(fname):
+    """ Wrapper for read_pext() that takes a filename as input. Gzipped .p4.gz allowed.
+    Inputs:
+        fname: string, path to a file, e.g. fname = 'pext1.p4'
+    Outputs:
+        out: The output from read_pext. A NumPy array with multiple records.
+    """
+    
+    _, ext = os.path.splitext(fname)
+    
+    if ext == '.gz':
+        myopen = gzip.open # If the file is .p4.gz, open using gunzip
+    else:
+        myopen = open
+    
+    with myopen(fname, 'rb') as file:
+        header = get_header(file)
+        out = read_pext(file, header)
+    return out
 
 def read(fname,**kw):
     '''reads an lsp output file into an h5 file.'''
@@ -340,14 +359,15 @@ def read(fname,**kw):
     return d;
 
 def stitch2D(doms, fld_id):
-    # Stitch a simple 2D lsp sim together, where we have N domains all built up along the Z dimension, and a flat Y dimension.
-    # Such as with Chris' 2D sims of the back-reflected plasma
-    # Inputs:
-    #   doms: an output of fld_reader3, which is a list of N items, containing each the fields data for that domain
-    #   fld_id: the string identifying the field component, e.g. "Ex" or "Bz"
-    # Outputs:
-    #   fld: A 2D array which contains the field component data
-    #   xgv, zgv: 1D arrays of the X or Z coordinate along the axis, in centimeters
+    """ Stitch a simple 2D lsp sim together, where we have N domains all built up along the Z dimension, and a flat Y dimension.
+      Such as with Chris' 2D sims of the back-reflected plasma
+      Inputs:
+        doms: an output of fld_reader3, which is a list of N items, containing each the fields data for that domain
+        fld_id: the string identifying the field component, e.g. "Ex" or "Bz"
+      Outputs:
+        fld: A 2D array which contains the field component data
+     xgv, zgv: 1D arrays of the X or Z coordinate along the axis, in centimeters
+    """
 
     fld_cat = np.squeeze(doms[0][fld_id])
     xgv = doms[0]['xgv']
