@@ -52,12 +52,12 @@ def analyzeAll(p4root, outroot, pextOn=True, freqOn=True):
     
     for name in namelist:
         p4dir = os.path.join(p4root, name)
-        shortname = stripJunk(name)
+        shortname = stripJunk(name) # strip the date or hyphen off the end of the folder name
         outdir = subdir(outroot, shortname)
         try:
             print "Analyzing directory: " + shortname
             if pextOn:
-                pextanalysis.fullAnalyze(p4dir, outdir=outdir, shortname=shortname) # Particle extraction analysis
+                pextanalysis.pextFull(p4dir, outdir=outdir, shortname=shortname) # Particle extraction analysis
             if freqOn:
                 freqanalysis.freqFull(p4dir, outdir, nbatch = 80, divsp = 1, npool = 1) # Frequency analysis
         except (KeyboardInterrupt, SystemExit):
@@ -66,7 +66,6 @@ def analyzeAll(p4root, outroot, pextOn=True, freqOn=True):
             # Report error and proceed
             print "Error noted. Directory: " + shortname
             pass # Move right along.
-    
     
 if __name__=='__main__':
     p4root = r'C:\Users\Scott\Documents\temp\pexttest'

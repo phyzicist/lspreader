@@ -30,7 +30,16 @@ import os
 import lspreader2 as rd # Hope this works!
 import h5stitch2D as hs
 
-def fullAnalyze(p4dir, outdir = '.', shortname = 'Sim'):
+def pextFull(p4dir, outdir = '.', shortname = 'Sim'):
+    """ Perform the full-blown analysis of pext*.p4(.gz) files from a simulation. 
+    Inputs:
+        p4dir: string, path to the folder which contains the pext*.p4
+        outdir: string, path to an already-existent folder in which to save outputs (PNG plots)
+        shortname: string, a fairly short identifier for the simulation which will be added into plots and filenames
+    Outputs:
+        Saves a bunch of well-labeled PNG plot files into the folder 'outdir'
+    """
+    
     fns = hs.getfnsp4(p4dir, prefix='pext')
     if len(fns) < 1:
         msg = "No pext*.p4(.gz) files found in the directory: " + p4dir
@@ -61,7 +70,7 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False):
     Inputs:
         pextarr: NumPy array, of the fancy form output by pextarr = lspreader2.read_pext('pext1.p4'). Several can be concatenated as desired.
         outdir: string, path to a folder (already existent) that can hold the outputs
-        shortname: string, a very short identifier for the simulation which will go in all the titles and filenames
+        shortname: string, a fairly short identifier for the simulation which will be added into plots and filenames
         mksub: bool, if True then make a subdirectory in 'outdir', otherwise just dump the PNGs directly into 'outdir'
     Outputs:
         Will save PNG figures summarizing the extraction planes into the folder specified by 'outdir'.
