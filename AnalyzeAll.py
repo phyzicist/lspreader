@@ -11,15 +11,6 @@ Walk through a high level directory (e.g.) the data directory, and do analysis.
 
 import matplotlib as mpl
 #mpl.use('Agg') # Goes kind of slow! Not sure why. Something wrong with my plotting routines?
-import sys
-
-try:
-    import lspreader2 as rd
-except:
-    print "Modifying path to include LSPreader"
-    readerpath = r'C:\Users\Scott\Documents\Programming\Python\lspreader'
-    sys.path.append(readerpath) # Add the LSP reader as taking precedence after all but the current directory
-    import lspreader2 as rd
 
 from pext import pextanalysis
 import freqanalysis
