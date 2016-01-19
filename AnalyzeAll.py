@@ -16,13 +16,7 @@ from pext import pextanalysis
 import freqanalysis
 import os
 import re
-
-def subdir(folder, name):
-    """ Make a subdirectory in the specified folder, if it doesn't already exist"""
-    subpath = os.path.join(folder,name)
-    if not os.path.exists(subpath):
-        os.mkdir(subpath)
-    return subpath
+import sftools as sf
 
 def stripJunk(name):
     """ Strips a date string off the end of a folder name, giving a "shorter" version of the name.
@@ -44,7 +38,7 @@ def analyzeAll(p4root, outroot, pextOn=True, freqOn=True):
     for name in namelist:
         p4dir = os.path.join(p4root, name)
         shortname = stripJunk(name) # strip the date or hyphen off the end of the folder name
-        outdir = subdir(outroot, shortname)
+        outdir = sf.subdir(outroot, shortname)
         try:
             print "Analyzing directory: " + shortname
             if pextOn:

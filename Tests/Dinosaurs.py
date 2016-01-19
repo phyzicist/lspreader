@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-A library for stitching together a folder full of .p4 fields files from a 2D run
+Created on Tue Jan 19 09:19:17 2016
 
-Created on Wed Dec 30 15:09:37 2015
+Functions no longer in use. Retained just in case.
 
 @author: Scott
 """
 
+############ H5STITCH2D FUNCTIONS
 
 import h5py
 import os
@@ -16,183 +17,12 @@ import re
 import gzip
 from multiprocessing import Pool
 import sys
+from sftools import chunkIt
 
 try:
     from mpi4py import MPI
 except:
     print "WARNING: MPI4PY FAILED TO LOAD. DO NOT CALL PARALLEL FUNCTIONS."
-    
-
-def getfnsp4(folder, prefix = 'flds'):
-    """ Get a list of full path filenames for all files 'fldsXXX.p4(.gz)' (for prefix = 'flds') in a folder, sorted by number XXX"""
-    # Inputs:
-    #   folder: a file path to the folder, e.g. "C:/run1", which contains files like 'fldXXX.p4'
-    # Outputs:
-    #   fns: a list of (sorted) full paths to files matching 'fldsXXX.p4', e.g. fns = ['C:/run1/flds1.p4', 'C:/run1/flds5.p4', 'C:/run1/flds10.p4']
-    
-    fns = [] # Will store the list of filenames
-    nums = [] # Will store a list of the XXX numbers in 'fldsXXX.p4'
-    
-    pattern = r'^(' + prefix + ')(\d*?)(\.p4)(\.gz){0,1}$'
-    # If prefix = 'flds', matches 'fldsXXX.p4' and 'fldsXXX.p4.gz', where XXX is a number of any length. Does not match 'dfldsXXX.p4' or 'fldsXXX.p4.zip'
-    
-
-    for name in os.listdir(folder): # note 'file' can be a file, directory, etc.
-        m = re.search(pattern, name)
-        if m: # If the filename matches the pattern, add this file to the list
-            fns.append(os.path.join(folder, name))
-            
-            # Extract "XXX" as a number from "fldsXXX.p4(.gz)"
-            # Note: re.split(r'^(fld)(\d*?)(\.p4)(\.gz){0,1}$', 'flds5020.p4.gz) returns something like ['', 'fld', '5020', '.p4', '.gz', ''], so we take the element at index 2 and convert to integer
-            fnum = int(re.split(pattern, name)[2])
-            nums.append(fnum)
-
-    # Sort the field names by their XXX number    
-    idx = np.argsort(nums) # Get a list of sorted indices such that the filenames will be sorted correctly by time step
-    fns = np.array(fns)[idx].tolist() # Convert filenames list to a numpy string array for advanced indexing, then convert back to a python list
-    return fns
-
-def getfns(folder, ext = '', prefix = ''):
-    """ Get a list of full path filenames for all files in a folder and subfolders having a certain extension"""
-    # Inputs:
-    #   folder: a file path to the folder, e.g. "C:/hello/"
-    #   prefix (optional): the prefix for the files in question, e.g. "flds_"
-    #   ext (optional): the extension of the files in question, e.g. ".p4"
-    # Outputs:
-    #   fns: a list of full paths to files with matching prefix and extension
-    
-    fns = []
-    for file in os.listdir(folder): # note 'file' can be a file, directory, etc.
-        if file.endswith(ext) and file.startswith(prefix):
-            fns.append(os.path.join(folder, file))
-    return fns
-
-def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], pool = None):
-    """ Read in the flds*.p4(.gz) files in the list fns, stitching them together assuming 2D assumptions, and create output arrays. The read-in occurs in parallel if the input parameter pool is set (Pool of multiprocessing threads e.g. via Pool(10)). """
-    # The first dimension of each array must be nfiles long.
-    
-    ## Extract "E" from "Ex" in fld_ids (for rd.read_flds2() call later)    
-    flds = list(set(s[:-1] for s in fld_ids)) # we strip the "x","y","z" last character off our fields, then set() gives only unique elements of a list, and list() converts this set back to list
-    # E.g. if fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], flds = ['E','B']
-
-    nfiles = len(fns) # Count the number of files we need to read
-
-    ## Read in the first file as a template for data array pre-allocations
-    doms, header = rd.read_flds2(fns[0], flds=flds)
-    
-    ## Pre-allocate the NumPy arrays inside an output dict called 'data'
-    data = {} # define 'data' as a python dictionary that will store all the data read in, including fields, as NumPy arrays    
-    _, xgv, zgv = rd.stitch2D(doms, fld_ids[0]) # Extract the interesting fields and stitch together for a template
-    data['times'] = np.zeros((nfiles,))
-    data['xgv'] = xgv
-    data['zgv'] = zgv
-    data['filenames'] = np.array(fns)
-
-    for k in fld_ids:
-        data[k] = np.zeros((nfiles,len(zgv),len(xgv))) # The vector field elements
-
-    ## Read in the files
-    if pool: # OPTION A: PARALLEL READ OF FILES INTO DATA DICT
-        print "Using parallel pool to read", len(fns), "files. (This could take a little while.)"
-        args_iter = zip(fns, [fld_ids]*nfiles, [flds]*nfiles) # Make a list nfiles long, with tuples of (filename, fld_ids, flds)
-        outs = pool.map(readOne, args_iter)
-        flds1, times = zip(*outs)
-        flds1 = np.array(flds1)
-        data['times'] = np.array(times) # Save the timestamps into the data dict
-        # Re-order and save into data
-        for i in range(len(fld_ids)):
-            k = fld_ids[i]
-            data[k] = flds1[:,i,:,:] # Save the field elements into the data dict
-        print "Done reading files."
-
-    else: # OPTION B: SERIAL READ OF FILES INTO DATA DICT
-        print "Reading the files in serial."        
-        # Read in all the data and fill up the NumPy arrays
-        for i in range(nfiles): # Iterate over the files
-            print "Reading file", i, "of", nfiles        
-            fn = fns[i]
-            doms, header = rd.read_flds2(fn, flds=flds)
-            data['times'][i] = header['timestamp']
-            for k in fld_ids: # Iterate over the requested fields, stitching then adding them to fldDict arrays
-                fld, _, _ = rd.stitch2D(doms, k)
-                data[k][i,:,:] = fld
-
-    return data
-
-def readOne(args):
-    """ Helper function for multiprocessing Pool.map() call of Parallel read for fields2D. Reads in the fields from one file."""
-    # Pool.map cannot have more than one input; hence, we have an input that is tuple of (filename, fld_ids, flds).
-    # Output is a tuple of read-in fields (for all fields in fld_ids) and timestamp.
-    fn = args[0]
-    fld_ids = args[1]
-    flds_label = args[2]
-
-    doms, header = rd.read_flds2(fn, flds=flds_label)
-
-    time = header['timestamp']
-    for i in range(len(fld_ids)): # Iterate over the requested fields, stitching then adding them to fldDict arrays
-        fld, _, _ = rd.stitch2D(doms, fld_ids[i])
-        if i == 0:
-            flds1 = np.zeros((len(fld_ids), fld.shape[0], fld.shape[1]))
-            flds1[i,:,:] = fld
-        else:
-            flds1[i,:,:] = fld
-    return (flds1, time)
-
-
-def getTimes(fns):
-    """ Get a list of times (in ns), from a list of .p4(.gz) filenames. """
-
-    nfiles = len(fns)
-    times = np.zeros(nfiles)    
-    for i in range(nfiles):
-        fn = fns[i]
-        _, ext = os.path.splitext(fn)
-        
-        if ext == '.gz':
-            with gzip.open(fn, 'rb') as f:
-                header = rd.get_header(f)
-        else:
-            with open(fn, 'rb') as f:
-                header = rd.get_header(f)
-        times[i] = header['timestamp']
-
-    return times
-
-
-def h5fields2D(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], pool = None):
-    """ Serial or parallel read-in of files. Works great. Creates the HDF5 file without all the pain. """
-    if not h5path:
-        h5path = os.path.join(folder, 'fields2D.hdf5')
-    fns = getfnsp4(folder)
-    nfiles = len(fns)
-    print 'Total number of files:', len(fns)
-
-    print "Opening the HDF5 file"
-    with h5py.File(h5path,'w') as f:
-        # Read all the files into RAM
-        print "Reading files into NumPy arrays in RAM"
-        data = fields2D(fns, fld_ids=fld_ids, pool=pool)
-        # Build the HDF5 file, assuming every element in "data" is a NumPy array
-        print "Saving arrays in RAM to HDF5"
-        for k in data:
-            f.create_dataset(k, data = data[k], compression='gzip', compression_opts=4)
-    print "All done!"
-    return h5path
-
-
-def chunkIt(seq, num):
-    """Divide list 'seq' into 'num' (nearly) equal-sized chunks. Returns a list of lists; some empty lists if num is larger than len(seq)."""
-    # Copied directly from: http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
-    avg = len(seq) / float(num)
-    out = []
-    last = 0.0
-
-    while last < len(seq):
-        out.append(seq[int(last):int(last + avg)])
-        last += avg
-
-    return out
 
 ## DINOSAUR FUNCTIONS!!! (MPI-BASED) DO NOT USE:
 def h5fields2Dser(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz']):
@@ -401,3 +231,126 @@ def h5fields2Dpar2(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'
 
             print "All done!"
 
+
+
+########### FREQUENCY ANALYSIS FUNCTIONS
+import h5py
+import os
+import numpy as np
+from h5stitch2D import getfnsp4, fields2D
+from sftools import subdir, chunkFx, chunkIt
+
+# Matplotlib stuff
+import matplotlib as mpl
+#mpl.use('Agg') # Let's call this at an earlier point, shall we?
+import matplotlib.pyplot as plt
+from distutils.version import LooseVersion
+if LooseVersion(mpl.__version__) < LooseVersion('1.5.0'):    
+    # http://stackoverflow.com/questions/11887762/how-to-compare-version-style-strings and 
+    print "Matplotlib", mpl.__version__, "might not have colormap 'viridis'. Importing from local colormaps.py."
+    import colormaps as cmaps
+    plt.register_cmap(name='viridis', cmap=cmaps.viridis)
+    plt.register_cmap(name='inferno', cmap=cmaps.inferno)
+    plt.register_cmap(name='magma', cmap=cmaps.magma)
+    plt.register_cmap(name='plasma', cmap=cmaps.plasma)
+
+
+# Parallel processing stuff
+from multiprocessing import Pool
+try:
+    from mpi4py import MPI
+except:
+    print "WARNING: MPI4PY FAILED TO LOAD. DO NOT CALL MPI-BASED FUNCTIONS."
+
+## DINOSAUR FUNCTIONS NO LONGER IN USE
+def mainPar():
+    """DINOSAUR FUNCTION, no longer in use. Retained as an example of using MPI."""
+    p4dir = r'/tmp/ngirmang.1-2d-nosolid-151113/' # This folder contains the p4 files
+    outdir = r'/home/feister.7/lsp/runs/greg_run' # This folder already exists and will store the files in subfolders
+    
+    nbatch = 45 # Number of files per batch (Each batch is analyzed in Fourier space)
+    
+    nprocs = MPI.COMM_WORLD.Get_size()
+    rank = MPI.COMM_WORLD.Get_rank()
+    name = MPI.Get_processor_name()
+    comm = MPI.COMM_WORLD
+    
+    # Get files in folder
+    fns = getfnsp4(p4dir)[::2]
+    # Split the filenames list into batches of size nbatch (each batch will be fourier-analyzed)
+    fns_batched = chunkFx(fns, nbatch)
+    # Make some sub-batches
+    alt_batched = chunkFx(fns[int(round(nbatch/2)):], nbatch) # Same as above, but offset
+    fns_batched = fns_batched + alt_batched
+    
+    if rank == 0:
+        print "NUMBER OF CHUNKS: ", len(fns_batched)
+
+    # Spread the batches of filenames across the various processors
+    batches_chunked = chunkIt(fns_batched,nprocs)
+    batches_part = batches_chunked[rank] # This processor's chunk of filename batches
+    
+    print "Processor", rank, "assigned", len(batches_part), "batches."
+    
+    pltdicts_part = []
+    data2s_part = []
+    outsubdirs_part = []
+    for fns_batch in batches_part:
+        data2 = freqanalyze(fns_batch, divsp=1)
+        
+        # Give the subdirectory for this dataset a name, and make the directory.
+        meantime = np.mean(data2['times_fs']) # Mean time, in fs
+        dirname = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the folder label be '00512' for t = 51.2342 fs
+        outsubdir = os.path.join(outdir, dirname)
+        outsubdirs_part.append(outsubdir)
+
+        if not os.path.exists(outsubdir):
+            os.mkdir(outsubdir)
+        
+        # Get plot helper dictionary, which includes maximum values, and will be needed for plotting
+        pltdict = getPltDict(data2)
+        pltdicts_part.append(pltdict)
+
+        # Save the figures and HDF5 into the subdirectory
+        h5path = saveData2(data2, folder=outsubdir)
+        
+        # Append to the data2 list
+        data2s_part.append(data2)
+
+    # Compare all the plot dictionaries, and select the actual plotting parameters
+    pltdicts_chunked = comm.gather(pltdicts_part, root=0)
+    if rank == 0:
+        pltdicts_all = unChunk(pltdicts_chunked)
+        print pltdicts_all
+        pltdict_final = bestPltDict(pltdicts_all)
+        print "FINAL PLOT DICTIONARY: ", pltdict_final
+    else:
+        pltdicts_all = None
+        pltdict_final = None
+
+    pltdict_final = comm.bcast(pltdict_final, root=0)
+
+    # Re-iterate over the chunks for this processor, saving images.
+
+    for i in range(len(outsubdirs_part)):
+        data2 = data2s_part[i]
+        outsubdir = outsubdirs_part[i]
+        plotme(data2, folder=outsubdir, pltdict = pltdict_final)
+
+def totalSer():
+    """DINOSAUR function, no longer in use. Retained as an example of not using MPI."""
+    p4dir = r'/tmp/ngirmang.1-2d-nosolid-151113/' # This folder contains the p4 files
+    outdir = r'/home/feister.7/lsp/runs/greg_run' # This folder already exists and will store the files in subfolders
+    fns = getfnsp4(p4dir)
+    data2 = freqanalyze(fns, divsp=1)
+
+    # Give the subdirectory for this dataset a name, and make the directory.
+    meantime = np.mean(data2['times_fs']) # Mean time, in fs
+    dirname = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the folder label be '00512' for t = 51.2342 fs
+    outsubdir = os.path.join(outdir, dirname)
+    if not os.path.exists(outsubdir):
+        os.mkdir(outsubdir)
+
+    pltdict = getPltDict(data2)
+    h5path = saveData2(data2, folder=outsubdir)
+    plotme(data2, folder=outsubdir, pltdict=pltdict)

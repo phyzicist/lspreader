@@ -8,17 +8,14 @@ Created on Wed Dec 30 15:09:37 2015
 """
 import h5py
 import os
-import lspreader2 as rd
 import numpy as np
-from h5stitch2D import chunkIt, getfnsp4, fields2D, h5fields2D, h5fields2Dpar2, getTimes
-import gzip
-from copy import deepcopy
-import timeit
-import shutil
+from lstools import getfnsp4, fields2D # local functions
+import sftools as sf
+import lstools as ls
 
 # Matplotlib stuff
 import matplotlib as mpl
-mpl.use('Agg')
+#mpl.use('Agg') # Let's call this at an earlier point, shall we?
 import matplotlib.pyplot as plt
 from distutils.version import LooseVersion
 if LooseVersion(mpl.__version__) < LooseVersion('1.5.0'):    
@@ -63,12 +60,12 @@ def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 
         pool = None
 
     # Look at the files in the folder, and split them into good-sized batches for analysis
-    fns_all = getfnsp4(p4dir)
+    fns_all = ls.getp4(p4dir)
 
     # Split the filenames list into batches of size nbatch (each batch will be fourier-analyzed)
-    main_batched = chunkFx(fns_all, nbatch)
+    main_batched = sf.chunkFx(fns_all, nbatch)
     # Make some sub-batches
-    alt_batched = chunkFx(fns_all[int(round(nbatch/2)):], nbatch) # Same as above, but offset
+    alt_batched = sf.chunkFx(fns_all[int(round(nbatch/2)):], nbatch) # Same as above, but offset
     fns_batched = main_batched + alt_batched
 
 
@@ -111,7 +108,7 @@ def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = 
     data2_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective data2 dictionary.
     pltdict_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective pltdict dictionary.
  
-    data = fields2D(fns, fld_ids = fld_ids, pool = pool)
+    data = ls.fields2D(fns, fld_ids = fld_ids, pool = pool)
     for fld_id in fld_ids:
         data2 = freqanalyze(fns, fld_id = fld_id, data = data, pool = pool, divsp = divsp)
         pltdict = getPltDict(data2) # Get the maxima/minima across multiple files, for homogeneous plotting across time steps
@@ -128,7 +125,7 @@ def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp = 1, pool = N
     """ Analyze a list of filenames (alternatively, already loaded data) and output frequency plots, etc. to file.
     Inputs:
         divsp: integer, divisor by which to reduce the spatial resolution (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
-        data: (Optional) A python dictionary returned by h5stitch2D.py "fields2D()". If none is supplied, it will be read in by reading from datah5 (fields2D.hdf5) or by looking at p4 filenames.
+        data: (Optional) A python dictionary returned by lstools.py "ls.fields2D()". If none is supplied, it will be read in by reading from datah5 (fields2D.hdf5) or by looking at p4 filenames.
         datpath: (Optional) A string path of the hdf5 file from which data can be loaded.
         fns: list of filenames to analyze, if neither data nor datah5 are given.
         pool: The pool multiprocessing threads to use when doing the FFT step. If pool = None (default), just use serial processing.
@@ -154,7 +151,7 @@ def freqanalyze(fns, data=None, datpath=None, fld_id = 'Ez', divsp = 1, pool = N
     else:
         print "Reading ", len(fns), "files."
         # Load in the data
-        data = fields2D(fns, fld_ids = [fld_id], pool = pool)
+        data = ls.fields2D(fns, fld_ids = [fld_id], pool = pool)
         times = data['times']*1e6 # times, converted to fs
         fns = data['filenames']
         xgv = data['xgv'][::divsp]*1e4 # spatial X, converted to microns
@@ -349,13 +346,13 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
         tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
 
     if mksub: # If mksub is True, then make a subdirectory called "FreqPlots"; otherwise, just save the folders in the high level folder
-        plotdir = subdir(outdir, 'FreqPlots')
+        plotdir = sf.subdir(outdir, 'FreqPlots')
     else:
         plotdir = outdir
     
-    flddir = subdir(plotdir, fld_id)
+    flddir = sf.subdir(plotdir, fld_id)
     for i in range(len(figs)):
-        figdir = subdir(flddir, fld_id + ' -' + str(i) + '- ' + labs[i])
+        figdir = sf.subdir(flddir, fld_id + ' -' + str(i) + '- ' + labs[i])
         fn = os.path.join(figdir, tlabel + '.png') # For example, store the figure as '[outdir]/FreqPlots/Ex/Ex -2- Half omega/00512.png'
         figs[i].savefig(fn)
 
@@ -367,13 +364,6 @@ def fftpar(Ei, pool):
     # Prior to calling, get your pool via: pool = Pool(10) for a 10-thread pool
     return np.swapaxes(np.array((pool.map(np.fft.rfft, Ei.swapaxes(0,2)))),0,2)
 
-def subdir(folder, name):
-    """ Make a subdirectory in the specified folder, if it doesn't already exist"""
-    subpath = os.path.join(folder,name)
-    if not os.path.exists(subpath):
-        os.mkdir(subpath)
-    return subpath
-
 def freqSave(data2, outdir = '', fld_id = '', alltime=False):
     """Save the data used in frequency plots to an hdf5 file."""
     if alltime: # If this is the "All times" analysis, label the file with "00000.*"
@@ -382,8 +372,8 @@ def freqSave(data2, outdir = '', fld_id = '', alltime=False):
         meantime = np.mean(data2['times_fs'])
         tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
 
-    plotdir = subdir(outdir, 'FreqData')
-    flddir = subdir(plotdir, fld_id)
+    plotdir = sf.subdir(outdir, 'FreqData')
+    flddir = sf.subdir(plotdir, fld_id)
     h5path = saveData(data2, flddir, tlabel + '.hdf5') # E.g. save the file as '[outdir]/FreqData/Ex/00512.hdf5'
     return h5path
 
@@ -406,19 +396,6 @@ def loadData(h5path):
         for k in f.keys():
             data2[k] = f[k][...]
     return data2
-
-def chunkFx(mylist, n):
-    """Break list into fixed, n-sized chunks. The final element of the new list will be n-sized or less"""
-    # Modified from http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
-    chunks = []
-    for i in range(0, len(mylist), n):
-        chunks.append(mylist[i:i+n])
-    return chunks
-
-def unChunk(l):
-    """Flatten the first dimension of a list. E.g. if input is l = [[1,2,],[3,4]], output is [1,2,3,4]"""
-    # Copied from http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
-    return [item for sublist in l for item in sublist]
 
 def getPltDict(data2):
     """ Get the plotting dictionary, which includes things such as maximums needed to make plots, from a data2 dictionary"""
@@ -448,98 +425,3 @@ def bestPltDict(pltdicts):
             pltdict[k]['max'] = max(pltdicts[i][k]['max'], pltdict[k]['max'])
             pltdict[k]['min'] = min(pltdicts[i][k]['min'], pltdict[k]['min'])
     return pltdict
-
-
-## DINOSAUR FUNCTIONS NO LONGER IN USE
-def mainPar():
-    """DINOSAUR FUNCTION, no longer in use. Retained as an example of using MPI."""
-    p4dir = r'/tmp/ngirmang.1-2d-nosolid-151113/' # This folder contains the p4 files
-    outdir = r'/home/feister.7/lsp/runs/greg_run' # This folder already exists and will store the files in subfolders
-    
-    nbatch = 45 # Number of files per batch (Each batch is analyzed in Fourier space)
-    
-    nprocs = MPI.COMM_WORLD.Get_size()
-    rank = MPI.COMM_WORLD.Get_rank()
-    name = MPI.Get_processor_name()
-    comm = MPI.COMM_WORLD
-    
-    # Get files in folder
-    fns = getfnsp4(p4dir)[::2]
-    # Split the filenames list into batches of size nbatch (each batch will be fourier-analyzed)
-    fns_batched = chunkFx(fns, nbatch)
-    # Make some sub-batches
-    alt_batched = chunkFx(fns[int(round(nbatch/2)):], nbatch) # Same as above, but offset
-    fns_batched = fns_batched + alt_batched
-    
-    if rank == 0:
-        print "NUMBER OF CHUNKS: ", len(fns_batched)
-
-    # Spread the batches of filenames across the various processors
-    batches_chunked = chunkIt(fns_batched,nprocs)
-    batches_part = batches_chunked[rank] # This processor's chunk of filename batches
-    
-    print "Processor", rank, "assigned", len(batches_part), "batches."
-    
-    pltdicts_part = []
-    data2s_part = []
-    outsubdirs_part = []
-    for fns_batch in batches_part:
-        data2 = freqanalyze(fns_batch, divsp=1)
-        
-        # Give the subdirectory for this dataset a name, and make the directory.
-        meantime = np.mean(data2['times_fs']) # Mean time, in fs
-        dirname = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the folder label be '00512' for t = 51.2342 fs
-        outsubdir = os.path.join(outdir, dirname)
-        outsubdirs_part.append(outsubdir)
-
-        if not os.path.exists(outsubdir):
-            os.mkdir(outsubdir)
-        
-        # Get plot helper dictionary, which includes maximum values, and will be needed for plotting
-        pltdict = getPltDict(data2)
-        pltdicts_part.append(pltdict)
-
-        # Save the figures and HDF5 into the subdirectory
-        h5path = saveData2(data2, folder=outsubdir)
-        
-        # Append to the data2 list
-        data2s_part.append(data2)
-
-    # Compare all the plot dictionaries, and select the actual plotting parameters
-    pltdicts_chunked = comm.gather(pltdicts_part, root=0)
-    if rank == 0:
-        pltdicts_all = unChunk(pltdicts_chunked)
-        print pltdicts_all
-        pltdict_final = bestPltDict(pltdicts_all)
-        print "FINAL PLOT DICTIONARY: ", pltdict_final
-    else:
-        pltdicts_all = None
-        pltdict_final = None
-
-    pltdict_final = comm.bcast(pltdict_final, root=0)
-
-    # Re-iterate over the chunks for this processor, saving images.
-
-    for i in range(len(outsubdirs_part)):
-        data2 = data2s_part[i]
-        outsubdir = outsubdirs_part[i]
-        plotme(data2, folder=outsubdir, pltdict = pltdict_final)
-
-def totalSer():
-    """DINOSAUR function, no longer in use. Retained as an example of not using MPI."""
-    p4dir = r'/tmp/ngirmang.1-2d-nosolid-151113/' # This folder contains the p4 files
-    outdir = r'/home/feister.7/lsp/runs/greg_run' # This folder already exists and will store the files in subfolders
-    fns = getfnsp4(p4dir)
-    data2 = freqanalyze(fns, divsp=1)
-
-    # Give the subdirectory for this dataset a name, and make the directory.
-    meantime = np.mean(data2['times_fs']) # Mean time, in fs
-    dirname = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the folder label be '00512' for t = 51.2342 fs
-    outsubdir = os.path.join(outdir, dirname)
-    if not os.path.exists(outsubdir):
-        os.mkdir(outsubdir)
-
-    pltdict = getPltDict(data2)
-    h5path = saveData2(data2, folder=outsubdir)
-    plotme(data2, folder=outsubdir, pltdict=pltdict)
-
