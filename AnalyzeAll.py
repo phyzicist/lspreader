@@ -22,6 +22,7 @@ except:
     import lspreader2 as rd
 
 from pext import pextanalysis
+import freqanalysis
 import os
 import re
 
@@ -46,9 +47,7 @@ def stripJunk(name):
         shortname = name
     return shortname
 
-if __name__=='__main__':
-    p4root = r'C:\Users\Scott\Documents\temp\pexttest'
-    outroot = r'C:\Users\Scott\Documents\temp\pexttest\TestPlots'
+def analyzeAll(p4root, outroot, pextOn=True, freqOn=True):
     namelist = next(os.walk(p4root))[1] # Looks for all files in this list
     
     for name in namelist:
@@ -57,10 +56,19 @@ if __name__=='__main__':
         outdir = subdir(outroot, shortname)
         try:
             print "Analyzing directory: " + shortname
-            pextanalysis.fullAnalyze(p4dir, outdir=outdir, shortname=shortname)
+            if pextOn:
+                pextanalysis.fullAnalyze(p4dir, outdir=outdir, shortname=shortname) # Particle extraction analysis
+            if freqOn:
+                freqanalysis.freqFull(p4dir, outdir, nbatch = 80, divsp = 1, npool = 1) # Frequency analysis
         except (KeyboardInterrupt, SystemExit):
             raise
         except:
             # Report error and proceed
             print "Error noted. Directory: " + shortname
             pass # Move right along.
+    
+    
+if __name__=='__main__':
+    p4root = r'C:\Users\Scott\Documents\temp\pexttest'
+    outroot = r'C:\Users\Scott\Documents\temp\pexttest\TestPlots'
+    analyzeAll(p4root, outroot)

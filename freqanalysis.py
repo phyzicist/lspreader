@@ -105,7 +105,7 @@ def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 
     return outdir
 
 
-def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = None, alltime=False):
+def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = None, alltime=False, h5save=False):
     """ Perform frequency analysis of Ez, Ex, and By (and/or beyond) on a single batch of .p4 or .p4.gz files. Does not make plots, unless alltime = True. Does save the data to .hdf5 files."""
     data2_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective data2 dictionary.
     pltdict_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective pltdict dictionary.
@@ -114,7 +114,8 @@ def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = 
     for fld_id in fld_ids:
         data2 = freqanalyze(fns, fld_id = fld_id, data = data, pool = pool, divsp = divsp)
         pltdict = getPltDict(data2) # Get the maxima/minima across multiple files, for homogeneous plotting across time steps
-        h5path = freqSave(data2, outdir = outdir, fld_id = fld_id, alltime=alltime) # Save frequency analysis results to hdf5
+        if h5save:
+            h5path = freqSave(data2, outdir = outdir, fld_id = fld_id, alltime=alltime) # Save frequency analysis results to hdf5
         if alltime: # Since we're plotting over all time, no need to normalize to anything else. Just make the plots.
             plotme(data2, outdir=outdir, pltdict=pltdict, fld_id = fld_id, alltime=alltime) # Make plots and save to png
         data2_dict[fld_id] = data2
