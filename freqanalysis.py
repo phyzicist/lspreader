@@ -100,7 +100,7 @@ def freqFull(p4dir, outdir = '', nbatch = 20, divsp = 1, fld_ids = ['Ez', 'Ex', 
     # Make plots for the time-resolved frequency analyses and save them to file
     for i in range(len(fns_batched)):
         for fld_id in fld_ids:    
-            plotme(data2s_dict[i][fld_id], outdir=outdir, pltdict=pltdict[fld_id], fld_id = fld_id) # Make plots and save to png
+            plotme(data2s_dict[i][fld_id], outdir=outdir, pltdict=pltdict[fld_id], fld_id = fld_id, mksub=False) # Make plots and save to png
     plt.close('all') # We are done with plots, so close any that are still open."
 
     return outdir
@@ -118,7 +118,7 @@ def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = 
         if h5save:
             h5path = freqSave(data2, outdir = outdir, fld_id = fld_id, alltime=alltime) # Save frequency analysis results to hdf5
         if alltime: # Since we're plotting over all time, no need to normalize to anything else. Just make the plots.
-            plotme(data2, outdir=outdir, pltdict=pltdict, fld_id = fld_id, alltime=alltime) # Make plots and save to png
+            plotme(data2, outdir=outdir, pltdict=pltdict, fld_id = fld_id, alltime=alltime, mksub=False) # Make plots and save to png
         data2_dict[fld_id] = data2
         pltdict_dict[fld_id] = pltdict
 
@@ -229,7 +229,7 @@ def myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,fignum):
     im.set_clim(vmin=cmin, vmax=cmax)
     return fig
 
-def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False):
+def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksub=True):
     """ Plots a variety of parameters found in the outputs of frequency analysis, then saves a png of each."""
     xgv = data2['xgv_um']
     zgv = data2['zgv_um']
@@ -348,7 +348,11 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False):
     else: # Otherwise, do the normal labeling
         tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
 
-    plotdir = subdir(outdir, 'FreqPlots')
+    if mksub: # If mksub is True, then make a subdirectory called "FreqPlots"; otherwise, just save the folders in the high level folder
+        plotdir = subdir(outdir, 'FreqPlots')
+    else:
+        plotdir = outdir
+    
     flddir = subdir(plotdir, fld_id)
     for i in range(len(figs)):
         figdir = subdir(flddir, fld_id + ' -' + str(i) + '- ' + labs[i])
