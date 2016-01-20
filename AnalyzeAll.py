@@ -51,8 +51,18 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False):
                 data = ls.readFldScl(p4dir) # Read all the files involved in matching field/scalar analysis into a single data array.
                 print 'Data keys:', data.keys()
                 #freqanalysis.freqBatch2(data, outdir=outdir, shortname=shortname, alltime=True)
-                sp.plotme(data, outdir=outdir, shortname=shortname, alltime=True)
-                ## TODO: Split into chunks, analyze that.
+                sp.plotDens(data, outdir=outdir, shortname=shortname, alltime=True)
+                sp.plotEM(data, outdir=outdir, shortname=shortname, alltime=True)
+                ## Split into chunks, analyze that.
+                chk_fs = 15.0#fs How many femtoseconds per (large-sized) data chunk for analysis?
+                freqchunks = ls.chunkData(data, chk_fs) + ls.chunkData(data, chk_fs, offset_fs = chk_fs/2.0)
+                denschunks = ls.chunkData(data, chk_fs/2.0) # Same number of chunks as bigchunks, but less long in time.
+                print "Iterating over density chunks."
+                for chunk in denschunks:
+                    sp.plotDens(chunk, outdir=outdir, shortname=shortname)
+                print "Iterating over frequency chunks."
+                for chunk in freqchunks:
+                    sp.plotEM(chunk, outdir=outdir, shortname=shortname)
             if freqOn:
                 freqanalysis.freqFull(p4dir, outdir, nbatch = 80, divsp = 1, npool = 1) # Frequency analysis
         except (KeyboardInterrupt, SystemExit):

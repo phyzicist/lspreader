@@ -14,7 +14,6 @@ except:
     sys.path.append(readerpath) # Add the LSP reader as taking precedence after all but the current directory
     import lspreader2 as rd
 
-
 import scottplots as sp
 import lstools as ls
 import AnalyzeAll as aa

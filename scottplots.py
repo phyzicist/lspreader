@@ -236,40 +236,17 @@ def poyntAnlz(data):
 
     return Svecmean, Smagmean, JEmean, JBmean, Jtotal
 
-def plotme(data, outdir='.', shortname = '', alltime=False):
-    """ Make Scott's set of custom plots for this batch """
-    xgv = data['xgv']*1e4
-    zgv = data['zgv']*1e4
-    times = data['times']*1e6
-    dx = np.mean(np.diff(xgv))
-    dz = np.mean(np.diff(zgv))
+def timeStrings(data, alltime=False):
+    """ Subroutine that outputs a nice string and label for input list of times
+    Inputs:
+        data: the usual data dict
+        alltime: bool, should this be labeled in a special way to indicate it is an analysis of all time steps, rather than a subset?
+    Outputs:
+        tstring: string, # '00512' for mean time = 51.2342 fs, or "00000" if alltime=True
+        tlabel: string, "t = XX fs +/- 20 fs", or "All times" if alltime=True
+    """
+    times = data['times']*1e6 # times in femtosecond
 
-    ## CALCULATIONS
-    # Mean electron density
-    edens = np.mean(data['RhoN10'],0)
-
-    # Mean ion density
-    pdens = np.mean(data['RhoN11'],0)
-    
-    # Mean oxygen ionization state
-    old_settings = np.seterr(divide='ignore', invalid='ignore') # Set to ignore divide by zero error. (We will divide by zero where no ions exist)
-    ionstate = np.mean((0*data['RhoN1'] + 1*data['RhoN2'] + 2*data['RhoN3'] + 3*data['RhoN4'] + 4*data['RhoN5'] + 5*data['RhoN6'] + 6*data['RhoN7'] + 7*data['RhoN8'])/(data['RhoN1'] + data['RhoN2'] + data['RhoN3'] + data['RhoN4'] + data['RhoN5'] + data['RhoN6'] + data['RhoN7'] + data['RhoN8']), 0)
-    ionstate = np.nan_to_num(ionstate)
-    np.seterr(**old_settings)  # reset divide by zero error to prior settings
-    
-    Svec, Smag, JE, JB, Jtot = poyntAnlz(data) # Units are Joules and meters
-
-    # Frequency analysis
-    maps, cuts, pwrsum, freq = emFFT(data, kind='EB')
-    df = np.mean(np.diff(freq))
-    
-    # Compare the many ways of calculating energy, in mJ/ um
-    print "SUMFFTmap", np.sum(maps['all'])*dx*dz*1e-15
-    print "SUMFFTpwr", np.sum(pwrsum) * df * 1e-3
-    print "SUMpoyntJEB", np.sum(JE + JB)*dx*dz*1e-15
-    print "SUMpoyntJtot", Jtot*1e-3
-    
-    ## MAKE AND SAVE FIGURES    
     # This timestring computation was copied and pasted from freqanalysis.plotme()
     if alltime: # If this is the all-time rather than time-resolved analysis, put a different label on plot
         maxtime = np.max(times)
@@ -282,8 +259,31 @@ def plotme(data, outdir='.', shortname = '', alltime=False):
         tplus = np.max(times) - np.mean(times)
         tstring = 't=' + "{:.1f}".format(meantime) + " fs $\pm$ " + "{:.1f}".format(tplus) + " fs"
         tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
+    return tstring, tlabel
 
+def plotDens(data, outdir='.', shortname = '', alltime=False):
+    """ Make Scott's set of custom density-related plots for this batch. """
+    xgv = data['xgv']*1e4
+    zgv = data['zgv']*1e4
+    dx = np.mean(np.diff(xgv))
+    dz = np.mean(np.diff(zgv))
+    
+    ## CALCULATIONS
+    # Mean electron density
+    edens = np.mean(data['RhoN10'],0)
+
+    # Mean ion density
+    pdens = np.mean(data['RhoN11'],0)
+    
+    # Mean oxygen ionization state
+    old_settings = np.seterr(divide='ignore', invalid='ignore') # Set to ignore divide by zero error. (We will divide by zero where no ions exist)
+    ionstate = np.mean((0*data['RhoN1'] + 1*data['RhoN2'] + 2*data['RhoN3'] + 3*data['RhoN4'] + 4*data['RhoN5'] + 5*data['RhoN6'] + 6*data['RhoN7'] + 7*data['RhoN8'])/(data['RhoN1'] + data['RhoN2'] + data['RhoN3'] + data['RhoN4'] + data['RhoN5'] + data['RhoN6'] + data['RhoN7'] + data['RhoN8']), 0)
+    ionstate = np.nan_to_num(ionstate)
+    np.seterr(**old_settings)  # reset divide by zero error to prior settings
+
+    ## MAKE AND SAVE FIGURES
     pltdir = outdir
+    tstring, tlabel = timeStrings(data, alltime=alltime) # Custom strings for labeling figures, based on the list of times in this dataset
 
     ## Plot 1: Electron density
     C = edens
@@ -315,58 +315,114 @@ def plotme(data, outdir='.', shortname = '', alltime=False):
     cmax = 7
     fig = mypcolor(C, xgv, zgv, cmin=cmin,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno')
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Oxygen ionization'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
- 
-    ## Plot 4: EM energy density, all frequencies
+
+     ## Close the plots
+    plt.close('all')
+
+  
+def plotEM(data, outdir='.', shortname = '', alltime=False):
+    """ Make Scott's set of custom electromagnetic field (and frequency) plots for this batch """
+    xgv = data['xgv']*1e4
+    zgv = data['zgv']*1e4
+    dx = np.mean(np.diff(xgv))
+    dz = np.mean(np.diff(zgv))
+
+    ## CALCULATIONS
+    # Mean electron density (used for critical density contours)
+    edens = np.mean(data['RhoN10'],0)
+
+    # Poynting vector analysis
+    Svec, Smag, JE, JB, Jtot = poyntAnlz(data) # Units are Joules and meters
+
+    # Frequency analysis
+    maps, cuts, pwrsum, freq = emFFT(data, kind='EB')
+    df = np.mean(np.diff(freq))
+    
+    # Compare the many ways of calculating energy, in mJ/ um
+    print "SUMFFTmap", np.sum(maps['all'])*dx*dz*1e-15
+    print "SUMFFTpwr", np.sum(pwrsum) * df * 1e-3
+    print "SUMpoyntJEB", np.sum(JE + JB)*dx*dz*1e-15
+    print "SUMpoyntJtot", Jtot*1e-3
+
+    ## MAKE AND SAVE FIGURES
+    pltdir = outdir
+    tstring, tlabel = timeStrings(data, alltime=alltime) # Custom strings for labeling figures, based on the list of times in this dataset
+
+    ## Plot 1: EM energy density, all frequencies
     C = maps['all']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'EM'
     title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
     clabel = 'Energy density ($\mu J/\mu m^3$)'
     fld_id = r'$J$'
-    #cmax = 7
-    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    cmax = None if alltime else 150
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM All Energy'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
     
-    ## Plot 5: EM energy density, omega
+    ## Plot 2: EM energy density, omega
     C = maps['1_0']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'$\omega$'
-    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz, 1)) + " $\mu J/\mu m$"
     clabel = 'Energy density ($\mu J/\mu m^3$)'
     fld_id = r'$J$'
-    #cmax = 7
-    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    cmax = None if alltime else 90
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='plasma')
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Omega'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
 
-    ## Plot 6: EM energy density, three-halves omega
+    ## Plot 3: EM energy density, three-halves omega
     C = maps['1_5']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'$3\omega/2$'
-    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz, 1)) + " $\mu J/\mu m$"
     clabel = 'Energy density ($\mu J/\mu m^3$)'
     fld_id = r'$J$'
-    #cmax = 7
-    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    cmax = None if alltime else 15
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='plasma')
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Three-halves'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
 
-    ## Plot 7: EM energy density, half omega
+    ## Plot 4: EM energy density, half omega
     C = maps['0_5']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'$\omega/2$'
-    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz, 1)) + " $\mu J/\mu m$"
     clabel = 'Energy density ($\mu J/\mu m^3$)'
     fld_id = r'$J$'
-    #cmax = 7
-    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    cmax = None if alltime else 25
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='plasma')
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Half'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
 
-    ## Plot 8: EM energy density, static
+    ## Plot 5: EM energy density, static
     C = maps['0']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'$static$'
-    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz, 1)) + " $\mu J/\mu m$"
     clabel = 'Energy density ($\mu J/\mu m^3$)'
     fld_id = r'$J$'
-    #cmax = 7
-    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    cmax = None if alltime else 15
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='plasma')
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Static'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
 
-
+    ## Plot 6: EM power spectrum
+    title = 'Power spectrum, ' + tstring
+    fld_id = r'$J$'
+    fig = plt.figure()
+    x = freq
+    y = pwrsum*1e-3 # convert from J/omega/m to mJ/omega/um
+    plt.clf() # Clear the figure
+    #ymax = np.max(y)
+    ymax = 10
+    ymin = 10**(np.log10(ymax) - 4) # Give 4 orders of magnitude
+    xmin = 0
+    xmax = 2.5
+    ax = plt.subplot(111)
+    ax.plot(x, y)
+    ax.set_xlabel('Angular frequency / $\omega_{laser}$')
+    ax.set_ylabel('mJ / $\omega_{laser} / \mu m$')
+    ax.set_yscale('log')
+    ax.set_title(title, fontsize=16)
+    ax.set_xlim(xmin, xmax)
+    ax.xaxis.grid() # vertical lines
+    ax.text(xmax - (xmax - xmin)/7, ymin + (ymax - ymin)/16, fld_id, fontsize=44, color='black')
+    ax.set_ylim(ymin, ymax)
+    fig.text(0.99, 0.01, shortname, horizontalalignment='right')
+    fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Power spectrum'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
+    
     ## Close the plots
     plt.close('all')
 
