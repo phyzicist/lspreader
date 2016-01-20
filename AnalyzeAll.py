@@ -36,7 +36,7 @@ def stripJunk(name):
         shortname = name
     return shortname
 
-def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = False, freqOn=True):
+def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False):
     namelist = next(os.walk(p4root))[1] # Looks for all files in this list
     
     for name in namelist:
@@ -50,8 +50,8 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = False, freqOn=True):
             if fldsclOn:
                 data = ls.readFldScl(p4dir) # Read all the files involved in matching field/scalar analysis into a single data array.
                 print 'Data keys:', data.keys()
-                freqanalysis.freqBatch2(data, outdir=outdir, alltime=True)
-                sp.plotme(data, outdir=outdir, alltime=True)
+                #freqanalysis.freqBatch2(data, outdir=outdir, shortname=shortname, alltime=True)
+                sp.plotme(data, outdir=outdir, shortname=shortname, alltime=True)
                 ## TODO: Split into chunks, analyze that.
             if freqOn:
                 freqanalysis.freqFull(p4dir, outdir, nbatch = 80, divsp = 1, npool = 1) # Frequency analysis

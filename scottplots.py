@@ -73,7 +73,7 @@ def addQuiv(ax, vec, xgv, zgv, divsp = 8):
     qu = ax.quiver(X, Z, Vx, Vz, pivot='mid', units='xy', scale_units='xy', scale=0.3, color='white')
     return qu
 
-def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel = '', fld_id = '', sticker ='', cmap='viridis', edens = np.zeros(0), vec = np.zeros(0)):
+def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel = '', fld_id = '', sticker ='', rfooter = '', cmap='viridis', edens = np.zeros(0), vec = np.zeros(0)):
     """ A custom-tailored wrapper for pcolorfast(). Somewhat general, meant for any 2D sim colorplot.
     Inputs:
         C: 2D NumPy array, the data to be visualized
@@ -104,7 +104,93 @@ def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel
         addCrit(ax, edens, xgv, zgv) # Highlight the critical density surface
     if len(vec) > 1: # Did the user specify a poynting vector to plot overtop as quivers?
         addQuiv(ax, vec, xgv, zgv)
+    fig.text(0.99, 0.01, rfooter, horizontalalignment='right')
     return fig
+
+def emFFT(data, kind = "EB"):
+    """ Outputs the energy breakdowns
+    Inputs:
+        data: the usual data dict, with enough frames to resolve the desired frequency characteristics. Must contain all three components of electric and magnetic fields
+        kind: (optional) string, one of three strings: "EB" for all components together, "E" for just electric field, and "B" for just magnetic. By default, outputs a merged field energy.
+    Outputs:
+        maps: dict containing multiple 2D arrays, energy density cut by frequency, in units of "J/m^3"
+        cuts: dict with same keys as maps, but containing the frequency cuts (in units of the fundamental) corresponding to maps
+        pwrsum: 1D array, power spectrum Y, units are J/m/(freq. fund)
+        freq: 1D array, power spectrum X, units are frequency (in units of the fundamental)
+    """
+
+    ## Build EMvector to analyze (time x space x space x component)
+    # Field energy
+    # LSP unit conversion to SI
+    tesla = 1e-4 # LSP to SI conversion. 'X Gauss' * tesla = 'Y Tesla'
+    vpm = 1e5 # LSP to SI conversion. 'X kV/cm' * vpm = 'Y V/m'
+
+    eps = sc.epsilon_0 # Call the dielectric constant equal to vacuum permittivity, which is wrong within a plasma
+    mu = sc.mu_0 # Call the magnetic permeability the vacuum permeability, which is wrong within a plasma
+
+    Efact = vpm * np.sqrt(0.5*eps) # Factor defined by (data['Ex']*Efact)**2 => Electric field energy density in J/m
+    Bfact = tesla * np.sqrt(0.5/mu) # Factor defined by (data['Bx']*Bfact)**2 => Magnetic field energy density in J/m
+    if kind == "E":
+        EMvec = np.stack((data['Ex'], data['Ey'], data['Ez']), axis=-1) * Efact  # Give the EM vector 3 electric field components as its last axis
+    elif kind == "B":
+        EMvec = np.stack((data['Bx'], data['By'], data['Bz']), axis=-1) * Bfact # Give the EM vector 3 magnetic field components as its last axis
+    elif kind == "EB":
+        EMvec = np.stack((data['Ex'] * Efact, data['Ey'] * Efact, data['Ez'] * Efact, data['Bx'] * Bfact, data['By'] * Bfact, data['Bz'] * Bfact), axis=-1) # Give the EM vector all 6 components
+    else:
+        raise Exception("Invalid field kind specificied at input of function.")
+    
+    ## Assess simulation parameters
+    nframes = len(data['times']) # Number of frames (times) in this data dict
+    
+    # Assume equal spacing in time and space, and get the deltas
+    dt = np.mean(np.diff(data['times']))*1e-9 # dt in seconds
+    dx = np.mean(np.diff(data['xgv']))*1e-2 # dx in m
+    dz = np.mean(np.diff(data['zgv']))*1e-2 # dz in m
+
+    Jvecmean = np.mean(EMvec**2, 0) # Average the field energy density, for each component, along the time axis (axis 0). Now (space x space x vector component)
+    Jvectot = np.sum(Jvecmean, axis=(0,1))*dx*dz # 1D array of total field energy per component, in Joules/m per component; Array dims: (component)
+ 
+    # Calculate the frequency of the laser from its wavelength (800 nm)
+    wl = 0.8e-6 # Wavelength of laser in m
+    fr_fund = sc.c/wl # Laser frequency (the 'fundamental'), in Hz (Freq = Speed of light / wavelength)
+    
+    ## Break down by energy presence by frequency
+    freqHz = np.fft.rfftfreq(nframes, d = dt) # Makes equally spaced frequency bins
+    freq = freqHz/fr_fund # Re-define frequency from Hz to units of the laser frequency
+    df = np.mean(np.diff(freq)) # Get the frequency step df
+
+    EMvecft = np.fft.rfft(EMvec, axis=0) # Perform real frequency Fourier transform along time axis (axis 0)
+    pwrvec = np.absolute(EMvecft)**2 # Non-normalized value (freq x space x space x vector component)
+
+    pwrvectot = np.sum(pwrvec, axis=(0,1,2))*df*dx*dz # Integral across space and time, for each vector component. 1D Arr dims: (component)
+    for i in range(pwrvec.shape[3]): # Iterate over vector components
+        pwrvec[:,:,:,i] = pwrvec[:,:,:,i] * (Jvectot[i] / pwrvectot[i]) # Normalized-to-J power. Each component integrates, over all frequencies and space, to the total energy (J/m) of that component
+    # Now, each vector component of pwrvec integrates, over all frequencies and space, to the energy of that component
+    # In other words, pwrvec is still (freq x space x space x vector), but an integral over all space, frequencies, and components gives the total field energy (J/m)
+    
+    print "Powervec shape:", pwrvec.shape
+    
+    cuts = {}
+    cuts['1_0'] = (0.9, 1.1) # Frequency min and max for integration, in units of the fundamental. min <= freq < max
+    cuts['0_5'] = (0.3, 0.7)
+    cuts['1_5'] = (1.3, 1.7)
+    cuts['2_0'] = (1.8, 2.3)
+    cuts['0_8'] = (0.7, 0.9)
+    cuts['0'] = (0, 0.2)
+    cuts['all'] = (0, 1.0e9)
+    
+    maps = {}
+    for k in cuts.keys(): # Make maps
+        cdt = np.logical_and(freq >= cuts[k][0], freq < cuts[k][1])
+        maps[k] = np.sum(pwrvec[cdt], axis=(0,3))*df # Integrate over frequency, and add up the contributions from all vector components
+        # maps is a 2D array. (space x space), in units of J/m^3
+
+    print "Map shape:", maps['1_5'].shape
+
+    pwrsum = np.sum(pwrvec, axis=(1,2,3))*dx*dz # 1D array, (freq), units are J/m/(freq. fund)
+    
+    print "Pwrsum shape:", pwrsum.shape
+    return maps, cuts, pwrsum, freq
 
 def poyntAnlz(data):
     """ Perform a poynting analysis on a stack of data frames
@@ -131,7 +217,7 @@ def poyntAnlz(data):
     Bmag = sf.vecMag(Bvec)
     Svec = (1/sc.mu_0)*np.cross(Evec,Bvec) # Poynting vector, in J/m^2
     Smag = sf.vecMag(Svec)
-    
+        
     Svecmean = np.mean(Svec, axis=0) # Mean of the Poynting vector (all components), in J/m^2
     Smagmean = np.mean(Smag, axis=0) # Mean of the Poynting vector's magnitude, in J/m^2
     
@@ -142,17 +228,22 @@ def poyntAnlz(data):
     JEmean = np.mean(JE, 0) # Mean Electric field energy density, in J/m^3
     JBmean = np.mean(JB, 0) # Mean Magnetic field energy density, in J/m^3
     
-    Asim = (np.max(data['xgv']) - np.min(data['xgv'])) * (np.max(data['zgv']) - np.min(data['zgv'])) * 1e-4 # Area of the sim, in m^2
-    Jtotal = np.mean(JEmean + JBmean) * Asim
+    dx = np.mean(np.diff(data['xgv']))*1e-2 # dx in m
+    dz = np.mean(np.diff(data['zgv']))*1e-2 # dz in m
+    dA = dx*dz # Area of a cell, in m^2
+    Jtotal = np.sum(JEmean + JBmean)*dA # Total energy, in J/m  (Add up each (J/m^3) times cell area = Joules in cell, over all cells)
     print "Simulation total energy: ", Jtotal*1e-3, "mJ / micron."
 
     return Svecmean, Smagmean, JEmean, JBmean, Jtotal
 
-def plotme(data, outdir='.', alltime=False):
+def plotme(data, outdir='.', shortname = '', alltime=False):
     """ Make Scott's set of custom plots for this batch """
     xgv = data['xgv']*1e4
     zgv = data['zgv']*1e4
     times = data['times']*1e6
+    dx = np.mean(np.diff(xgv))
+    dz = np.mean(np.diff(zgv))
+
     ## CALCULATIONS
     # Mean electron density
     edens = np.mean(data['RhoN10'],0)
@@ -170,6 +261,16 @@ def plotme(data, outdir='.', alltime=False):
     JEB_uJum = (JE + JB)*1e-12 # Electromagnetic energy density, uJ/um^3
     Jtot_mJum = Jtot*1e-3 # Total simulation EM energy, in mJ/um
 
+    # Frequency analysis
+    maps, cuts, pwrsum, freq = emFFT(data, kind='EB')
+    df = np.mean(np.diff(freq))
+    
+    # Compare the many ways of calculating energy, in mJ/ um
+    print "SUMFFTmap", np.sum(maps['all'])*dx*dz*1e-15
+    print "SUMFFTpwr", np.sum(pwrsum) * df * 1e-3
+    print "SUMpoyntJEB", np.sum(JE + JB)*dx*dz*1e-15
+    print "SUMpoyntJtot", Jtot*1e-3
+    
     ## MAKE AND SAVE FIGURES    
     # This timestring computation was copied and pasted from freqanalysis.plotme()
     if alltime: # If this is the all-time rather than time-resolved analysis, put a different label on plot
@@ -193,7 +294,7 @@ def plotme(data, outdir='.', alltime=False):
     clabel = 'Density (number/cc)'
     fld_id = r'$\rho$'
     cmax = 3e21
-    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, edens=edens)
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens)
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Electron density'), tlabel + '.png')) # Save into a subdirectory of 'outdir'
     
     ## Plot 2: Proton density
@@ -203,7 +304,7 @@ def plotme(data, outdir='.', alltime=False):
     clabel = 'Density (number/cc)'
     fld_id = r'$\rho$'
     cmax = 3e21*.67
-    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, edens=edens)
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens)
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Proton density'), tlabel + '.png')) # Save into a subdirectory of 'outdir'
 
     ## Plot 3: Oxygen, mean ionization
@@ -214,15 +315,60 @@ def plotme(data, outdir='.', alltime=False):
     fld_id = r'+'
     cmin = 0
     cmax = 7
-    fig = mypcolor(C, xgv, zgv, cmin=cmin,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, edens=edens, cmap='inferno')
+    fig = mypcolor(C, xgv, zgv, cmin=cmin,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno')
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Oxygen ionization'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
  
-    ## Plot 4: Electromagnetic energy density
-    C = JEB_uJum
+    ## Plot 5: EM energy density, re-visited
+    C = maps['all']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'EM'
-    title = 'EM field energy: ' + str(np.round(Jtot_mJum, 2)) + " $mJ/\mu m$"
-    clabel = 'Energy density ($nJ/\mu m^3$)'
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    clabel = 'Energy density ($\mu J/\mu m^3$)'
     fld_id = r'$J$'
     #cmax = 7
-    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, edens=edens, cmap='inferno', vec=Svec)
-    fig.savefig(os.path.join(sf.subdir(pltdir, 'EM energy'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    fig.savefig(os.path.join(sf.subdir(pltdir, 'EM All Energy'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
+    
+    ## Plot 5: EM energy density, re-visited
+    C = maps['1_0']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
+    sticker = r'$\omega$'
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    clabel = 'Energy density ($\mu J/\mu m^3$)'
+    fld_id = r'$J$'
+    #cmax = 7
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Omega'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
+
+    ## Plot 5: EM energy density, re-visited
+    C = maps['1_5']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
+    sticker = r'$3\omega/2$'
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    clabel = 'Energy density ($\mu J/\mu m^3$)'
+    fld_id = r'$J$'
+    #cmax = 7
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Three-halves'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
+
+    ## Plot 5: EM energy density, re-visited
+    C = maps['0_5']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
+    sticker = r'$\omega/2$'
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    clabel = 'Energy density ($\mu J/\mu m^3$)'
+    fld_id = r'$J$'
+    #cmax = 7
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Half'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
+
+    ## Plot 5: EM energy density, re-visited
+    C = maps['0']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
+    sticker = r'$static$'
+    title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
+    clabel = 'Energy density ($\mu J/\mu m^3$)'
+    fld_id = r'$J$'
+    #cmax = 7
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Static'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
+
+
+    ## Close the plots
+    plt.close('all')
+

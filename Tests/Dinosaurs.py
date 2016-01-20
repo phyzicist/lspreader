@@ -6,7 +6,20 @@ Functions no longer in use. Retained just in case.
 
 @author: Scott
 """
+##### SCOTTPLOT JUNK
 
+
+    ## Plot 4: Electromagnetic energy density
+    C = JEB_uJum
+    sticker = r'EM'
+    title = 'EM field energy: ' + str(np.round(Jtot_mJum, 2)) + " $mJ/\mu m$"
+    clabel = 'Energy density ($nJ/\mu m^3$)'
+    fld_id = r'$J$'
+    #cmax = 7
+    fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
+    fig.savefig(os.path.join(sf.subdir(pltdir, 'EM energy'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
+        
+        
 ############ H5STITCH2D FUNCTIONS
 
 import h5py

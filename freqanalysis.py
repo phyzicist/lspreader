@@ -120,7 +120,7 @@ def freqBatch(fns, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = 
 
     return data2_dict, pltdict_dict
 
-def freqBatch2(data, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool = None, alltime=False, h5save=False):
+def freqBatch2(data, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], shortname='', pool = None, alltime=False, h5save=False):
     """ Perform frequency analysis of Ez, Ex, and By (and/or beyond) on a single set of 'data'. Data should contain fld_ids. Does not make plots, unless alltime = True. Does save the data to .hdf5 files."""
     data2_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective data2 dictionary.
     pltdict_dict = {} # A dictionary with fld_ids as keys; and each key unlocks its own respective pltdict dictionary.
@@ -131,7 +131,7 @@ def freqBatch2(data, outdir = '', divsp = 1, fld_ids = ['Ez', 'Ex', 'By'], pool 
         if h5save:
             h5path = freqSave(data2, outdir = outdir, fld_id = fld_id, alltime=alltime) # Save frequency analysis results to hdf5
         if alltime: # Since we're plotting over all time, no need to normalize to anything else. Just make the plots.
-            plotme(data2, outdir=outdir, pltdict=pltdict, fld_id = fld_id, alltime=alltime, mksub=False) # Make plots and save to png
+            plotme(data2, outdir=outdir, pltdict=pltdict, fld_id = fld_id, alltime=alltime, shortname=shortname, mksub=False) # Make plots and save to png
         data2_dict[fld_id] = data2
         pltdict_dict[fld_id] = pltdict
 
@@ -196,7 +196,7 @@ def freqanalyze(data, fld_id = 'Ez', divsp = 1, pool = None):
 
     return data2
 
-def myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,fignum):
+def myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,rfooter,fignum):
     """A very custom plot for color plots of field values cut at frequency bands."""
     fig = plt.figure(fignum)
     plt.clf() # Clear the figure
@@ -219,9 +219,10 @@ def myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,fignum):
     ax.text(np.min(xgv) + 1, np.min(zgv) + 2, sticker, fontsize=44, color='white')
     cbar = fig.colorbar(im, label=r'Power density (a.u.)')
     im.set_clim(vmin=cmin, vmax=cmax)
+    fig.text(0.99, 0.01, rfooter, horizontalalignment='right')
     return fig
 
-def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksub=True):
+def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', shortname = '', alltime=False, mksub=True):
     """ Plots a variety of parameters found in the outputs of frequency analysis, then saves a png of each."""
     xgv = data2['xgv_um']
     zgv = data2['zgv_um']
@@ -267,6 +268,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
     ax.xaxis.grid() # vertical lines
     ax.text(xmax - (xmax - xmin)/7, ymin + (ymax - ymin)/16, fld_id, fontsize=44, color='black')
     ax.set_ylim(ymin, ymax)
+    fig.text(0.99, 0.01, shortname, horizontalalignment='right')
 
     # All frequencies map
     label = 'Intensity'
@@ -274,7 +276,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
     title = fld_id + r', Intensity map'
     mapID = 'Imap'
 
-    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,1)
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,shortname,1)
     figs.append(fig)
     labs.append(label)
 
@@ -285,7 +287,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
     title = fld_id + r', 0.3 to 0.7 $\omega$'
     mapID = 'FTmap_0_5'
 
-    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,2)
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,shortname,2)
     figs.append(fig)
     labs.append(label)
 
@@ -296,7 +298,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
     title = fld_id + r', 0.9 to 1.1 $\omega$'
     mapID = 'FTmap_1'
 
-    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,3)
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,shortname,3)
     figs.append(fig)
     labs.append(label)
 
@@ -307,7 +309,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
     title = fld_id + r', 1.3 to 1.7 $\omega$'
     mapID = 'FTmap_1_5'
 
-    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,4)
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,shortname,4)
     figs.append(fig)
     labs.append(label)
 
@@ -317,7 +319,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
     title = fld_id + r', 1.8 to 2.3 $\omega$'
     mapID = 'FTmap_2'
 
-    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,5)
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,shortname,5)
     figs.append(fig)
     labs.append(label)
 
@@ -328,7 +330,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
     title = fld_id + r', 0.7 to 0.9 $\omega$'
     mapID = 'FTmap_0_85'
 
-    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,6)
+    fig = myfig(data2,mapID,pltdict,xgv,zgv,tstring,fld_id,sticker,title,shortname,6)
     figs.append(fig)
     labs.append(label)
 
@@ -351,7 +353,7 @@ def plotme(data2, outdir='', pltdict = None, fld_id = 'Fld', alltime=False, mksu
         fn = os.path.join(figdir, tlabel + '.png') # For example, store the figure as '[outdir]/FreqPlots/Ex/Ex -2- Half omega/00512.png'
         figs[i].savefig(fn)
 
-    #plt.close('all') # This is nice but not necessary, since I numbered the figures (they will be re-used across calls)
+    plt.close('all') # This is nice but not necessary, since I numbered the figures (they will be re-used across calls)
 
 def fftpar(Ei, pool):
     """ Parallel temporal fast fourier transform on a (time x space x space) field array. Returns a (freq x space x space) array."""
