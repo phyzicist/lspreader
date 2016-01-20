@@ -266,6 +266,7 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False):
     plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
     fig.savefig(os.path.join(plotdir, shortname + ' - Zoomed TOF.png'))
 
+    plt.close('all') #Close all the figures we just opened to avoid hogging memory
 
 def subdir(folder, name):
     """ Make a subdirectory in the specified folder, if it doesn't already exist"""

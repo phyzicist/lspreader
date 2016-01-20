@@ -130,11 +130,11 @@ def emFFT(data, kind = "EB"):
 
     Efact = vpm * np.sqrt(0.5*eps) # Factor defined by (data['Ex']*Efact)**2 => Electric field energy density in J/m
     Bfact = tesla * np.sqrt(0.5/mu) # Factor defined by (data['Bx']*Bfact)**2 => Magnetic field energy density in J/m
-    if kind == "E":
+    if kind == "E": # Electric field energy analysis
         EMvec = np.stack((data['Ex'], data['Ey'], data['Ez']), axis=-1) * Efact  # Give the EM vector 3 electric field components as its last axis
-    elif kind == "B":
+    elif kind == "B": # Magnetic field energy analyis
         EMvec = np.stack((data['Bx'], data['By'], data['Bz']), axis=-1) * Bfact # Give the EM vector 3 magnetic field components as its last axis
-    elif kind == "EB":
+    elif kind == "EB": # Combined electric and magnetic field energy analysis
         EMvec = np.stack((data['Ex'] * Efact, data['Ey'] * Efact, data['Ez'] * Efact, data['Bx'] * Bfact, data['By'] * Bfact, data['Bz'] * Bfact), axis=-1) # Give the EM vector all 6 components
     else:
         raise Exception("Invalid field kind specificied at input of function.")
@@ -258,8 +258,6 @@ def plotme(data, outdir='.', shortname = '', alltime=False):
     np.seterr(**old_settings)  # reset divide by zero error to prior settings
     
     Svec, Smag, JE, JB, Jtot = poyntAnlz(data) # Units are Joules and meters
-    JEB_uJum = (JE + JB)*1e-12 # Electromagnetic energy density, uJ/um^3
-    Jtot_mJum = Jtot*1e-3 # Total simulation EM energy, in mJ/um
 
     # Frequency analysis
     maps, cuts, pwrsum, freq = emFFT(data, kind='EB')
@@ -318,7 +316,7 @@ def plotme(data, outdir='.', shortname = '', alltime=False):
     fig = mypcolor(C, xgv, zgv, cmin=cmin,  cmax=cmax, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno')
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Oxygen ionization'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
  
-    ## Plot 5: EM energy density, re-visited
+    ## Plot 4: EM energy density, all frequencies
     C = maps['all']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'EM'
     title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
@@ -328,7 +326,7 @@ def plotme(data, outdir='.', shortname = '', alltime=False):
     fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM All Energy'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
     
-    ## Plot 5: EM energy density, re-visited
+    ## Plot 5: EM energy density, omega
     C = maps['1_0']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'$\omega$'
     title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
@@ -338,7 +336,7 @@ def plotme(data, outdir='.', shortname = '', alltime=False):
     fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Omega'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
 
-    ## Plot 5: EM energy density, re-visited
+    ## Plot 6: EM energy density, three-halves omega
     C = maps['1_5']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'$3\omega/2$'
     title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
@@ -348,7 +346,7 @@ def plotme(data, outdir='.', shortname = '', alltime=False):
     fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Three-halves'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
 
-    ## Plot 5: EM energy density, re-visited
+    ## Plot 7: EM energy density, half omega
     C = maps['0_5']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'$\omega/2$'
     title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
@@ -358,7 +356,7 @@ def plotme(data, outdir='.', shortname = '', alltime=False):
     fig = mypcolor(C, xgv, zgv, cmin=0,  cmax=None, title=title, tstring=tstring, clabel=clabel, fld_id=fld_id, sticker=sticker, rfooter=shortname, edens=edens, cmap='inferno', vec=Svec)
     fig.savefig(os.path.join(sf.subdir(pltdir, 'EM Half'), tlabel + '.png'))# Save into a subdirectory of 'outdir'
 
-    ## Plot 5: EM energy density, re-visited
+    ## Plot 8: EM energy density, static
     C = maps['0']*1e-12 # Convert from J/m^3 to uJ/um^3  ; Conversion is 10^6 * 10^-18 => 10^-12
     sticker = r'$static$'
     title = 'EM field energy: ' + str(np.round(np.sum(C)*dx*dz*1e-3, 2)) + " $mJ/\mu m$"
