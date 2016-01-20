@@ -116,13 +116,14 @@ def subData(data, startwith, stopbefore, skip = 1):
             data_sub[k] = data[k][startwith:stopbefore:skip] # Get a subset along the time axis (axis 0), then place into data_sub.
     return data_sub
 
-def chunkData(data, chk_fs):
+def chunkData(data, chk_fs, offset_fs = 0):
     """Break data along the time step axis into fixed, n-sized chunks (where n is determined by desired chunk size in fs).
-    The final element of the new list will be n-sized as well; some leftover frames at the end will not be included.
+    The final element of the new list will be n-sized as well; some leftover frames at the end will not be included
     
     Inputs:
         data: the usual data dict (which is N frames long)
         chk_fs: desired chunk size, in femtoseconds
+        offset_fs: skip this many fs past the 0th frame before starting the chunking
     Outputs:
         chunks: list of data dicts  (each being n frames long, where n <= N)       
     """
@@ -130,9 +131,9 @@ def chunkData(data, chk_fs):
     dt_fs = np.mean(np.diff(data['times']*1e6)) # Femtoseconds between frames in data (assumed fixed)
     n = int(np.ceil(chk_fs / dt_fs)) # Desired # frames per chunk, based on desired fs per chunk
     N = len(data['times']) # Total number frames in the data dict
-    
+    offset = max(0, int(np.round(offset_fs / dt_fs))) # by default, offset is 0, meaning we start chunking from the 0th frame.
     chunks = [] # The output will be a list of data dicts
-    for i in range(0, N + 1 - n, n):
+    for i in range(offset, N + 1 - n, n):
         chunk = subData(data, i, i + n)
         chunks.append(chunk)
     return chunks
@@ -193,9 +194,10 @@ def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], pool = None):
 
     return data
 
-def scalars2D(fns, fld_ids = ['RhoN1', 'RhoN10',  'RhoN11'], pool = None):
+def scalars2D(fns, fld_ids = ['RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'], pool = None): 
     """ A wrapper for fields2D, with default inputs better suited for scalar filenames input."""
     # ['RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'] Each corresponding to density of species 1, 2, 3..., 11
+    # ['RhoN2', 'RhoN10',  'RhoN11']  # oxygen+, electrons, protons in our sims  
     return fields2D(fns, fld_ids = fld_ids, pool = pool)
     
 def readOne(args):

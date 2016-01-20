@@ -32,8 +32,6 @@ def quivme(Svec, Smag, data, pltdir, fignum):
     plt.clf() # Clear the figure
     ax = plt.subplot(211)
     
-
-    
     xr = [xgv[0],xgv[-1]] # min and max of xgv, needed for pcolorfast
     zr = [zgv[0],zgv[-1]]
     C = Smag

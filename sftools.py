@@ -8,7 +8,17 @@ General tools used by Scott Feister (SF).
 """
 
 import os
+import numpy as np
 
+# Vector analysis
+def vecMag(a, axis=-1):
+    """ Gives the magnitude of one (array of) real or complex vector """
+    # a: array_like: Components of the vector
+    # axis: int, optional: axis that defines the vector. By default, the last axis.
+    return np.sqrt(np.sum(np.multiply(a,np.conj(a)), axis=axis)) # sqrt((a_x a_x*)+ (a_y a_y*) + ...)
+
+
+# File I/O tools
 def getfns(folder, ext = '', prefix = ''):
     """ Get a list of full path filenames for all files in a folder and subfolders having a certain extension
     Inputs:

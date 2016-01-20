@@ -20,6 +20,7 @@ import numpy as np
 
 import sftools as sf
 import lstools as ls
+import scottplots as sp
 
 def stripJunk(name):
     """ Strips a date string off the end of a folder name, giving a "shorter" version of the name.
@@ -50,6 +51,8 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = False, freqOn=True):
                 data = ls.readFldScl(p4dir) # Read all the files involved in matching field/scalar analysis into a single data array.
                 print 'Data keys:', data.keys()
                 freqanalysis.freqBatch2(data, outdir=outdir, alltime=True)
+                sp.plotme(data, outdir=outdir, alltime=True)
+                ## TODO: Split into chunks, analyze that.
             if freqOn:
                 freqanalysis.freqFull(p4dir, outdir, nbatch = 80, divsp = 1, npool = 1) # Frequency analysis
         except (KeyboardInterrupt, SystemExit):
