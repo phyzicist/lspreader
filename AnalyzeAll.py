@@ -70,7 +70,6 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False):
         except:
             # Report error and proceed
             print "Error noted. Directory: " + shortname
-            raise
             pass # Move right along.
     
 if __name__=='__main__':
