@@ -80,7 +80,7 @@ def columnAnalyze(fn, plot=True):
     print "Tenth-critical density is near:", xgv[idx]
     
 def critDens(wlen):
-    """ Calculate the electron critical density (in number/cm^3) for an input vacuum optical wavelength
+    """ Calculate the electron critical density (in number/cm^3) for an input vacuum optical wavelength (nm)
     Inputs:
         wlen: Wavelength of light (in nm)
     Outputs:
@@ -104,5 +104,3 @@ def findNearest(array, value):
     """
     idx = np.abs(array-value).argmin()
     return array[idx], idx
-
-

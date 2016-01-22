@@ -107,18 +107,28 @@ def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel
     fig.text(0.99, 0.01, rfooter, horizontalalignment='right')
     return fig
 
-def emFFT(data, kind = "EB"):
+def emFFT(data, kind = "EB", trange = (60, 1.0e9)):
     """ Outputs the energy breakdowns
     Inputs:
         data: the usual data dict, with enough frames to resolve the desired frequency characteristics. Must contain all three components of electric and magnetic fields
-        kind: (optional) string, one of three strings: "EB" for all components together, "E" for just electric field, and "B" for just magnetic. By default, outputs a merged field energy.
+        kind: (optional) string, one of three strings: "EB" for all components together, "E" for just electric field, and "B" for just magnetic. If kind = "Backscat", performs analysis over only the X index 0, and only over certain times.
+        trange: (applies only when kind = "Backscat") A two-element tuple of min and max times for the analysis in femtoseconds. This allows you to cut over just the times you want. E.g. trange = (0, 100) should catch the main pulse, while trange = (100, 1.0e9) should catch the rest of the sim (backreflection). trange[0] <= t < trange[1]
     Outputs:
         maps: dict containing multiple 2D arrays, energy density cut by frequency, in units of "J/m^3"
         cuts: dict with same keys as maps, but containing the frequency cuts (in units of the fundamental) corresponding to maps
         pwrsum: 1D array, power spectrum Y, units are J/m/(freq. fund)
         freq: 1D array, power spectrum X, units are frequency (in units of the fundamental)
+        df: number, the frequency step size (in units of the fundamental)
+        nframes: number, the number of time steps analyzed for the analysis
     """
 
+    
+    # Assume equal spacing in time and space, and get the deltas
+    dt = np.mean(np.diff(data['times']))*1e-9 # dt in seconds
+    dx = np.mean(np.diff(data['xgv']))*1e-2 # dx in m
+    dz = np.mean(np.diff(data['zgv']))*1e-2 # dz in m
+    
+    
     ## Build EMvector to analyze (time x space x space x component)
     # Field energy
     # LSP unit conversion to SI
@@ -136,16 +146,15 @@ def emFFT(data, kind = "EB"):
         EMvec = np.stack((data['Bx'], data['By'], data['Bz']), axis=-1) * Bfact # Give the EM vector 3 magnetic field components as its last axis
     elif kind == "EB": # Combined electric and magnetic field energy analysis
         EMvec = np.stack((data['Ex'] * Efact, data['Ey'] * Efact, data['Ez'] * Efact, data['Bx'] * Bfact, data['By'] * Bfact, data['Bz'] * Bfact), axis=-1) # Give the EM vector all 6 components
+    elif kind == "Backscat": # Backscatter analyisis. Extract from the X-coordinate index 0 only, and over specific times only.
+        tcdt = np.logical_and(data['times'] >= trange[0]*1e-6, data['times'] < trange[1]*1e-6) # Condition on times
+        xidx = int(np.floor(2.0e-6/dx)) # Index of lineout extraction, along the x dimension. Place 2 microns away from edge. (e.g. xidx = 8, such that xgv[xidx] = 8 microns)
+        EMvec = np.stack((data['Ex'][tcdt,:,xidx:(xidx+1)] * Efact, data['Ey'][tcdt,:,xidx:(xidx+1)] * Efact, data['Ez'][tcdt,:,xidx:(xidx+1)] * Efact, data['Bx'][tcdt,:,xidx:(xidx+1)] * Bfact, data['By'][tcdt,:,xidx:(xidx+1)] * Bfact, data['Bz'][tcdt,:,xidx:(xidx+1)] * Bfact), axis=-1) # Give the EM vector all 6 components, but only at specific times and at a single X coordinate
     else:
         raise Exception("Invalid field kind specificied at input of function.")
     
     ## Assess simulation parameters
-    nframes = len(data['times']) # Number of frames (times) in this data dict
-    
-    # Assume equal spacing in time and space, and get the deltas
-    dt = np.mean(np.diff(data['times']))*1e-9 # dt in seconds
-    dx = np.mean(np.diff(data['xgv']))*1e-2 # dx in m
-    dz = np.mean(np.diff(data['zgv']))*1e-2 # dz in m
+    nframes = EMvec.shape[0] # Number of frames (times) to be analyzed
 
     Jvecmean = np.mean(EMvec**2, 0) # Average the field energy density, for each component, along the time axis (axis 0). Now (space x space x vector component)
     Jvectot = np.sum(Jvecmean, axis=(0,1))*dx*dz # 1D array of total field energy per component, in Joules/m per component; Array dims: (component)
@@ -190,7 +199,7 @@ def emFFT(data, kind = "EB"):
     pwrsum = np.sum(pwrvec, axis=(1,2,3))*dx*dz # 1D array, (freq), units are J/m/(freq. fund)
     
     print "Pwrsum shape:", pwrsum.shape
-    return maps, cuts, pwrsum, freq
+    return maps, cuts, pwrsum, freq, df, nframes
 
 def poyntAnlz(data):
     """ Perform a poynting analysis on a stack of data frames
@@ -263,9 +272,9 @@ def timeStrings(data, alltime=False):
 
 def plotDens(data, outdir='.', shortname = '', alltime=False):
     """ Make Scott's set of custom density-related plots for this batch. """
-    xgv = data['xgv']*1e4
+    xgv = data['xgv']*1e4 # x values in microns
     zgv = data['zgv']*1e4
-    dx = np.mean(np.diff(xgv))
+    dx = np.mean(np.diff(xgv))# dx in microns
     dz = np.mean(np.diff(zgv))
     
     ## CALCULATIONS
@@ -322,9 +331,9 @@ def plotDens(data, outdir='.', shortname = '', alltime=False):
   
 def plotEM(data, outdir='.', shortname = '', alltime=False):
     """ Make Scott's set of custom electromagnetic field (and frequency) plots for this batch """
-    xgv = data['xgv']*1e4
+    xgv = data['xgv']*1e4 # x values in microns
     zgv = data['zgv']*1e4
-    dx = np.mean(np.diff(xgv))
+    dx = np.mean(np.diff(xgv)) # dx in microns
     dz = np.mean(np.diff(zgv))
 
     ## CALCULATIONS
@@ -335,8 +344,7 @@ def plotEM(data, outdir='.', shortname = '', alltime=False):
     Svec, Smag, JE, JB, Jtot = poyntAnlz(data) # Units are Joules and meters
 
     # Frequency analysis
-    maps, cuts, pwrsum, freq = emFFT(data, kind='EB')
-    df = np.mean(np.diff(freq))
+    maps, cuts, pwrsum, freq, df, _ = emFFT(data, kind='EB')
     
     # Compare the many ways of calculating energy, in mJ/ um
     print "SUMFFTmap", np.sum(maps['all'])*dx*dz*1e-15

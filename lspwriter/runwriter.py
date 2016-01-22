@@ -62,22 +62,22 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'a50f-14xL_mres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3e18 W cm-2, 5.0um scale, focus X=-14um, lam/16, extra 20um buffers' # Simulation title
+    shortname = 'a28f-2_mres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3e18 W cm-2, 2.8um scale, focus X=-2um, lam/16' # Simulation title
     
-    scale = 5.0#um # Exponential scale length of pre-plasma
-    focx = -14#um # X position of best laser focus, in microns
+    scale = 2.8#um # Exponential scale length of pre-plasma
+    focx = -2#um # X position of best laser focus, in microns
 
     # Simulation temporal
-    t_f = 700#fs # maximum time, in fs
+    t_f = 400#fs # maximum time, in fs
     tres = 16 # Laser cycles per timestep 
     skipt = 1 # time skip interval for field/scalar dumps. First one is always dumped.
     
     # Grid spatial
-    xdims = (-50, 5)#um # X limits to simulation grid space, in microns
+    xdims = (-35, 5)#um # X limits to simulation grid space, in microns
     xres = 16 # Laser wavelengths per cell, in X direction
     skipx = 5 # X skip interval for field/scalar dumps
-    zdims = (-30, 30)#um # Z limits to simulation grid space, in microns
+    zdims = (-20, 20)#um # Z limits to simulation grid space, in microns
     zres = 16 # Laser wavelengths per cell, in Z direction 
     skipz = 5 # Z skip interval for field/scalar dumps
     
