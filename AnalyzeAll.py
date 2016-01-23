@@ -66,7 +66,7 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False):
                     print "Iterating over frequency chunks."
                     for chunk in freqchunks:
                         sp.plotEM(chunk, outdir=outdir, shortname=shortname)
-                    sp.plotBScat(data, outdir=outdir, shortname=shortname)
+                    sp.plotBScat(data, outdir=outdir, shortname=shortname, tcut=65)
                 if freqOn:
                     freqanalysis.freqFull(p4dir, outdir, nbatch = 80, divsp = 1, npool = 1) # Frequency analysis
             except (KeyboardInterrupt, SystemExit):
