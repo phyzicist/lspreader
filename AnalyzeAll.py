@@ -56,8 +56,9 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False):
                     #freqanalysis.freqBatch2(data, outdir=outdir, shortname=shortname, alltime=True)
                     sp.plotDens(data, outdir=outdir, shortname=shortname, alltime=True)
                     sp.plotEM(data, outdir=outdir, shortname=shortname, alltime=True)
+                    sp.plotBScat(data, outdir=outdir, shortname=shortname)
                     ## Split into chunks, analyze that.
-                    chk_fs = 15.0#fs How many femtoseconds per (large-sized) data chunk for analysis?
+                    chk_fs = 40#fs How many femtoseconds per (large-sized) data chunk for analysis?
                     freqchunks = ls.chunkData(data, chk_fs) + ls.chunkData(data, chk_fs, offset_fs = chk_fs/2.0)
                     denschunks = ls.chunkData(data, chk_fs/2.0) # Same number of chunks as bigchunks, but less long in time.
                     print "Iterating over density chunks."

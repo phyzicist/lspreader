@@ -28,15 +28,19 @@ import numpy as np
 import os
 
 import angular # Radial histogram plot, from Gregory's local file 'angular.py'
+import quantities
 import lspreader2 as rd # Hope this works!
 import lstools as ls # local
+import sftools as sf # local
+import scipy.constants as sc
 
-def pextFull(p4dir, outdir = '.', shortname = 'Sim'):
+def pextFull(p4dir, outdir = '.', shortname = 'Sim', Utot_Jcm = None):
     """ Perform the full-blown analysis of pext*.p4(.gz) files from a simulation. 
     Inputs:
         p4dir: string, path to the folder which contains the pext*.p4
         outdir: string, path to an already-existent folder in which to save outputs (PNG plots)
         shortname: string, a fairly short identifier for the simulation which will be added into plots and filenames
+        Utot_Jcm: number (optional): If total simulation energy is given (in J/cm, for a 2D sim), then relative efficiencies will be plotted and written to CSV.
     Outputs:
         Saves a bunch of well-labeled PNG plot files into the folder 'outdir'
     """
@@ -46,7 +50,7 @@ def pextFull(p4dir, outdir = '.', shortname = 'Sim'):
         msg = "No pext*.p4(.gz) files found in the directory: " + p4dir
         raise Exception(msg)
     pextarr = loadPexts(fns)
-    plotme(pextarr, outdir=outdir, shortname=shortname) # Plots and saves
+    plotme(pextarr, outdir=outdir, shortname=shortname, Utot_Jcm = Utot_Jcm) # Plots and saves
     
 def loadPexts(fns):
     """ Calls lspreader2 to load all the pext*.p4 from a given list of filenames, and concatenates into a single array
@@ -65,7 +69,7 @@ def loadPexts(fns):
             pextarr = np.concatenate((pextarr, pextarr_tmp), 0) # Append this pext*.p4 'out' to the output array 'outs'
     return pextarr
 
-def plotme(pextarr, outdir='.', shortname='Sim', mksub=False):
+def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None):
     """
     Make Scott's preferred set of plots (and save to file) from the output (or concatenated outputs) of lspreader "pext()" of pext.
     Inputs:
@@ -73,6 +77,7 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False):
         outdir: string, path to a folder (already existent) that can hold the outputs
         shortname: string, a fairly short identifier for the simulation which will be added into plots and filenames
         mksub: bool, if True then make a subdirectory in 'outdir', otherwise just dump the PNGs directly into 'outdir'
+        Utot_Jcm: number (optional): If total simulation energy is given (in J/cm, for a 2D sim), then relative efficiencies will be plotted.
     Outputs:
         Will save PNG figures summarizing the extraction planes into the folder specified by 'outdir'.
     
@@ -82,7 +87,7 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False):
 
     # Make a subdirectory for the PNG files, if mksub was set to True
     if mksub:
-        plotdir = subdir(outdir, 'Extraction planes')
+        plotdir = sf.subdir(outdir, 'Extraction planes')
     else:
         plotdir = outdir
         
@@ -90,17 +95,42 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False):
     massE = 0.511 # electron rest mass, in MeV
     d = {}
     d['t'] = pextarr['t']*1e6 # Time, in fs
-    u_norm = np.sqrt(pextarr['ux']**2+pextarr['uy']**2+pextarr['uz']**2) # 'uz', etc. are actually momenta; in what they call gamma-beta units, so unitless and related only to speed of light
-    d['KE'] =(np.sqrt(u_norm**2+1)-1)*massE # Electron kinetic energy, in MeV
+    u_norm = np.sqrt(pextarr['ux']**2+pextarr['uy']**2+pextarr['uz']**2) # 'uz', etc. is actually momentum / (speed of light * rest mass); it's what they call gamma-beta units; that is, ux = px/c/mass_0 = gamma * beta_x
+    #p_norm = massE * u_norm # The momenta of the particles, 
+    d['KE'] =(np.sqrt(u_norm**2+1)-1)*massE # Electron kinetic energy, in MeV (kinetic energy of each constituent real electron, that is; not of the whole macroparticle)
     d['q'] = -pextarr['q']*1e3 # Amount of negative charge, nanoColoumbs/cm
     d['phi'] = np.arctan2(pextarr['uz'], pextarr['ux'])
-        
+    
+    m_macro = -((pextarr['q']*1e-6)/sc.e)*sc.m_e # Mass of this macroparticle, in kg/cm. Mass macroparticle = (Coulombs macroparticle / coulombs electron) * mass electron
+    d['KE_macro_Jcm'] = (m_macro * sc.c**2)*(np.sqrt(u_norm**2 + 1) - 1) # Kinetic energy of this macroparticle, in J/cm
+    
+    if Utot_Jcm: # If the user input a value for total energy
+        ## CSV: Write some basic efficiency info to file
+        with open(os.path.join(outdir, shortname + ' - Electron Efficiency.csv'), 'w') as f:
+            f.write('Total energy in sim: ' + str(Utot_Jcm) + " J/cm\n")
+            f.write("MINIM_ELECTRON_MEV, PERCENT_EFFICIENCY_PLUSMINUS_40DEG, PERCENT_EFFIC_PLUSMINUS_6point3_DEG\n")        
+            ecuts = [0.12, 0.3, 0.5, 1.0, 1.5, 3] # Cutoffs for energy efficiency, in MeV
+            for ecut in ecuts:
+                cdtA = np.logical_and(d['KE'] > ecut, np.abs(d['phi']) > np.deg2rad(180 - 40))
+                cdtB = np.logical_and(d['KE'] > ecut, np.abs(d['phi']) > np.deg2rad(180 - 6.3))
+                Ue_JcmA = np.sum(d['KE_macro_Jcm'][cdtA]) # Energy of the electrons meeting this condition, in J/cm
+                Ue_JcmB = np.sum(d['KE_macro_Jcm'][cdtB]) # Energy of the electrons meeting this condition, in J/cm
+                efficA = Ue_JcmA/Utot_Jcm
+                efficB = Ue_JcmB/Utot_Jcm
+                f.write(str(ecut) + ", " + str(np.round(efficA*100,2)) + ", " + str(np.round(efficB*100,2)) + "\n")
+            cdt120 = np.logical_and(d['KE'] > 0.120, np.abs(d['phi']) > np.deg2rad(180 - 40))
+            effic120 = np.sum(d['KE_macro_Jcm'][cdt120])/Utot_Jcm
+            efficstr = r'$\stackrel{>120 keV}{\pm 40^{\circ}}$ Efficiency: ' + str(np.round(effic120 * 100, 2)) + "%"
+    else:
+        efficstr = '' # Implying that efficiency was not calculated.
+    
     ## RADIAL PLOT WITHOUT CUTOFFS
     fig = plt.figure(3)
     plt.clf()
     title=r'Radial electron spectrum'
     angular.angular2(d['q'], d['phi'], d['KE'], fig = fig, cmap='viridis', minQ=0, maxQ=1.5, title=title)
-    plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
+    plt.figtext(0.99, 0.02, shortname, horizontalalignment='right')
+    plt.figtext(0.01, 0.02, efficstr, horizontalalignment='left')
     fig.savefig(os.path.join(plotdir, shortname + ' - Radial.png'))
    
     ## RADIAL PLOT WITH CUTOFF
@@ -110,7 +140,8 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False):
     #title = shortname + r": 300/40 charge: " + str(round(np.sum(d['q'][condit2])))
     title=r'Radial electron spectrum, $\pm$40$^{\circ}$'
     angular.angular2(d['q'][condit2], d['phi'][condit2], d['KE'][condit2], fig = fig, cmap='viridis', minQ=0, maxQ=1.5, title=title)
-    plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
+    plt.figtext(0.99, 0.02, shortname, horizontalalignment='right')
+    plt.figtext(0.01, 0.02, efficstr, horizontalalignment='left')
     fig.savefig(os.path.join(plotdir, shortname + ' - Radial with cutoffs.png'))
     
     ## BACKWARD ELECTRON SPECTRUM LINE PLOT
@@ -267,10 +298,3 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False):
     fig.savefig(os.path.join(plotdir, shortname + ' - Zoomed TOF.png'))
 
     plt.close('all') #Close all the figures we just opened to avoid hogging memory
-
-def subdir(folder, name):
-    """ Make a subdirectory in the specified folder, if it doesn't already exist"""
-    subpath = os.path.join(folder,name)
-    if not os.path.exists(subpath):
-        os.mkdir(subpath)
-    return subpath

@@ -6,6 +6,7 @@ import xdrlib as xdr
 import numpy as np
 import gzip # For reading .p4.gz files
 import os # For path splitting
+import re # For regular expression searches of the history.p4 text file
 
 # Define a basic function for checking (and get rid of misc.py dependency)
 test = lambda d,k: k in d and d[k];
@@ -25,6 +26,52 @@ def get_int(file,N=1,forcearray=False,lowlev=False):
         return ret[0];
     return ret;
 
+
+def read_hist(p4dir):
+    """ Read probes in the 'history.p4' or 'history.p4.gz' file contained in the given directory 
+    Inputs:
+        p4dir: string, path to a directory containing a "history.p4" or "history.p4.gz"
+    Outputs:
+        values: 2D NumPy array: (N x tsteps) If there are N probes, and tsteps time steps in the simulation.
+        labels: list, length N, of two-element tuples with each tuple containing ('probe name', 'units')
+    
+    Note: Reads the entire file twice into memory. Not efficient if for some reason history.p4 is a huge file.
+    Note: Not thoroughly tested. Not a super-duper rigorous function (assumes a certain format, doesn't do as many checks as it should), so don't be surprised if it breaks.
+    """
+    
+    ## Decide if it is a .gz or .p4
+    if os.path.isfile(os.path.join(p4dir, 'history.p4')):
+        histpath = os.path.join(p4dir, 'history.p4')    
+        myopen = open
+    elif os.path.isfile(os.path.join(p4dir, 'history.p4.gz')):
+        histpath = os.path.join(p4dir, 'history.p4.gz')
+        myopen = gzip.open
+    else:
+        raise Exception("history.p4(.gz) file does not exist in directory")
+    
+    ## Read in the entire file as a string to look at the header (inefficient)
+    with myopen(histpath, 'r') as f:
+        s = f.read()
+    
+    ## Look at the header and extract the number of probes and their labels (including their units)
+    m1 = re.search(r"^#Number of data items: ([0-9]{1,})$", s, re.MULTILINE) # e.g. reading "Number of data items: 9" and extracting 9
+    if not m1:
+        raise Exception("Something's wrong with the .p4 file or reader. Couldn't find a 'Number of data items' entry.")
+    else:
+        nitems = int(m1.group(1)) # This is the number of probes. Assume there are this many header lines, plus four more.
+    
+    labels = re.findall(r"^#[0-9]{1,}?: (.*?): (.*?)$", s, re.MULTILINE) # e.g. reading "#0: time: ns", extracting the tuple ('time', 'ns')
+    del s
+
+    ## Read in the array of probe data
+    values = np.genfromtxt(histpath, skip_header = nitems + 4).swapaxes(0,1)[1:] # Fortunately, genfromtext works natively on .gz files as well
+    
+    ## Make sure we didn't screw something up royally, that we have the same number of probe labels as probe dimensions
+    if np.abs(len(labels) - values.shape[0]) > 0.5:
+        raise Exception("Error reading in the history.p4 file and its header.")
+    
+    return values, labels
+    
 def get_float(file,N=1,forcearray=False,lowlev=False):
     # If forcearray is True, the output will always be a numpy array.
     dtype = np.dtype('>f4')

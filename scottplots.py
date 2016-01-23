@@ -328,6 +328,141 @@ def plotDens(data, outdir='.', shortname = '', alltime=False):
      ## Close the plots
     plt.close('all')
 
+
+def bsFFT(data, trange = (80, 1.0e9)):
+    """ A wrapper for emFFT() for the case of Backscatter analysis. Outputs are lines (rather than maps) and are in plotting units.
+    Inputs:
+        data: the usual data dict
+        trange: (fs) the min and max time to look at for this "summing energy through the plane" analysis
+    Outputs:
+        lines: dict containing multiple 1D arrays, total energy as a function of Z position, cut by frequency, in units of "mJ/um^2"
+        cuts: dict with same keys as lines, but containing the frequency cuts (in units of the fundamental) corresponding to lines
+        pwrsum: 1D array, power spectrum Y, units are mJ/um/(freq. fund)
+        freq: 1D array, power spectrum X, units are frequency (in units of the fundamental)
+        Utots: dict with same keys as lines, but with each key giving a single number (the total energy at that frequency, in mJ/um)
+    """
+    # Assume equal spacing in time and space, and get the deltas
+    dt = np.mean(np.diff(data['times']))*1e-9 # dt in seconds
+    dx = np.mean(np.diff(data['xgv']))*1e-2 # dx in m
+    dz = np.mean(np.diff(data['zgv']))*1e-2 # dx in m
+
+    # Do the Fourier analysis
+    maps, cuts, pwrsum, freq, df, nframes = emFFT(data, kind='Backscat', trange=trange)
+    
+    # All these energies returned by emFFT are the mean energy value, across the time period; if we want the sum, we need to multiply by number of frames analyzed
+    # But there is now another problem. We have overcounted the energy by a factor of (dx*c/dt), because while dx should be c/dt long, it is actually larger and a delta pulse of light gets counted multiple frames in a row.
+    pwrline = pwrsum*(nframes * sc.c * dt/dx) # Units are now J per y meter per freq. (integrated rather than averaged over all time)
+    lines = {}
+    for k in maps:
+        lines[k] = np.squeeze(maps[k]*(nframes * sc.c * dt/dx)) # Units are now Joules per y meter per z meter (integrated rather than averaged over all time). Not really, I can't figure out what's wrong though.
+    
+    # That's better!
+
+    print lines['0'].shape
+    
+    
+    print "Total energy, in mJ/micron:", np.sum(lines['all'])*dx*dz*1e-3 
+    print "Total energy, in mJ/micron:", np.sum(pwrline)*df*1e-3
+    
+    ## UNIT CONVERSION FROM SI to PLOTTING UNITS (mJ/micron, etc.)
+    for k in lines:
+        lines[k] = lines[k]*dx*1e-9 # units of lines (Energy in frequencies / Z axis) are now in mJ / z micron / y micron
+    pwrline = pwrline * 1e-3 # pwrline (Power spectrum Y axis) is now in of mJ / freq. unit / y micron
+    
+    dt = dt * 1e15 # dt is now in fs
+    dx = dx * 1e6 # dx is now in microns
+    dz = dz * 1e6 # dz is now in microns
+    
+    Utots = {}
+    for k in lines:
+        Utots[k] = np.sum(lines[k])*dz # Total energy in the frequency band, in mJ/ y micron
+    return lines, cuts, pwrline, freq, Utots
+    
+def plotBScat(data, tcut=80, outdir='.', shortname = ''):
+    """ Plot relevant backscattered light plots. Energy calculation makes some iffy assumptions about angles of light, so some degree of systematic error.
+    Inputs:        
+        data: the usual data dict
+        tcut: number, a time (fs) that splits forward light from backward. I.e. after this time (in fs), we consider it backscattered light. Before this time, we consider it incident light.
+        outdir: directory where PNG plots will be saved
+        shortname: a short string describing the run, e.g. 'a40f-14_so'
+    """
+    linesT, _, pwrlineT, freqT, U_T = bsFFT(data, trange=(0,tcut)) # Input light (T)ransmission characteristics
+    linesR, cuts, pwrlineR, freqR, U_R = bsFFT(data, trange=(tcut,1.0e9)) # Backscatter (R)eflection characteristics
+    
+    zgv = data['zgv']*1e4 # Z grid vector, in microns
+    
+    R = U_R['all']/U_T['all'] # Reflectivity, roughly
+    print "Reflectivity: " + str(np.round(R*100, 2)) + "%"
+    Rstring = '(R = ' + str(np.round(R*100,2)) + '%)'
+    
+    ## CSV: Write some reflectivity info to file.
+    with open(os.path.join(outdir, shortname + ' - Reflectivity.csv'), 'w') as f:
+        f.write("FREQ_BAND, PERCENT_ENERGY_IN_REFLECTED, FREQ_CUT1, FREQ_CUT2, TRANSMITTED_MILLIJOULE_PER_MICRON, REFLECTED_MILLIJOULE_PER_MICRON\n")        
+        for k in U_T:
+            f.write(k + ", " + str(np.round(U_R[k]/U_T['all']*100, 4)) + ", " + str(cuts[k][0]) + ", " + str(cuts[k][1]) + ", " + str(U_T[k]) + ", " + str(U_R[k]) + "\n")
+
+    ## Plot 1: Backscatter power spectrum
+    title = 'Backscattered light power spectrum ' + Rstring
+    fld_id = r'$L$'
+    fig = plt.figure(1)
+    plt.clf() # Clear the figure
+    ymax = 100
+    ymin = 10**(np.log10(ymax) - 4) # Give 4 orders of magnitude
+    xmin = 0
+    xmax = 2.5
+    ax = plt.subplot(111)
+    ax.plot(freqT, pwrlineT, '-.k', label='T')
+    ax.plot(freqR, pwrlineR, '-k', label='R')
+    ax.set_xlabel('Angular frequency / $\omega_{laser}$', fontsize=20)
+    ax.set_ylabel('Energy passing plane ($mJ / \omega_{laser} / \mu m$)')
+    ax.legend(ncol=1, loc=1, borderaxespad=0.)
+    ax.set_yscale('log')
+    plt.xticks(fontsize=14)
+    ax.set_title(title, fontsize=16)
+    ax.set_xlim(xmin, xmax)
+    ax.vlines([0.5,1.0,1.5,2.0], -1.0e30, 1.0e30, colors=[(0.6,0,0),'r','g','b'], linestyle=':') # vertical lines, colored by frequency
+    ax.yaxis.grid(which='minor', color='0.92', linestyle='--') # horizontal lines
+    ax.yaxis.grid(which='major', color='0.92', linestyle='-') # horizontal lines
+    ax.set_axisbelow(True) # Move the grid marks under the axes
+    ax.text(0.9 ,0.05, fld_id, fontsize=44, color='black', transform=ax.transAxes) # http://matplotlib.org/api/axes_api.html#matplotlib.axes.Axes.text
+    ax.set_ylim(ymin, ymax)
+    fig.text(0.99, 0.01, shortname, horizontalalignment='right')
+    fig.savefig(os.path.join(outdir, shortname + ' - BScat Spectrum.png'))
+
+    ## Plot 2: Backscatter power spectrum
+    title = 'Backscattered light vs. Z axis ' + Rstring
+    fld_id = r'$L$'
+    fig = plt.figure(2)
+    plt.clf() # Clear the figure
+    ymax = 1
+    ymin = 10**(np.log10(ymax) - 4) # Give 4 orders of magnitude
+    xmin = np.min(zgv)
+    xmax = np.max(zgv)
+    ax = plt.subplot(111)
+    ax.plot(zgv, linesT['all'], '-.k', label='T')
+    ax.plot(zgv, linesR['all'], '-k', label='R')
+    ax.plot(zgv, linesR['0_5'], color=(0.6,0,0), label='$\omega/2$')
+    ax.plot(zgv, linesR['0_8'], '-.r', label='$.8\omega$')
+    ax.plot(zgv, linesR['1_0'], 'r', label='$\omega$')
+    ax.plot(zgv, linesR['1_5'], 'g', label='$3\omega/2$')
+    ax.plot(zgv, linesR['2_0'], 'b', label='$2\omega$')
+    ax.legend(ncol=1, loc=1, borderaxespad=0.)
+    ax.set_xlabel('Z ($\mu m$)', fontsize=20)
+    ax.set_ylabel('Energy at Z position ($mJ / \mu m^2$)')
+    ax.set_yscale('log')
+    ax.set_title(title, fontsize=16)
+    ax.xaxis.grid(which='both', color='0.92', linestyle='-') # vertical lines
+    ax.yaxis.grid(which='both', color='0.87', linestyle='--') # horizontal lines
+    ax.set_axisbelow(True) # Move the grid marks under the axes
+    ax.set_ylim(ymin, ymax)
+    ax.set_xlim(xmin, xmax)
+    ax.text(0.9 ,0.05, fld_id, fontsize=44, color='black', transform=ax.transAxes)
+    fig.text(0.99, 0.01, shortname, horizontalalignment='right')
+    fig.savefig(os.path.join(outdir, shortname + ' - BScat vs Z.png'))
+    
+    plt.close('all') # Close all the figures
+
+
   
 def plotEM(data, outdir='.', shortname = '', alltime=False):
     """ Make Scott's set of custom electromagnetic field (and frequency) plots for this batch """
@@ -433,4 +568,3 @@ def plotEM(data, outdir='.', shortname = '', alltime=False):
     
     ## Close the plots
     plt.close('all')
-

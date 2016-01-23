@@ -57,12 +57,12 @@ def laserE(E_0, T, w,dim="3D"):
 
     Parameters and Keywords
     -----------------------
-    E_0   -- Peak E field.
-    T     -- FWHM of the pulse.
-    w     -- Spotsize.
+    E_0   -- Peak E field, in V/m
+    T     -- FWHM of the pulse, in sec
+    w     -- Spotsize, in m
     dim   -- Spatial dimension, either "2D", or "3D" or None for "3D"
 
-    Returns laser energy.
+    Returns laser energy (J/cm in 2D).
     '''
 
     if dim == "2D":
