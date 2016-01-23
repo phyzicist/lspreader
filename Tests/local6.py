@@ -24,18 +24,18 @@ from pext import pextanalysis as pa
 import scipy.constants as sc
 from pext import quantities
     
-#p4root = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump'
-#outroot = r'C:\Users\Scott\Documents\temp\sclrtest\analysis'
-#aa.analyzeAll(p4root, outroot)
+p4root = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump'
+outroot = r'C:\Users\Scott\Documents\temp\sclrtest\analysis'
+aa.analyzeAll(p4root, outroot)
 
 
 #p4dir = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump\test0-2015-15-21_1923'
-p4dir = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump\test2'
+#p4dir = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump\test2'
 #data = ls.readFldScl(p4dir)
 #
-shortname = 'test0'
-outdir = r'C:\Users\Scott\Documents\temp\sclrtest\analysis\test0'
-pa.pextFull(p4dir, outdir=outdir, shortname=shortname)
+#shortname = 'test0'
+#outdir = r'C:\Users\Scott\Documents\temp\sclrtest\analysis\test0'
+#pa.pextFull(p4dir, outdir=outdir, shortname=shortname)
 #sp.plotBScat(data, tcut=65, outdir=outdir, shortname = shortname)
 
 

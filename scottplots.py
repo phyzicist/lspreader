@@ -148,6 +148,8 @@ def emFFT(data, kind = "EB", trange = (60, 1.0e9)):
         EMvec = np.stack((data['Ex'] * Efact, data['Ey'] * Efact, data['Ez'] * Efact, data['Bx'] * Bfact, data['By'] * Bfact, data['Bz'] * Bfact), axis=-1) # Give the EM vector all 6 components
     elif kind == "Backscat": # Backscatter analyisis. Extract from the X-coordinate index 0 only, and over specific times only.
         tcdt = np.logical_and(data['times'] >= trange[0]*1e-6, data['times'] < trange[1]*1e-6) # Condition on times
+        if not np.any(tcdt):
+            raise Exception("There aren't any values in the backscatter analysis time range to analyze.")
         xidx = int(np.floor(2.0e-6/dx)) # Index of lineout extraction, along the x dimension. Place 2 microns away from edge. (e.g. xidx = 8, such that xgv[xidx] = 8 microns)
         EMvec = np.stack((data['Ex'][tcdt,:,xidx:(xidx+1)] * Efact, data['Ey'][tcdt,:,xidx:(xidx+1)] * Efact, data['Ez'][tcdt,:,xidx:(xidx+1)] * Efact, data['Bx'][tcdt,:,xidx:(xidx+1)] * Bfact, data['By'][tcdt,:,xidx:(xidx+1)] * Bfact, data['Bz'][tcdt,:,xidx:(xidx+1)] * Bfact), axis=-1) # Give the EM vector all 6 components, but only at specific times and at a single X coordinate
     else:
