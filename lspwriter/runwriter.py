@@ -15,7 +15,7 @@ Possible issues:
 import re
 import numpy as np
 import scipy.constants as sc
-from plaswriter import simpleColumn, columnAnalyze
+from plaswriter import simpleColumn, columnAnalyze, radialPlume, parabCup
 import os
 import shutil
 
@@ -62,24 +62,24 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'a28f-2_mres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3e18 W cm-2, 2.8um scale, focus X=-2um, lam/16' # Simulation title
+    shortname = 'a28f-26_hres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3e18 W cm-2, 2.8um scale, focus X=-26um, lam/32.' # Simulation title
     
     scale = 2.8#um # Exponential scale length of pre-plasma
-    focx = -2#um # X position of best laser focus, in microns
+    focx = -26#um # X position of best laser focus, in microns
 
     # Simulation temporal
     t_f = 400#fs # maximum time, in fs
-    tres = 16 # Laser cycles per timestep 
+    tres = 32 # Laser cycles per timestep 
     skipt = 1 # time skip interval for field/scalar dumps. First one is always dumped.
     
     # Grid spatial
     xdims = (-35, 5)#um # X limits to simulation grid space, in microns
-    xres = 16 # Laser wavelengths per cell, in X direction
-    skipx = 5 # X skip interval for field/scalar dumps
+    xres = 32 # Laser wavelengths per cell, in X direction
+    skipx = 10 # X skip interval for field/scalar dumps
     zdims = (-20, 20)#um # Z limits to simulation grid space, in microns
-    zres = 16 # Laser wavelengths per cell, in Z direction 
-    skipz = 5 # Z skip interval for field/scalar dumps
+    zres = 32 # Laser wavelengths per cell, in Z direction 
+    skipz = 10 # Z skip interval for field/scalar dumps
     
     # Pre-plasma spatial/density
     pc_xdims = (-30, 0)#um # X limits to simulation particle creation space, in microns
@@ -170,9 +170,11 @@ if __name__ == "__main__":
     columnfn = os.path.join(subdir(outdir,shortname), columndat)
     sinefn = os.path.join(subdir(outdir, shortname), sinedat)
     ## MODIFY THE TEXT OF 'TEMPLATE.LSP' WITH ABOVE DEFINITIONS, CHECK FOR ERRORS, AND SAVE A NEW .LSP FILE
-    fileSub('template.lsp', lspfn, d)
+    fileSub('templateA.lsp', lspfn, d)
     fileSub('template.pbs', pbsfn, pb)
     shutil.copy(sinedat, sinefn)
     ## WRITE THE WATER COLUMN FILE
-    X,Y = simpleColumn(columnfn, pc_xdims, scale = scale, npoints = 3000) # Writes to file.
-    columnAnalyze(columnfn, plot=False) # Print some analysis, such as critical density X values
+    simpleColumn(columnfn, pc_xdims, scale = scale, npoints = 3000) # Writes to file.
+    #columnAnalyze(columnfn, plot=False) # Print some analysis, such as critical density X values
+    #radialPlume(columnfn, pc_xdims, pc_zdims, scale = scale, nxpoints = 800, nzpoints = 500)
+    #parabCup(columnfn, pc_xdims, pc_zdims, parabfoc = 1.5, scale = scale, nxpoints = 800, nzpoints = 500)

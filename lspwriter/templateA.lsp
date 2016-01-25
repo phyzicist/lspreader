@@ -305,7 +305,7 @@ unbound off
 discrete_numbers 3 3 3
 density_function 6
 reference_point 0 0 0
-density_flags 1 0 1
+density_flags 1 0 0
 momentum_flags 0 0 0
 thermal_energy 1
 movie_fraction 0.000
@@ -319,7 +319,7 @@ unbound off
 discrete_numbers 3 3 3
 density_function 5
 reference_point 0 0 0
-density_flags 1 0 1
+density_flags 1 0 0
 momentum_flags 0 0 0
 thermal_energy 1
 movie_fraction 0.050
@@ -333,7 +333,7 @@ unbound off
 discrete_numbers 3 3 3
 density_function 7
 reference_point 0 0 0
-density_flags 1 0 1
+density_flags 1 0 0
 momentum_flags 0 0 0
 thermal_energy 1
 movie_fraction 0.000
@@ -603,21 +603,18 @@ coefficients <WLEN_CM> <SPOT_CM> end
 
 ;;
 function5 ; electrons
-type 40
+type 30
 data_file <DENS_DAT>
-independent_variable_multiplier 1.0
 dependent_variable_multiplier 1.0
 ;;
 function6 ; Oxygen
-type 40
+type 30
 data_file <DENS_DAT>
-independent_variable_multiplier 1.0
 dependent_variable_multiplier 0.33
 ;;
 function7 ; Protons
-type 40
+type 30
 data_file <DENS_DAT>
-independent_variable_multiplier 1.0
 dependent_variable_multiplier 0.67
 ;
 ;

@@ -6,9 +6,10 @@ Created on Tue Jan 19 19:05:18 2016
 """
 
 import sys
-import numpy as np
-import lstools as ls
-import lspreader2 as rd
+import numpy as np # local
+import lstools as ls # local
+import lspreader2 as rd # local
+from special import tlmb # local
 
 # Matplotlib stuff
 import matplotlib as mpl
@@ -25,7 +26,7 @@ if LooseVersion(mpl.__version__) < LooseVersion('1.5.0'):
     plt.register_cmap(name='plasma', cmap=cmaps.plasma)
 
 import os
-import sftools as sf
+import sftools as sf # local
 import scipy.constants as sc
 
 def addCrit(ax, edens, xgv_um, zgv_um):
@@ -203,6 +204,7 @@ def emFFT(data, kind = "EB", trange = (60, 1.0e9)):
     print "Pwrsum shape:", pwrsum.shape
     return maps, cuts, pwrsum, freq, df, nframes
 
+
 def poyntAnlz(data):
     """ Perform a poynting analysis on a stack of data frames
     Inputs:
@@ -379,7 +381,52 @@ def bsFFT(data, trange = (80, 1.0e9)):
     for k in lines:
         Utots[k] = np.sum(lines[k])*dz # Total energy in the frequency band, in mJ/ y micron
     return lines, cuts, pwrline, freq, Utots
+
+def wlenPlot(freq, Jfreq, wlen_fund=800):
+    """ Make the backscatter wavelength plot from data for a frequency plot. Don't save to file, just return the handle.
+    Inputs:
+        freq: 1D array, list of frequencies (in units of the fundamental) (the X axis for a power spectrum plot)
+        Jfreq: 1D array, same length as freq, list of mJ/freq./um at those frequencies (the Y axis for a power spectrum plot)
+        wlen_fund: (optional) number, wavelength of the fundamental, in nm
+    Outputs:
+        fig: handle to the plot where X axis is wavelength (in nm), and Y axis is Joules/wlen. (which can be saved to file, e.g. with fig.savefig())
+    """
+    ## Make a chop above 0.1 (because below that is essentially electrostatic), and then transform the array
+    chp = (freq > 0.1) # Chopping condition
+    wlen = (1/freq[chp] * wlen_fund)[::-1] # wlen = 1 / frequency. The -1 is to reverse the arrays, since wavelength and frequency are reversed
+    Jwlen = (freq[chp]**2 * Jfreq[chp] / wlen_fund)[::-1] # Adjust the Y axis, based on the fact that dwlen/dfreq = -1/freq^2
     
+    ## Adjust by the TLMB transmission
+    T_tlmb = tlmb.trans(wlen)
+    Jwlen2 = Jwlen * T_tlmb
+    
+    fig = plt.figure(2)
+    plt.clf()
+    ymin = 0
+    ymax = np.max(Jwlen2[(wlen > 100) & (wlen < 600)])
+    ax = plt.subplot(2,1,1)
+    ax.set_title('Blue-green reflected (w/ TLMB)')
+    ax.set_xlabel('Wavelength (nm)')
+    ax.set_ylabel('$mJ / optical nm / \mu m$')
+    ax.plot(wlen, Jwlen2, 'b')
+    ax.set_xlim(200, 900)
+    ax.vlines([wlen_fund*2, wlen_fund, wlen_fund * 2./3., wlen_fund / 2.0], ymin, ymax, colors=[(0.6,0,0),'r','g','b'], linestyle=':') # vertical lines, colored by frequency
+    ax.set_ylim(0, ymax)
+    
+    ax = plt.subplot(2,1,2)
+    ymin = 0
+    ymax = np.max(Jwlen2[(wlen > 950) & (wlen < 1700)])
+    ax.set_title('Mid-IR reflected (w/ TLMB)')
+    ax.set_xlabel('Wavelength (nm)')
+    ax.set_ylabel('$mJ / optical nm / \mu m$')
+    ax.plot(wlen, Jwlen2, 'b')
+    ax.set_xlim(900, 1800)
+    ax.vlines([wlen_fund*2, wlen_fund, wlen_fund * 2./3., wlen_fund / 2.0], ymin, ymax, colors=[(0.6,0,0),'r','g','b'], linestyle=':') # vertical lines, colored by frequency
+    ax.set_ylim(ymin, ymax)
+    plt.tight_layout()
+    
+    return fig
+
 def plotBScat(data, tcut=80, outdir='.', shortname = ''):
     """ Plot relevant backscattered light plots. Energy calculation makes some iffy assumptions about angles of light, so some degree of systematic error.
     Inputs:        
@@ -387,6 +434,8 @@ def plotBScat(data, tcut=80, outdir='.', shortname = ''):
         tcut: number, a time (fs) that splits forward light from backward. I.e. after this time (in fs), we consider it backscattered light. Before this time, we consider it incident light.
         outdir: directory where PNG plots will be saved
         shortname: a short string describing the run, e.g. 'a40f-14_so'
+    Outputs:
+        Saves PNG plots into a subdirectory of outdir.
     """
     linesT, _, pwrlineT, freqT, U_T = bsFFT(data, trange=(0,tcut)) # Input light (T)ransmission characteristics
     linesR, cuts, pwrlineR, freqR, U_R = bsFFT(data, trange=(tcut,1.0e9)) # Backscatter (R)eflection characteristics
@@ -402,6 +451,11 @@ def plotBScat(data, tcut=80, outdir='.', shortname = ''):
         f.write("FREQ_BAND, PERCENT_ENERGY_IN_REFLECTED, FREQ_CUT1, FREQ_CUT2, TRANSMITTED_MILLIJOULE_PER_MICRON, REFLECTED_MILLIJOULE_PER_MICRON\n")        
         for k in U_T:
             f.write(k + ", " + str(np.round(U_R[k]/U_T['all']*100, 4)) + ", " + str(cuts[k][0]) + ", " + str(cuts[k][1]) + ", " + str(U_T[k]) + ", " + str(U_R[k]) + "\n")
+
+    ## Plot 0: Backscattered light through TLMB
+    fig = wlenPlot(freqR, pwrlineR, wlen_fund=800)
+    fig.text(0.99, 0.01, shortname, horizontalalignment='right')
+    fig.savefig(os.path.join(outdir, shortname + ' - BScat Wavelengths.png'))
 
     ## Plot 1: Backscatter power spectrum
     title = 'Backscattered light power spectrum ' + Rstring

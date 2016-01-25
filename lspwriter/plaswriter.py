@@ -31,10 +31,10 @@ def simpleColumn(filename, pc_xdims, scale = 1.5, x_crit = -6.07520446, wlen = 8
     xdims = np.array(pc_xdims)*1e-4 # X dimensions in cm
     scale = scale*1e-4 # Exponential scale length in cm
     x_crit = x_crit * 1e-4 # X position in cm
+    
+    # Compute the exponential scale length and save the .dat
     xmin = np.min(xdims) 
     xmax = np.max(xdims)
-
-    # Compute the exponential scale length and save the .dat
     X = np.linspace(xmin, xmax, npoints)
     Y = np.zeros(X.shape)
     Y = n_crit * np.exp((X - x_crit)/scale) # Compute a solid density
@@ -46,6 +46,78 @@ def simpleColumn(filename, pc_xdims, scale = 1.5, x_crit = -6.07520446, wlen = 8
     
     X = X*1e4 # Convert back to microns for python output
     return X, Y
+
+def radialPlume(fname, pc_xdims, pc_zdims, scale = 1.5, x_crit = -6.07520446, wlen = 800, nxpoints = 300, nzpoints = 301):
+    """ Make a radial plume, decaying scale length target """
+    n_crit = critDens(wlen) # Critical density at this wavelength, in number/cm^3
+    n_solid = 1.0e23 # Solid density, in number/cm^3
+    
+    # Convert dimensions back into LSP units    
+    (xmin, xmax) = np.array(pc_xdims)*1e-4 # X dimensions in cm
+    (zmin, zmax) = np.array(pc_zdims)*1e-4 # Z dimensions in cm
+    scale = scale*1e-4 # Exponential scale length in cm
+    x_crit = x_crit * 1e-4 # X position in cm
+
+    # Compute the exponential scale length
+    x_solid = x_crit + scale * np.log(n_solid/n_crit) # X position of solid density
+
+    xgv = np.linspace(xmin, xmax, nxpoints)
+    zgv = np.linspace(zmin, zmax, nzpoints)
+    X, Z = np.meshgrid(xgv, zgv)
+    R = np.sqrt((X - x_solid)**2 + Z**2) # Radius away from the solid density
+    D = n_solid * np.exp(-R/scale) # Compute density profile
+    D[X > x_solid] = n_solid
+
+    print D.shape
+    with open(fname, 'w') as f:
+        f.write('# Radial plume 2D LSP dat file (function type 40), scale length: ' + str(scale*1e4) + ' microns\n')
+        f.write('# Dimensions X, Z, Density. See page 147 of 200 in LSP manual, or search "type 40", for specification format.\n')
+        f.write(str(int(nxpoints)) + ' ' + str(int(nzpoints)) + '\n')
+        np.savetxt(f, xgv[None], delimiter = ' ') # xgv[None] changes the dimensions of xgv from (100,) to (1, 100); this lets us save it as a row rather than column
+        np.savetxt(f, zgv[None], delimiter = ' ')
+        np.savetxt(f, D, delimiter = ' ')
+    # Convert back to microns for python output
+    xgv = xgv*1e4
+    zgv = zgv*1e4
+    
+    return D, xgv, zgv
+    
+def parabCup(fname, pc_xdims, pc_zdims, parabfoc=1.5, scale = 1.5, x_crit = -6.07520446, wlen = 800, nxpoints = 300, nzpoints = 301):
+    """ Make a convex paraboloid, scale-length target. """
+    n_crit = critDens(wlen) # Critical density at this wavelength, in number/cm^3
+    n_solid = 1.0e23 # Solid density, in number/cm^3
+    
+    # Convert dimensions back into LSP units    
+    (xmin, xmax) = np.array(pc_xdims)*1e-4 # X dimensions in cm
+    (zmin, zmax) = np.array(pc_zdims)*1e-4 # Z dimensions in cm
+    scale = scale*1e-4 # Exponential scale length in cm
+    x_crit = x_crit * 1e-4 # X position in cm
+    parabfoc = parabfoc * 1e-4 # Parabola focal length in cm
+    
+    # Compute the exponential scale length
+    x_solid = x_crit + scale * np.log(n_solid/n_crit) # X position of solid density
+
+    xgv = np.linspace(xmin, xmax, nxpoints)
+    zgv = np.linspace(zmin, zmax, nzpoints)
+    X, Z = np.meshgrid(xgv, zgv)
+    Xshift = (1/(4*parabfoc))*Z**2
+    Xshift[np.abs(Z) > zmax / 3] = np.max(Xshift[np.abs(Z) < zmax / 3])
+    D = n_crit * np.exp(-(-(X - x_crit + Xshift))/scale) # Compute density profile
+    D[D > n_solid] = n_solid
+
+    with open(fname, 'w') as f:
+        f.write('# Parabola cup 2D LSP dat file (function type 40), scale length: ' + str(scale*1e4) + ' microns, parabola focal length: ' + str(parabfoc*1e4) + ' microns\n')
+        f.write('# Dimensions X, Z, Density. See page 147 of 200 in LSP manual, or search "type 40", for specification format.\n')
+        f.write(str(int(nxpoints)) + ' ' + str(int(nzpoints)) + '\n')
+        np.savetxt(f, xgv[None], delimiter = ' ') # xgv[None] changes the dimensions of xgv from (100,) to (1, 100); this lets us save it as a row rather than column
+        np.savetxt(f, zgv[None], delimiter = ' ')
+        np.savetxt(f, D, delimiter = ' ')
+    
+    # Convert back to microns for python output
+    xgv = xgv*1e4
+    zgv = zgv*1e4
+
+    return D, xgv, zgv
     
 def columnAnalyze(fn, plot=True):
     """Analyze the 1D watercolumn.dat, by making a plot and printing out critical values at 800 nm

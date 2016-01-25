@@ -143,6 +143,26 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None):
     plt.figtext(0.99, 0.02, shortname, horizontalalignment='right')
     plt.figtext(0.01, 0.02, efficstr, horizontalalignment='left')
     fig.savefig(os.path.join(plotdir, shortname + ' - Radial with cutoffs.png'))
+
+    ## Z-ELECTRON PLOT WITH CUTOFF
+    fig = plt.figure(10)
+    plt.clf()
+    zmax = np.max(pextarr['z']*1e4) # The time of the end of the sim, presumably. Draw a vertical line at this time.
+    zmin = np.min(pextarr['z']*1e4) # The time of the end of the sim, presumably. Draw a vertical line at this time.
+    zrange = (zmin,zmax) # The plotting range
+    ax = plt.subplot(111)
+    cdt_z = np.logical_and(np.abs(d['phi']) > np.deg2rad(180 - 40), d['KE'] > 2.00)
+    [histvals, histedges] = np.histogram(pextarr['z'][cdt_z]*1e4, range=zrange, bins=800, weights=d['q'][cdt_z])
+    picYt = histvals
+    picXt = histedges[1:] - (histedges[1] - histedges[0])/2
+    plt.plot(picXt, picYt)
+    ax.set_ylabel('Collected charge, 2 MeV min. (a.u.)')
+    ax.set_xlabel('Z ($\mu m$)')
+    ax.set_xlim(zrange[0], zrange[1])
+    plt.title('Charge vs. Z')
+    plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
+    fig.savefig(os.path.join(plotdir, shortname + ' - Charge vs Z.png'))
+
     
     ## BACKWARD ELECTRON SPECTRUM LINE PLOT
     fig = plt.figure(4)
