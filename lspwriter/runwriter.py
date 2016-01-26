@@ -8,7 +8,7 @@ Change the settings in the 'if __name__' section, then call this script as main.
 @author: Scott
 
 Possible issues:
-* Is it okay that it outputs "8e5" instead of "8.e5", for example, or will all hell break loose?
+* Is it okay that it outputs "8e5" instead of "8.e5", for example, or will all hell break loose? (Update) Seems ok.
 
 """
 
@@ -62,24 +62,24 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'a28f-26_hres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3e18 W cm-2, 2.8um scale, focus X=-26um, lam/32.' # Simulation title
+    shortname = 'byc1f-6_mres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3.0e18 W cm-2, Yellow condition test1 ramp, focus X=-6um, lam/16.' # Simulation title
     
     scale = 2.8#um # Exponential scale length of pre-plasma
-    focx = -26#um # X position of best laser focus, in microns
+    focx = -6#um # X position of best laser focus, in microns
 
     # Simulation temporal
     t_f = 400#fs # maximum time, in fs
-    tres = 32 # Laser cycles per timestep 
+    tres = 16 # Laser cycles per timestep 
     skipt = 1 # time skip interval for field/scalar dumps. First one is always dumped.
     
     # Grid spatial
     xdims = (-35, 5)#um # X limits to simulation grid space, in microns
-    xres = 32 # Laser wavelengths per cell, in X direction
-    skipx = 10 # X skip interval for field/scalar dumps
+    xres = 16 # Laser wavelengths per cell, in X direction
+    skipx = 5 # X skip interval for field/scalar dumps
     zdims = (-20, 20)#um # Z limits to simulation grid space, in microns
-    zres = 32 # Laser wavelengths per cell, in Z direction 
-    skipz = 10 # Z skip interval for field/scalar dumps
+    zres = 16 # Laser wavelengths per cell, in Z direction 
+    skipz = 5 # Z skip interval for field/scalar dumps
     
     # Pre-plasma spatial/density
     pc_xdims = (-30, 0)#um # X limits to simulation particle creation space, in microns
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     # Laser
     sinedat = 'sine700points.dat' # filename of .dat defining laser oscillations through time, which will be copied from this folder into the output folder
     fwhm = 30#fs # Gaussian temporal FWHM of laser, in fs
-    Emax = 4.763e7 # Peak electric field of laser, in kV/cm
+    Imax = 3.0e18#W/cm2 # Peak intensity of laser, in W/cm^2
     wlen = 800#nm # Laser wavelength, in nm
     spot = 2.26#um # Laser spot size, in microns
 
@@ -109,7 +109,9 @@ if __name__ == "__main__":
     print "Number of cells in X, Z:", xcells, zcells
     dt = np.round(((wlen*1e-9)/(sc.c*1e-15))/(tres*1.05),3) # time step, in fs. (Calculate time per cycle using speed of light, then divide by desired time steps per cycle. Multiply resolution by 1.05 and round off answer to three decimal places for good measure.)
     print "Time step is:", dt, "fs"
-        
+    Emax = np.round(np.sqrt(Imax/1322.3916298957)) # Peak electric field of laser, in kV/cm
+    print "Emax is: ", Emax, " kV/cm"
+    
     ## BUILD PBS SUBSTITUTION DICT
     pb = {}
     pb['SIMNAME'] = shortname
@@ -177,4 +179,4 @@ if __name__ == "__main__":
     simpleColumn(columnfn, pc_xdims, scale = scale, npoints = 3000) # Writes to file.
     #columnAnalyze(columnfn, plot=False) # Print some analysis, such as critical density X values
     #radialPlume(columnfn, pc_xdims, pc_zdims, scale = scale, nxpoints = 800, nzpoints = 500)
-    #parabCup(columnfn, pc_xdims, pc_zdims, parabfoc = 1.5, scale = scale, nxpoints = 800, nzpoints = 500)
+    #parabCup(columnfn, pc_xdims, pc_zdims, parabfoc = 1.0, scale = scale, nxpoints = 800, nzpoints = 500)

@@ -24,9 +24,9 @@ from pext import pextanalysis as pa
 import scipy.constants as sc
 from pext import quantities
     
-p4root = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump'
-outroot = r'C:\Users\Scott\Documents\temp\sclrtest\analysis'
-aa.analyzeSome(p4root, outroot, ['a50f-14_mres_so'])
+#p4root = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump'
+#outroot = r'C:\Users\Scott\Documents\temp\sclrtest\analysis'
+#aa.analyzeSome(p4root, outroot, ['a50f-14_mres_so'])
 
 
 #p4dir = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump\test0-2015-15-21_1923'
@@ -45,15 +45,15 @@ aa.analyzeSome(p4root, outroot, ['a50f-14_mres_so'])
 
 
 ### DENSITY VISUAL TEST
-#p4dir = r'C:\Users\Scott\Documents\temp\sclrtest\analysis\testplume'
-#data = ls.readFldScl(p4dir)
-#sp.plotDens(data, outdir=p4dir, shortname = '', alltime=False)
-#
-#xgv = data['xgv']*1e4 # x values in microns
-#zgv = data['zgv']*1e4
-#dx = np.mean(np.diff(xgv))# dx in microns
-#dz = np.mean(np.diff(zgv))
-#
+p4dir = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump\byc1f-6_mres_so'
+data = ls.readFldScl(p4dir)
+sp.plotDens(data, outdir=p4dir, shortname = '', alltime=False)
+
+xgv = data['xgv']*1e4 # x values in microns
+zgv = data['zgv']*1e4
+dx = np.mean(np.diff(xgv))# dx in microns
+dz = np.mean(np.diff(zgv))
+
 ### CALCULATIONS
 ## Mean electron density
 #edens = np.mean(data['RhoN10'],0)

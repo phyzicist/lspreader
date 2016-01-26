@@ -2,6 +2,8 @@
 simulation_title "<TITLE>"
 ;
 [Control]
+;Courant limit
+courant_multiplier 0.9
 ;Time-advance
  time_limit <TIMELIM_NS> ; # How many ns to run?
 ;time_limit 0.2e-6 
