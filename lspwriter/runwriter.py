@@ -62,15 +62,15 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'byc1f-6_mres_so' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3.0e18 W cm-2, Yellow condition test1 ramp, focus X=-6um, lam/16.' # Simulation title
+    shortname = 'blb2f-26_mres2_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3.0e18 W cm-2, Courant-enforced, Lots of blue condit_test2, focus X=-26um, lam/16.' # Simulation title
     
     scale = 2.8#um # Exponential scale length of pre-plasma
-    focx = -6#um # X position of best laser focus, in microns
+    focx = -26#um # X position of best laser focus, in microns
 
     # Simulation temporal
     t_f = 400#fs # maximum time, in fs
-    tres = 16 # Laser cycles per timestep 
+    tres = 16 # Laser cycles per timestep (only applies if this number beats 0.9x Courant limit)
     skipt = 1 # time skip interval for field/scalar dumps. First one is always dumped.
     
     # Grid spatial
@@ -172,11 +172,11 @@ if __name__ == "__main__":
     columnfn = os.path.join(subdir(outdir,shortname), columndat)
     sinefn = os.path.join(subdir(outdir, shortname), sinedat)
     ## MODIFY THE TEXT OF 'TEMPLATE.LSP' WITH ABOVE DEFINITIONS, CHECK FOR ERRORS, AND SAVE A NEW .LSP FILE
-    fileSub('templateA.lsp', lspfn, d)
+    fileSub('template.lsp', lspfn, d)
     fileSub('template.pbs', pbsfn, pb)
     shutil.copy(sinedat, sinefn)
     ## WRITE THE WATER COLUMN FILE
-    simpleColumn(columnfn, pc_xdims, scale = scale, npoints = 3000) # Writes to file.
+    #simpleColumn(columnfn, pc_xdims, scale = scale, npoints = 3000) # Writes to file.
     #columnAnalyze(columnfn, plot=False) # Print some analysis, such as critical density X values
-    #radialPlume(columnfn, pc_xdims, pc_zdims, scale = scale, nxpoints = 800, nzpoints = 500)
+    radialPlume(columnfn, pc_xdims, pc_zdims, scale = scale, nxpoints = 800, nzpoints = 500)
     #parabCup(columnfn, pc_xdims, pc_zdims, parabfoc = 1.0, scale = scale, nxpoints = 800, nzpoints = 500)
