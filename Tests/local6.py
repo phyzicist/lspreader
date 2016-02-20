@@ -45,7 +45,7 @@ from pext import quantities
 
 
 ### DENSITY VISUAL TEST
-p4dir = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump\byc1f-6_mres_so'
+p4dir = r'C:\Users\Scott\Documents\temp\FlashRams\LSPrun'
 data = ls.readFldScl(p4dir)
 sp.plotDens(data, outdir=p4dir, shortname = '', alltime=False)
 

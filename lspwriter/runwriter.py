@@ -62,11 +62,11 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'b28f-26i3e17_mres2_so' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3.0e17 W cm-2 (30 fs), Courant-enforced, focus X=-26um, lam/16' # Simulation title
+    shortname = 'cp30fp30_mres2_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3.0e18 W cm-2 (30 fs), Courant-enforced, focus X=+30um, lam/16' # Simulation title
 
     scale = 2.8#um # Exponential scale length of pre-plasma
-    focx = -26#um # X position of best laser focus, in microns
+    focx = 30#um # X position of best laser focus, in microns
 
     # Simulation temporal
     t_f = 400#fs # maximum time, in fs
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     # Laser
     sinedat = 'sine700points.dat' # filename of .dat defining laser oscillations through time, which will be copied from this folder into the output folder
     fwhm = 30#fs # Gaussian temporal FWHM of laser, in fs
-    Imax = 3.0e17#W/cm2 # Peak intensity of laser, in W/cm^2
+    Imax = 3.0e18#W/cm2 # Peak intensity of laser, in W/cm^2
     wlen = 800#nm # Laser wavelength, in nm
     spot = 2.26#um # Laser spot size, in microns
 
@@ -172,11 +172,11 @@ if __name__ == "__main__":
     columnfn = os.path.join(subdir(outdir,shortname), columndat)
     sinefn = os.path.join(subdir(outdir, shortname), sinedat)
     ## MODIFY THE TEXT OF 'TEMPLATE.LSP' WITH ABOVE DEFINITIONS, CHECK FOR ERRORS, AND SAVE A NEW .LSP FILE
-    fileSub('templateA.lsp', lspfn, d)
+    fileSub('template.lsp', lspfn, d)
     fileSub('template.pbs', pbsfn, pb)
     shutil.copy(sinedat, sinefn)
     ## WRITE THE WATER COLUMN FILE
-    simpleColumn(columnfn, pc_xdims, scale = scale, npoints = 3000) # Writes to file.
+    #simpleColumn(columnfn, pc_xdims, scale = scale, npoints = 3000) # Writes to file.
     #columnAnalyze(columnfn, plot=False) # Print some analysis, such as critical density X values
     #radialPlume(columnfn, pc_xdims, pc_zdims, scale = scale, nxpoints = 800, nzpoints = 500)
-    #parabCup(columnfn, pc_xdims, pc_zdims, parabfoc = 1.0, scale = scale, nxpoints = 800, nzpoints = 500)
+    parabCup(columnfn, pc_xdims, pc_zdims, parabfoc = 1.0, scale = scale, nxpoints = 800, nzpoints = 500)

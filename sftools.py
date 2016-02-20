@@ -10,6 +10,21 @@ General tools used by Scott Feister (SF).
 import os
 import numpy as np
 
+
+# NumPy arrays
+def findNearest(array, value):
+    """
+    Get the index for the nearest value to value
+    Copied from: http://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
+    Inputs:
+        array: 1D array to search for value
+        value: number to search for in array
+    Outputs:
+        nearest value in array, index of that value
+    """
+    idx = np.abs(array-value).argmin()
+    return array[idx], idx
+    
 # Vector analysis
 def vecMag(a, axis=-1):
     """ Gives the magnitude of one (array of) real or complex vector """
