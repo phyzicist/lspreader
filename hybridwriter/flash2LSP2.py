@@ -112,7 +112,7 @@ def mypcolor(C, xgv, zgv, fig = None, cmin = 0,  cmax = None, title='', tstring 
     #sp.addCrit(ax, C, zgv, rgv)
     return fig
 
-def writeLSP(fname, dens, dens_zgv, dens_xgv, pc_xdims, pc_zdims, nxpoints = 400, nzpoints = 403, xshift=-999):
+def writeLSP(fname, dens, dens_zgv, dens_xgv, pc_xdims, pc_zdims, nxpoints = 400, nzpoints = 403, shortname = ''):
     """ Write an LSP 2D .dat output from XYZ 3D FLASH inputs 
     """
     # Convert dimensions back into LSP units    
@@ -129,7 +129,8 @@ def writeLSP(fname, dens, dens_zgv, dens_xgv, pc_xdims, pc_zdims, nxpoints = 400
     D = myf(np.abs(Z), X, grid=False)
 
     with open(fname, 'w') as f:
-        f.write('# FLASH-generated LSP dat file (function type 40). Corona 1.3 microns; defocused. Original target surface at X = ' + str(xshift) + ' microns. \n')
+        f.write('# FLASH-generated LSP dat file (function type 40).\n')
+        f.write('# Generated as part of FLASH/LSP Hybrid simulation:  ' + shortname + '\n')
         f.write('# Dimensions X, Z, Density. See page 147 of 200 in LSP manual, or search "type 40", for specification format.\n')
         f.write(str(int(nxpoints)) + ' ' + str(int(nzpoints)) + '\n')
         np.savetxt(f, xgv[None], delimiter = ' ') # xgv[None] changes the dimensions of xgv from (100,) to (1, 100); this lets us save it as a row rather than column
@@ -155,7 +156,7 @@ def FLASHtoLSP(fn_h5, fn_dat, focx_flash, pc_xdims, pc_zdims, plotdir, shortname
     """
     # Load in the FLASH data and extract density slice at Y=0
     ds = yt.load(fn_h5)
-    dens, xgv, zgv = yslice(ds, fld = 'dens') # Density is in gram/cc. xgv and zgv refer to FLASH dimensions.
+    dens, xgv, zgv = yslice(ds, fld = 'dens') # Density is in gram/cc. xgv and zgv refer to FLASH coordinates.
     
     # Extract the simulation timestamp
     time_ns = float(ds.current_time.in_units('ns')) # Current simulation time
@@ -172,10 +173,13 @@ def FLASHtoLSP(fn_h5, fn_dat, focx_flash, pc_xdims, pc_zdims, plotdir, shortname
     
     ixcrit = np.argmax(fdline > ncrit) # Array index of the critical density, when full-ionized
     xcrit_flash = xgv[ixcrit] # X value of six-ionized critical density, in  FLASH coordinates
-    print xcrit_flash
-    
+    print "Flash critical density X (native coordinates):", xcrit_flash
+    print "Flash critical density X (coordinates where X=0 is surface):", xcrit_flash + 15
+    print "Laser should focus this many microns past critical:", focx_flash - xcrit_flash
+    print "Desired LSP critical density X (native coordinates):", xcrit_lsp
+
     xshift = xcrit_lsp - xcrit_flash
-    print "X shift", xshift
+    print "X shift:", xshift
     xgv_new = xgv + xshift
 
     # Calculate how the focal depth should now shift
@@ -184,7 +188,7 @@ def FLASHtoLSP(fn_h5, fn_dat, focx_flash, pc_xdims, pc_zdims, plotdir, shortname
     print "Focal depth X (um) to code into this LSP sim", focx_lsp
     
     # Convert to an LSP .dat
-    D, Z, X = writeLSP(fn_dat, dens, zgv, xgv_new, pc_xdims, pc_zdims, xshift=xshift)
+    D, Z, X = writeLSP(fn_dat, dens, zgv, xgv_new, pc_xdims, pc_zdims, shortname = shortname)
     
     ## Make some plots, save to PNG
     # Subcritical FLASH 2D plot
