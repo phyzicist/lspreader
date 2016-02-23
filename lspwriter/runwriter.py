@@ -62,11 +62,11 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'cp30fp30_mres2_so' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3.0e18 W cm-2 (30 fs), Courant-enforced, focus X=+30um, lam/16' # Simulation title
+    shortname = 'cfp15_mres2_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3.0e18 W cm-2 (30 fs), Courant-enforced, foc +15um past surface, lam/16' # Simulation title
 
     scale = 2.8#um # Exponential scale length of pre-plasma
-    focx = 30#um # X position of best laser focus, in microns
+    focx = 5.06077384923#um # X position of best laser focus, in microns
 
     # Simulation temporal
     t_f = 400#fs # maximum time, in fs
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     skipt = 1 # time skip interval for field/scalar dumps. First one is always dumped.
     
     # Grid spatial
-    xdims = (-35, 5)#um # X limits to simulation grid space, in microns
+    xdims = (-35, 15)#um # X limits to simulation grid space, in microns
     xres = 16 # Laser wavelengths per cell, in X direction
     skipx = 5 # X skip interval for field/scalar dumps
     zdims = (-20, 20)#um # Z limits to simulation grid space, in microns
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     skipz = 5 # Z skip interval for field/scalar dumps
     
     # Pre-plasma spatial/density
-    pc_xdims = (-30, 0)#um # X limits to simulation particle creation space, in microns
+    pc_xdims = (-30, 10)#um # X limits to simulation particle creation space, in microns
     pc_zdims = (-15, 15)#um # Z limits to simulation particle creation space, in microns
     columndat = 'watercolumn.dat' # filename of .dat defining electron density vs. X (file will be created below)
     
