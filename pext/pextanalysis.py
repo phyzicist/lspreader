@@ -108,7 +108,8 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None, s
     if Utot_Jcm: # If the user input a value for total energy
         ## CSV: Write some basic efficiency info to file
         with open(os.path.join(outdir, shortname + ' - Electron Efficiency.csv'), 'w') as f:
-            f.write('Total energy in sim: ' + str(Utot_Jcm) + " J/cm\n")
+			Utot_mJ3D = Utot_Jcm * spot3D * 1e3
+            f.write('Total energy in sim: ' + str(Utot_Jcm) + " J/cm. (3D equivalent with spot size " + str(spot3D*1e4) + " microns is " + str(Utot_mJ3D) + " mJ.)\n")
             f.write("MINIM_ELECTRON_MEV, PERCENT_EFFICIENCY_PLUSMINUS_40DEG, PERCENT_EFFIC_PLUSMINUS_6point3_DEG, pC_3D_PLUSMINUS_40DEG, pC_3D_PLUSMINUS_6point3_DEG\n")        
             ecuts = [0.12, 0.3, 0.5, 1.0, 1.5, 3] # Cutoffs for energy efficiency, in MeV
             for ecut in ecuts:
