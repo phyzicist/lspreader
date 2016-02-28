@@ -69,7 +69,7 @@ def loadPexts(fns):
             pextarr = np.concatenate((pextarr, pextarr_tmp), 0) # Append this pext*.p4 'out' to the output array 'outs'
     return pextarr
 
-def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None):
+def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None, spot3D=2.26e-4):
     """
     Make Scott's preferred set of plots (and save to file) from the output (or concatenated outputs) of lspreader "pext()" of pext.
     Inputs:
@@ -78,6 +78,7 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None):
         shortname: string, a fairly short identifier for the simulation which will be added into plots and filenames
         mksub: bool, if True then make a subdirectory in 'outdir', otherwise just dump the PNGs directly into 'outdir'
         Utot_Jcm: number (optional): If total simulation energy is given (in J/cm, for a 2D sim), then relative efficiencies will be plotted.
+		spot3D: number, size of laser spot that would be used in a 3D simulation (cm). Gives the conversion of 2D nC/cm to 3D nC
     Outputs:
         Will save PNG figures summarizing the extraction planes into the folder specified by 'outdir'.
     
@@ -108,17 +109,19 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None):
         ## CSV: Write some basic efficiency info to file
         with open(os.path.join(outdir, shortname + ' - Electron Efficiency.csv'), 'w') as f:
             f.write('Total energy in sim: ' + str(Utot_Jcm) + " J/cm\n")
-            f.write("MINIM_ELECTRON_MEV, PERCENT_EFFICIENCY_PLUSMINUS_40DEG, PERCENT_EFFIC_PLUSMINUS_6point3_DEG\n")        
+            f.write("MINIM_ELECTRON_MEV, PERCENT_EFFICIENCY_PLUSMINUS_40DEG, PERCENT_EFFIC_PLUSMINUS_6point3_DEG, pC_3D_PLUSMINUS_40DEG, pC_3D_PLUSMINUS_6point3_DEG\n")        
             ecuts = [0.12, 0.3, 0.5, 1.0, 1.5, 3] # Cutoffs for energy efficiency, in MeV
             for ecut in ecuts:
-                cdtA = np.logical_and(d['KE'] > ecut, np.abs(d['phi']) > np.deg2rad(180 - 40))
-                cdtB = np.logical_and(d['KE'] > ecut, np.abs(d['phi']) > np.deg2rad(180 - 6.3))
-                Ue_JcmA = np.sum(d['KE_macro_Jcm'][cdtA]) # Energy of the electrons meeting this condition, in J/cm
-                Ue_JcmB = np.sum(d['KE_macro_Jcm'][cdtB]) # Energy of the electrons meeting this condition, in J/cm
-                efficA = Ue_JcmA/Utot_Jcm
-                efficB = Ue_JcmB/Utot_Jcm
-                f.write(str(ecut) + ", " + str(np.round(efficA*100,2)) + ", " + str(np.round(efficB*100,2)) + "\n")
-            cdt120 = np.logical_and(d['KE'] > 0.120, np.abs(d['phi']) > np.deg2rad(180 - 40))
+                cdtA = np.logical_and(d['KE'] > ecut, np.abs(d['phi']) > np.deg2rad(180 - 40)) # Condition A: Wide angle
+                cdtB = np.logical_and(d['KE'] > ecut, np.abs(d['phi']) > np.deg2rad(180 - 6.3)) # Condition B: Narrow angle
+                Ue_JcmA = np.sum(d['KE_macro_Jcm'][cdtA]) # Energy of the electrons meeting Condition A, in J/cm
+                Ue_JcmB = np.sum(d['KE_macro_Jcm'][cdtB]) # Energy of the electrons meeting Condition B, in J/cm
+                efficA = Ue_JcmA/Utot_Jcm # Efficiency into condition A
+                efficB = Ue_JcmB/Utot_Jcm # Efficiency into condition B
+                Q_pC3DA = np.sum(d['q'][cdtA])*spot3D*1e3 # Number of electrons meeting Condition A, in pC (converted from nC/cm using spot size (cm) and factor of 1e3)
+                Q_pC3DB = np.sum(d['q'][cdtA])*spot3D*1e3 # Number of electrons meeting Condition B, in pC (converted from nC/cm using spot size (cm) and factor of 1e3)
+                f.write(str(ecut) + ", " + str(np.round(efficA*100,2)) + ", " + str(np.round(efficB*100,2)) + ", " + str(np.round(Q_pC3DA*100,2)) + ", " + str(np.round(Q_pC3DB*100,2)) + "\n")
+            cdt120 = np.logical_and(d['KE'] > 0.120, np.abs(d['phi']) > np.deg2rad(180 - 40)
             effic120 = np.sum(d['KE_macro_Jcm'][cdt120])/Utot_Jcm
             efficstr = r'$\stackrel{>120 keV}{\pm 40^{\circ}}$ Efficiency: ' + str(np.round(effic120 * 100, 2)) + "%"
     else:
