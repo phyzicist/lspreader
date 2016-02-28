@@ -36,14 +36,14 @@ def stripJunk(name):
         shortname = name
     return shortname
 
-def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True):
+def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, newOnly=True):
     namelist = next(os.walk(p4root))[1] # Looks for all files in this list
     Utot_Jcm = 25.585283 # J/cm; Total energy of the laser. TODO: READ THIS FROM LSP OR SOMETHING!!! Only valid for 3x10^18 W/cm^2 sim.
     for name in namelist:
         p4dir = os.path.join(p4root, name)
         shortname = stripJunk(name) # strip the date or hyphen off the end of the folder name
         outdir = sf.subdir(outroot, shortname)
-        if os.path.exists(os.path.join(outdir, 'Electron density')):
+        if newOnly and os.path.exists(os.path.join(outdir, 'Electron density')):
             print "Directory", outdir, "already exists in some form. SKIPPING."
         else:
             try:
