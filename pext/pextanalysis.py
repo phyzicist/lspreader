@@ -110,7 +110,7 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None, s
         with open(os.path.join(outdir, shortname + ' - Electron Efficiency.csv'), 'w') as f:
             Utot_mJ3D = Utot_Jcm * spot3D * 1e3
             f.write('Total energy in sim: ' + str(Utot_Jcm) + " J/cm. (3D equivalent with spot size " + str(spot3D*1e4) + " microns is " + str(Utot_mJ3D) + " mJ.)\n")
-            f.write("MINIM_ELECTRON_MEV, PERCENT_EFFICIENCY_PLUSMINUS_40DEG, PERCENT_EFFIC_PLUSMINUS_6point3_DEG, pC_3D_PLUSMINUS_40DEG, pC_3D_PLUSMINUS_6point3_DEG\n")        
+            f.write("MINIM_ELECTRON_MEV, PERCENT_EFFICIENCY_PLUSMINUS_40DEG, PERCENT_EFFIC_PLUSMINUS_6point3_DEG, nC_3D_PLUSMINUS_40DEG, nC_3D_PLUSMINUS_6point3_DEG\n")        
             ecuts = [0.12, 0.3, 0.5, 1.0, 1.5, 3] # Cutoffs for energy efficiency, in MeV
             for ecut in ecuts:
                 cdtA = np.logical_and(d['KE'] > ecut, np.abs(d['phi']) > np.deg2rad(180 - 40)) # Condition A: Wide angle
@@ -119,9 +119,9 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None, s
                 Ue_JcmB = np.sum(d['KE_macro_Jcm'][cdtB]) # Energy of the electrons meeting Condition B, in J/cm
                 efficA = Ue_JcmA/Utot_Jcm # Efficiency into condition A
                 efficB = Ue_JcmB/Utot_Jcm # Efficiency into condition B
-                Q_pC3DA = np.sum(d['q'][cdtA])*spot3D*1e3 # Number of electrons meeting Condition A, in pC (converted from nC/cm using spot size (cm) and factor of 1e3)
-                Q_pC3DB = np.sum(d['q'][cdtA])*spot3D*1e3 # Number of electrons meeting Condition B, in pC (converted from nC/cm using spot size (cm) and factor of 1e3)
-                f.write(str(ecut) + ", " + str(np.round(efficA*100,2)) + ", " + str(np.round(efficB*100,2)) + ", " + str(np.round(Q_pC3DA*100,2)) + ", " + str(np.round(Q_pC3DB*100,2)) + "\n")
+                Q_nC3DA = np.sum(d['q'][cdtA])*spot3D*1e3 # Number of electrons meeting Condition A, in pC (converted from nC/cm using spot size (cm) and factor of 1e3)
+                Q_nC3DB = np.sum(d['q'][cdtA])*spot3D*1e3 # Number of electrons meeting Condition B, in pC (converted from nC/cm using spot size (cm) and factor of 1e3)
+                f.write(str(ecut) + ", " + str(np.round(efficA*100,2)) + ", " + str(np.round(efficB*100,2)) + ", " + str(np.round(Q_pC3DA,2)) + ", " + str(np.round(Q_pC3DB,2)) + "\n")
             cdt120 = np.logical_and(d['KE'] > 0.120, np.abs(d['phi']) > np.deg2rad(180 - 40))
             effic120 = np.sum(d['KE_macro_Jcm'][cdt120])/Utot_Jcm
             efficstr = r'$\stackrel{>120 keV}{\pm 40^{\circ}}$ Efficiency: ' + str(np.round(effic120 * 100, 2)) + "%"
