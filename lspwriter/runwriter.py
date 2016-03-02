@@ -62,7 +62,7 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'cfp15_mres2_so' # NO SPACES/slashes ALLOWED! Short name for simulation
+    shortname = 'test' # NO SPACES/slashes ALLOWED! Short name for simulation
     title = 'Hotwater in 2D I = 3.0e18 W cm-2 (30 fs), Courant-enforced, foc +15um past surface, lam/16' # Simulation title
 
     scale = 2.8#um # Exponential scale length of pre-plasma
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     scl = True # True if scl*.p4 outputs desired
     pmov = False # True if pmov*.p4 outputs desired (note: these are big)
     pmov_step = 0.2#fs # Pmovie timestep interval, in fs. Only applied if pmov = True.
-        
+    
     # Supercomputer
     nodes = 1 # Number of nodes
     ppn = 48 # Number of processors per node

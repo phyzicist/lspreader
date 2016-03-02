@@ -334,7 +334,7 @@ def read_movie(file, header):
     frames=[];
     pos0 = file.tell(); 
     while not iseof(file):
-        d=get_dict('fii',['t','step','pnum']);
+        d=get_dict(file, 'fii',['t','step','pnum']);
         d['pos']=file.tell();
         file.seek(d['pnum']*pbytes,1);
         frames.append(d);
@@ -342,11 +342,32 @@ def read_movie(file, header):
         N = d['pnum'];
         lt=[('ip','>i4')]+zip(params,['>f4']*nparams);
         file.seek(d['pos']);
-        arr=np.fromfile(file,dtype=np.dtype(lt),count=N);
+        arr=np.frombuffer(file.read(N*4*len(lt)),dtype=np.dtype(lt),count=N);
+        arr.flags.writeable = True;
         frames[i].update({'data':arr});
         del frames[i]['pos'];
     return frames;
 
+def read_movie2(fname):
+    """ Wrapper for read_movie() that takes a filename as input. Gzipped .p4.gz allowed.
+    Inputs:
+        fname: string, path to a file, e.g. fname = 'pext1.p4'
+    Outputs:
+        frames: The output from read_movie. A NumPy array with multiple records.
+    """
+    
+    _, ext = os.path.splitext(fname)
+    
+    if ext == '.gz':
+        myopen = gzip.open # If the file is .p4.gz, open using gunzip
+    else:
+        myopen = open
+    
+    with myopen(fname, 'rb') as file:
+        header = get_header(file)
+        frames = read_movie(file, header)
+    return frames
+    
 def read_pext(file, header, lowlev=False):
     nparams = len(header['quantities'])
     params = ['t','q','x','y','z','ux','uy','uz']

@@ -51,6 +51,7 @@ def pextFull(p4dir, outdir = '.', shortname = 'Sim', Utot_Jcm = None):
         raise Exception(msg)
     pextarr = loadPexts(fns)
     plotme(pextarr, outdir=outdir, shortname=shortname, Utot_Jcm = Utot_Jcm) # Plots and saves
+    return pextarr
     
 def loadPexts(fns):
     """ Calls lspreader2 to load all the pext*.p4 from a given list of filenames, and concatenates into a single array
@@ -167,6 +168,52 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None, s
     plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
     fig.savefig(os.path.join(plotdir, shortname + ' - Charge vs Z.png'))
 
+
+    ## Z-ORIGINATION PLOT
+    try:
+        pextarr['zi']
+        fig = plt.figure(10)
+        plt.clf()
+        zmax = np.max(pextarr['z']*1e4) # The time of the end of the sim, presumably. Draw a vertical line at this time.
+        zmin = np.min(pextarr['z']*1e4) # The time of the end of the sim, presumably. Draw a vertical line at this time.
+        zrange = (zmin,zmax) # The plotting range
+        ax = plt.subplot(111)
+        cdt_z = np.logical_and(np.abs(d['phi']) > np.deg2rad(180 - 40), d['KE'] > 0.12)
+        [histvals, histedges] = np.histogram(pextarr['zi'][cdt_z]*1e4, range=zrange, bins=800, weights=d['q'][cdt_z])
+        picYt = histvals
+        picXt = histedges[1:] - (histedges[1] - histedges[0])/2
+        plt.plot(picXt, picYt)
+        ax.set_ylabel('Origination of charge, >120 keV (a.u.)')
+        ax.set_xlabel('Z ($\mu m$)')
+        ax.set_xlim(zrange[0], zrange[1])
+        plt.title('Origination, Z slice')
+        plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
+        fig.savefig(os.path.join(plotdir, shortname + ' - Origination Z.png'))
+    except:
+        pass
+
+    ## X-ORIGINATION PLOT
+    try:
+        pextarr['xi']
+        fig = plt.figure(10)
+        plt.clf()
+        zmax = np.max(pextarr['x']*1e4) # The time of the end of the sim, presumably. Draw a vertical line at this time.
+        zmin = np.min(pextarr['x']*1e4) # The time of the end of the sim, presumably. Draw a vertical line at this time.
+        zrange = (zmin,zmax) # The plotting range
+        ax = plt.subplot(111)
+        cdt_z = np.logical_and(np.abs(d['phi']) > np.deg2rad(180 - 40), d['KE'] > 0.12)
+        [histvals, histedges] = np.histogram(pextarr['xi'][cdt_z]*1e4, range=zrange, bins=800, weights=d['q'][cdt_z])
+        picYt = histvals
+        picXt = histedges[1:] - (histedges[1] - histedges[0])/2
+        plt.plot(picXt, picYt)
+        ax.set_ylabel('Origination of charge, >120 keV (a.u.)')
+        ax.set_xlabel('X ($\mu m$)')
+        ax.set_xlim(zrange[0], zrange[1])
+        plt.title('Origination, X slice')
+        plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
+        fig.savefig(os.path.join(plotdir, shortname + ' - Origination X.png'))
+    except:
+        pass
     
     ## BACKWARD ELECTRON SPECTRUM LINE PLOT
     fig = plt.figure(4)
