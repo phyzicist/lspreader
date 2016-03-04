@@ -16,8 +16,7 @@ import h5py
 import os
 from datetime import datetime as dt
 
-from multiprocessing import Pool, TimeoutError
-import time
+from multiprocessing import Pool
 
 
 def sortOne(fn, npz=False):
@@ -75,6 +74,12 @@ def fillGaps(data, data_ref):
 
     return data_new, goodcdt  # Return the data array, with all particles now present (gaps are filled)
 
+def crunchOne(fn, data_ref):
+    """ Open file, fill in missing particles (according to data_ref). Consolidated into a single function for use in parallel processing """
+    dattmp, stats = sortOne(fn)
+    data_new, goodcdt = fillGaps(dattmp, data_ref)
+    return data_new, stats, goodcdt
+
 def serTraj(p4dir, h5fn = None):
     """ Get the trajectories of a folder into an HDF5 file (in serial)
     Inputs:
@@ -123,58 +128,63 @@ def serTraj(p4dir, h5fn = None):
     print "Elapsed time", delta.total_seconds()
     return datref
 
-def parTraj(p4dir, h5fn = None):
-    """ Get the trajectories of a folder into an HDF5 file (in somewhat parallel)
+def parTraj(p4dir, h5fn = None, nprocs = 4):
+    """ Get the trajectories of a folder into an HDF5 file (in parallel)
     Inputs:
         p4dir: string, path to the containing p4movie files
         h5fn: (Optional) string, the full-path filename (e.g. h5fn = ".../.../mytrajs.h5"
+        nprocs: The number of processors to open up with the multiprocessing unit Pool
     """
     
     # Determine the filename for output of hdf5 trajectories file
     if not h5fn:    
         h5fn = os.path.join(p4dir, 'traj.h5')
 
+    pool = Pool(processes=nprocs)    # start nprocs worker processes
+
     # Get a sorted list of filenames for the pmovie files
     fns = ls.getp4(p4dir, prefix = "pmovie") # Get list of pmovieXX.p4 files, and get the list sorted in ascending time step order
         
     nframes = len(fns) # Number of pmovie frames to prepare for
     # Read the first frame, to get info like the length
-    datref, _ = sortOne(fns[0])
+    data_ref, _ = sortOne(fns[0])
     
-    nparts = len(datref) # Number of particles extracted from this first frame (which will determine the rest, as well)
+    nparts = len(data_ref) # Number of particles extracted from this first frame (which will determine the rest, as well)
 
 
     # Now, get into the beef of stepping over the files
+    print "First pass: Assigning multiple tasks."
+    tasks = [None]*nframes # List of assigned processor tasks
     for i in range(nframes):
-        print "First pass: Reading file ", i, " of ", nframes
-        dattmp, stats = sortOne(fns[i])
-        
-        dattmp2, goodcdt = fillGaps(dattmp, datref)
-        
-        np.savez(fns[i]+'.npz', dattmp2, np.array(stats), goodcdt) # If the npy flag was set to True at input, save this to as a numpy array to file     
-
-            
+        tasks[i] = pool.apply_async(crunchOne, (fns[i], data_ref))
+    
     t1 = dt.now()
     goodkeys = ['xi', 'zi', 'x', 'z', 'ux', 'uy', 'uz']
     # Open the HDF5 file, and step over the p4 files
     with h5py.File(h5fn, "w") as f:
         # Allocate the HDF5 datasets
-        f.create_dataset("t", (nframes,), dtype='f')
-        f.create_dataset("step", (nframes,), dtype='i')
+        f.create_dataset("t", (nframes,), dtype='f', compression="gzip")
+        f.create_dataset("step", (nframes,), dtype='int32', compression="gzip")
+        f.create_dataset("gone", (nframes, nparts,), dtype='bool', compression="gzip")
         for k in goodkeys:
-            f.create_dataset(k, (nframes, nparts,), dtype='f')
+            f.create_dataset(k, (nframes, nparts,), dtype='f', compression="gzip")
         
-        # Now, get into the beef of stepping over the files
+        # Now, iterate over the files (collect their data and save to the HDF5)
         for i in range(nframes):
-            print "Second pass: Reading file ", i, " of ", nframes
+            print "Second pass: Collecting file ", i, " of ", nframes
             
+            datnew, stats, goodcdt = tasks[i].get(timeout=60*60) # Retrieve the result
+            badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
+            datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
             f['t'][i] = stats['t']
             f['step'][i] = stats['step']
+            f['gone'][i] = badcdt # Flag the particles that were missing
             for k in goodkeys:
                 f[k][i] = datnew[k]
-                
-            datref = datnew # The new array becomes the reference for next iteration
+            
+            data_ref = datnew # The new array becomes the reference for next iteration
     t2 = dt.now()
     delta = t1 - t2
     print "Elapsed time", delta.total_seconds()
-    return datref
+    pool.close() # Close the parallel pool
+    return data_ref

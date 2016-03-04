@@ -26,6 +26,7 @@ from pext import quantities
 import matplotlib as mpl
 from pmov import traj2
 
-# TODO: Save the dat3s slice into the HDF5 file
-mydir = r"C:\Users\Scott\Documents\temp\mar1test\hres_osc"
-dat1 = traj2.serTraj(mydir)
+if __name__ == '__main__':
+    # TODO: Save the dat3s slice into the HDF5 file
+    mydir = r"C:\Users\Scott\Documents\temp\mar1test\hres_osc"
+    dat1 = traj2.parTraj(mydir, nprocs=8)
