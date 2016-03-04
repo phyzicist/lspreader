@@ -191,27 +191,31 @@ def mpiTraj(p4dir, h5fn = None):
         # Open the HDF5 file, and step over the p4 files
         with h5py.File(h5fn, "w") as f:
             # Allocate the HDF5 datasets
-            f.create_dataset("t", (nframes,), dtype='f', compression="gzip")
-            f.create_dataset("step", (nframes,), dtype='int32', compression="gzip")
-            f.create_dataset("gone", (nframes, nparts,), dtype='bool', compression="gzip")
+            f.create_dataset("t", (nframes,), dtype='f')
+            f.create_dataset("step", (nframes,), dtype='int32')
+            f.create_dataset("gone", (nframes, nparts,), dtype='bool')
             for k in goodkeys:
-                f.create_dataset(k, (nframes, nparts,), dtype='f', compression="gzip")
+                f.create_dataset(k, (nframes, nparts,), dtype='f')
             
             # Now, iterate over the files (collect their data and save to the HDF5)
             for i in range(nframes):
                 print "Rank 0: Collecting file ", i, " of ", nframes   
+                t2 = dt.now()
                 datdict = comm.recv(source=MPI.ANY_SOURCE, tag=i)  # Retrieve the result
+                t3 = dt.now()
                 datnew = datdict['datnew']
                 stats = datdict['stats']
                 goodcdt = datdict['goodcdt']
                 badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
                 datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
+                t4 = dt.now()
                 f['t'][i] = stats['t']
                 f['step'][i] = stats['step']
                 f['gone'][i] = badcdt # Flag the particles that were missing
                 for k in goodkeys:
                     f[k][i] = datnew[k]
-                
+                t5 = dt.now()
+                print "Seconds on receipt, analysis, storage: ", (t3 - t2).total_seconds(), (t4 - t3).total_seconds(), (t5 - t4).total_seconds()
                 data_ref = datnew # The new array becomes the reference for next iteration
             print "ELAPSED TIME (secs)", (dt.now() - t1).total_seconds()
 
