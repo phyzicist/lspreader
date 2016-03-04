@@ -15,8 +15,13 @@ import numpy as np
 import h5py
 import os
 from datetime import datetime as dt
-
+import time
 from multiprocessing import Pool
+
+try:
+    from mpi4py import MPI
+except:
+    print "WARNING: MPI4PY FAILED TO LOAD. DO NOT CALL PARALLEL MPI FUNCTIONS."
 
 
 def sortOne(fn, npz=False):
@@ -140,3 +145,53 @@ def parTraj(p4dir, h5fn = None, nprocs = 4):
     print "Elapsed time", delta.total_seconds()
     pool.close() # Close the parallel pool
     return data_ref
+    
+def mpiTraj(p4dir, h5fn = None):
+    """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff"""
+    # Set some basic MPI variables
+    nprocs = MPI.COMM_WORLD.Get_size()
+    rank = MPI.COMM_WORLD.Get_rank()
+    name = MPI.Get_processor_name()
+    comm = MPI.COMM_WORLD
+
+    # Check that we have at least two processors in our MPI setup    
+    if nprocs < 2:
+        raise Exception("Not enough processors. Need at least two, or call some other function.")
+
+    # Everyone, get your bearings on the task to be performed
+    # Get a sorted list of filenames for the pmovie files
+    fns = ls.getp4(p4dir, prefix = "pmovie") # Get list of pmovieXX.p4 files, and get the list sorted in ascending time step order
+    nframes = len(fns) # Number of pmovie frames to prepare for
+
+    # Rank0: Read in the first file and get reference data, spread that around  
+    if rank == 0: # Rank 0, start working on that HDF5
+        # Read the first frame, to get info like the length
+        print "Rank 0 speaking, I'm reading in the first frame. Everyone else sit tight."
+        data_ref, _ = sortOne(fns[0])
+        print "Ok, I'm going to spread that around, now."
+    else:
+        data_ref = None
+    data_ref = comm.bcast(data_ref, root=0)
+    
+    nparts = len(data_ref) # Number of particles extracted from this first frame (which will determine the rest, as well)
+
+    # Assign files to each processor
+    framechunks = sf.chunkFair(range(nframes), (nprocs - 1))
+    myframes = np.array(framechunks[rank - 1], dtype='i') #TODO: Better ordering of chunks (non-sequential) # If there are 4 processors, break into 3 chunks (as 0th processor just writes files)
+    
+    if rank == 0: # Rank 0, start working on that HDF5
+        print "Good stuff. I'm going to get started on this HDF5; I'll let you know how it goes."
+        # Determine the filename for output of hdf5 trajectories file
+        if not h5fn:    
+            h5fn = os.path.join(p4dir, 'traj.h5')
+        # Loop over the numbers:
+        for i in range(nframes):
+            ix = comm.recv(source=MPI.ANY_SOURCE, tag=i)
+    else:
+        print "I am a servant of the ranks."
+        print "Rank ", rank, " has frames:", myframes
+        for i in range(len(myframes)):
+            ix = myframes[i] # The index that refers to the entire list (of all files)
+            print "Rank", rank, "working on index", ix
+            fn = fns[ix]
+            comm.isend(ix, dest=0, tag=ix)

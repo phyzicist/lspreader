@@ -29,4 +29,5 @@ from pmov import traj2
 if __name__ == '__main__':
     # TODO: Save the dat3s slice into the HDF5 file
     mydir = r"C:\Users\Scott\Documents\temp\mar1test\hres_osc"
-    dat1 = traj2.parTraj(mydir, nprocs=8)
+    #dat1 = traj2.parTraj(mydir, nprocs=8)
+    traj2.mpiTraj(mydir)

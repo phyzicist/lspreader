@@ -82,7 +82,24 @@ def chunkIt(seq, num):
         last += avg
 
     return chunks
-    
+
+def chunkFair(mylist, nchunks):
+    """ Split list into near-equal size chunks, but do it in an order like a draft pick; they all get high and low indices.
+    E.g. for mylist = [0,1,2,3,4,5,6], chunkFair(mylist,4)  => [[0, 4], [1, 5], [2, 6], [3]]
+    """
+    chunks = [None]*nchunks
+    for i in range(nchunks):
+        chunks[i] = []
+        
+    i = 0
+    while i < len(mylist):
+        j = 0
+        while (i < len(mylist)) & (j < nchunks):
+            chunks[j].append(mylist[i])
+            j += 1
+            i += 1
+    return chunks
+
 def unChunk(l):
     """Flatten the first dimension of a list. E.g. if input is l = [[1,2,],[3,4]], output is [1,2,3,4]"""
     # Copied from http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
