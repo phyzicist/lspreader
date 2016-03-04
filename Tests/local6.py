@@ -59,6 +59,11 @@ from pext import quantities
 #edens = np.mean(data['RhoN10'],0)
 
 ## PEXTTEXT
-p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
-outdir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
-pextarr = pa.pextFull(p4dir, outdir = outdir, shortname = 'test', Utot_Jcm = 25)
+#p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
+#outdir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
+#pextarr = pa.pextFull(p4dir, outdir = outdir, shortname = 'test', Utot_Jcm = 25)
+
+
+## PMOVIE TEST
+fn = r"C:\Users\Scott\Documents\temp\mar1test\hres_osc\pmovie1.p4.gz"
+frames = rd.read_movie2(fn)

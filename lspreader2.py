@@ -113,6 +113,7 @@ def get_list(file,fmt):
         else:
             raise ValueError("Unexpected flag '{}'".format(i));
     return out;
+    
 def get_dict(file,fmt,keys):
     return dict(
         zip(keys, get_list(file,fmt))
@@ -145,7 +146,7 @@ def get_header(file,**kw):
         header['quantities'] = zip(names,units);
     elif header['dump_type'] == 6:
         #this is a particle movie file
-        d = xdr.get_dict(
+        d = get_dict(file,
             'iiii',
             ['geometry','sflagsx','sflagsy','sflagsz']);
         header.update(d);
