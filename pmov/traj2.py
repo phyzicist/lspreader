@@ -184,14 +184,46 @@ def mpiTraj(p4dir, h5fn = None):
         # Determine the filename for output of hdf5 trajectories file
         if not h5fn:    
             h5fn = os.path.join(p4dir, 'traj.h5')
-        # Loop over the numbers:
-        for i in range(nframes):
-            ix = comm.recv(source=MPI.ANY_SOURCE, tag=i)
+
+        t1 = dt.now()
+        goodkeys = ['xi', 'zi', 'x', 'z', 'ux', 'uy', 'uz']
+        # Open the HDF5 file, and step over the p4 files
+        with h5py.File(h5fn, "w") as f:
+            # Allocate the HDF5 datasets
+            f.create_dataset("t", (nframes,), dtype='f', compression="gzip")
+            f.create_dataset("step", (nframes,), dtype='int32', compression="gzip")
+            f.create_dataset("gone", (nframes, nparts,), dtype='bool', compression="gzip")
+            for k in goodkeys:
+                f.create_dataset(k, (nframes, nparts,), dtype='f', compression="gzip")
+            
+            # Now, iterate over the files (collect their data and save to the HDF5)
+            for i in range(nframes):
+                print "Rank 0: Collecting file ", i, " of ", nframes   
+                datdict = comm.recv(source=MPI.ANY_SOURCE, tag=i)  # Retrieve the result
+                datnew = datdict['datnew']
+                stats = datdict['stats']
+                goodcdt = datdict['goodcdt']
+                badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
+                datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
+                f['t'][i] = stats['t']
+                f['step'][i] = stats['step']
+                f['gone'][i] = badcdt # Flag the particles that were missing
+                for k in goodkeys:
+                    f[k][i] = datnew[k]
+                
+                data_ref = datnew # The new array becomes the reference for next iteration
+            print "ELAPSED TIME (secs)", (dt.now() - t1).total_seconds()
+
     else:
         print "I am a servant of the ranks."
-        print "Rank ", rank, " has frames:", myframes
+        print "Rank", rank, ": I have frames:", myframes
         for i in range(len(myframes)):
             ix = myframes[i] # The index that refers to the entire list (of all files)
-            print "Rank", rank, "working on index", ix
+            print "Rank", rank, ": working on file", ix
             fn = fns[ix]
-            comm.isend(ix, dest=0, tag=ix)
+            datnew, stats, goodcdt = crunchOne(fn, data_ref)
+            datdict = {}
+            datdict['datnew'] = datnew
+            datdict['stats'] = stats
+            datdict['goodcdt'] = goodcdt
+            comm.send(datdict, dest=0, tag=ix) # Note: comm.isend would give an EOFError, for some reason, so don't use it.
