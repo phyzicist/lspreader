@@ -153,7 +153,8 @@ def mpiTraj(p4dir, h5fn = None):
     rank = MPI.COMM_WORLD.Get_rank()
     name = MPI.Get_processor_name()
     comm = MPI.COMM_WORLD
-
+    print "Number of processors detected through MPI:", nprocs
+    
     # Check that we have at least two processors in our MPI setup    
     if nprocs < 2:
         raise Exception("Not enough processors. Need at least two, or call some other function.")
@@ -214,7 +215,7 @@ def mpiTraj(p4dir, h5fn = None):
                 data_ref = datnew # The new array becomes the reference for next iteration
             print "ELAPSED TIME (secs)", (dt.now() - t1).total_seconds()
 
-    else:
+    else: # All other processes (non-rank 0) do the opening and reading of pmovie files, passing this info back
         print "I am a servant of the ranks."
         print "Rank", rank, ": I have frames:", myframes
         for i in range(len(myframes)):
