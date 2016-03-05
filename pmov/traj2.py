@@ -187,7 +187,7 @@ def mpiTraj(p4dir, h5fn = None):
             h5fn = os.path.join(p4dir, 'traj.h5')
 
         t1 = dt.now()
-        goodkeys = ['xi', 'zi', 'x', 'z', 'ux', 'uy', 'uz']
+        goodkeys = ['xi', 'zi', 'x', 'z', 'ux', 'uy', 'uz','q']
         # Open the HDF5 file, and step over the p4 files
         with h5py.File(h5fn, "w") as f:
             # Allocate the HDF5 datasets

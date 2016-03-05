@@ -95,6 +95,7 @@ X, Y = np.meshgrid(xedges, yedges)
 im = ax.pcolormesh(X, Y, H.swapaxes(0,1), cmap='viridis')
 plt.colorbar(im)
 plt.axis('equal')
+plt.show()
 
 fig = plt.figure(2)
 plt.clf()
