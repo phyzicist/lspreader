@@ -16,7 +16,7 @@ import h5py
 import os
 from datetime import datetime as dt
 import time
-from multiprocessing import Pool
+import scipy.constants as sc
 
 try:
     from mpi4py import MPI
@@ -49,7 +49,7 @@ def sortOne(fn, npz=False):
     
     return data, stats # Return the sorted array
 
-def fillGaps(data, data_ref):
+def fillGaps(data, stats, data_ref, stats_ref):
     """ Fill gaps (missing particles) in "data" with particles from "data_ref". Fill in missing particles in data. That is, those present in data_ref but not in data will be taken from data_ref and inserted into data.
     Inputs:
         Note - inputs and outputs are all 1D numpy array with several dtype fields, equivalent to the output of one frame of lspreader's read_pmovie(), but sorted by initial particle position
@@ -58,6 +58,13 @@ def fillGaps(data, data_ref):
     Outputs:
         data_new: sorted data array which is a blend of data_ref and data, where missing particles have been replaced.
     """
+    dt = (stats['t'] - stats_ref['t'])*1e-9 # time since last step, in seconds
+    print "dt (fs):", dt*1e15
+    if dt > 0:
+        drmax = (sc.c / dt) *1e2 # Speed-of-light limited maximum particle movement size, in cm
+    else:
+        drmax = 0
+    
     goodcdt = np.zeros(data_ref.shape, dtype=bool) # Allocate an array where present (not missing) particles will be marked as True. Initialize to False (all particles missing).
     ix1 = 0 # The index for data_ref
     ix2 = 0 # The index for data (will always be equal to or less than ix1)
@@ -65,88 +72,28 @@ def fillGaps(data, data_ref):
         # Iterate over each of the reference particles, checking if they are missing from the data.
         # For each reference particle, check if any xi, zi, or yi are unequal
         if (data[ix2]['xi'] != data_ref[ix1]['xi']) & (data[ix2]['zi'] != data_ref[ix1]['zi']) & (data[ix2]['yi'] != data_ref[ix1]['yi']): # If xi, yi, zi aren't equal, this is a missing particle
-            pass
-        else: # This is not a missing particle.
-            goodcdt[ix1] = True # Mark this particle as present
+            pass # This is a missing particle
+        else: # This is not a missing particle. It (or its duplicate) have been there.
+            goodcdt[ix1] = True # Mark as  a good trajectory
             ix2 += 1 # Move onto the next data particle only if the particle wasn't missing. Otherwise, stay on this data particle.
         ix1 += 1 # Every iteration, move on to the next reference particle
-    
+
     # Copy into the new array, dat3s. Could also just do a rolling update.
     data_new = np.copy(data_ref) # Make a deep copy of the reference array, as your new output array
     data_new[goodcdt] = data # Fill in all particles that were present in your data (the missing particles will stay what they were in the reference data)
-    
+
+    # Now, correct for any bad particles (broken trajectories)
+    dr = np.sqrt((data_new['xi'] - data_ref['xi'])**2 + (data_new['yi'] - data_ref['yi'])**2 + (data_new['zi'] - data_ref['zi'])**2)            
+    print "Dr shape:", dr.shape
+    goodcdt[dr > drmax] = False
+    data_new[dr > drmax] = data_ref[dr > drmax] # Revert these to the reference dataset.
+
+    # Mark this particle as present and the trajectory up to this point as valid.
     print "Fraction missing:", 1 - float(len(goodcdt[goodcdt]))/float(len(goodcdt))
 
     return data_new, goodcdt  # Return the data array, with all particles now present (gaps are filled)
 
-def crunchOne(fn, data_ref):
-    """ Open file, fill in missing particles (according to data_ref). Consolidated into a single function for use in parallel processing """
-    dattmp, stats = sortOne(fn)
-    data_new, goodcdt = fillGaps(dattmp, data_ref)
-    return data_new, stats, goodcdt
-
-def parTraj(p4dir, h5fn = None, nprocs = 4):
-    """ Get the trajectories of a folder into an HDF5 file (in parallel)
-    Inputs:
-        p4dir: string, path to the containing p4movie files
-        h5fn: (Optional) string, the full-path filename (e.g. h5fn = ".../.../mytrajs.h5"
-        nprocs: The number of processors to open up with the multiprocessing unit Pool
-    """
-    
-    # Determine the filename for output of hdf5 trajectories file
-    if not h5fn:    
-        h5fn = os.path.join(p4dir, 'traj.h5')
-
-    pool = Pool(processes=nprocs)    # start nprocs worker processes
-
-    # Get a sorted list of filenames for the pmovie files
-    fns = ls.getp4(p4dir, prefix = "pmovie") # Get list of pmovieXX.p4 files, and get the list sorted in ascending time step order
-        
-    nframes = len(fns) # Number of pmovie frames to prepare for
-    # Read the first frame, to get info like the length
-    data_ref, _ = sortOne(fns[0])
-    
-    nparts = len(data_ref) # Number of particles extracted from this first frame (which will determine the rest, as well)
-
-
-    # Now, get into the beef of stepping over the files
-    print "First pass: Assigning multiple tasks."
-    tasks = [None]*nframes # List of assigned processor tasks
-    for i in range(nframes):
-        tasks[i] = pool.apply_async(crunchOne, (fns[i], data_ref))
-    
-    t1 = dt.now()
-    goodkeys = ['xi', 'zi', 'x', 'z', 'ux', 'uy', 'uz']
-    # Open the HDF5 file, and step over the p4 files
-    with h5py.File(h5fn, "w") as f:
-        # Allocate the HDF5 datasets
-        f.create_dataset("t", (nframes,), dtype='f', compression="gzip")
-        f.create_dataset("step", (nframes,), dtype='int32', compression="gzip")
-        f.create_dataset("gone", (nframes, nparts,), dtype='bool', compression="gzip")
-        for k in goodkeys:
-            f.create_dataset(k, (nframes, nparts,), dtype='f', compression="gzip")
-        
-        # Now, iterate over the files (collect their data and save to the HDF5)
-        for i in range(nframes):
-            print "Second pass: Collecting file ", i, " of ", nframes
-            
-            datnew, stats, goodcdt = tasks[i].get(timeout=60*60) # Retrieve the result
-            badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
-            datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
-            f['t'][i] = stats['t']
-            f['step'][i] = stats['step']
-            f['gone'][i] = badcdt # Flag the particles that were missing
-            for k in goodkeys:
-                f[k][i] = datnew[k]
-            
-            data_ref = datnew # The new array becomes the reference for next iteration
-    t2 = dt.now()
-    delta = t1 - t2
-    print "Elapsed time", delta.total_seconds()
-    pool.close() # Close the parallel pool
-    return data_ref
-    
-def mpiTraj(p4dir, h5fn = None):
+def mpiTraj(p4dir, h5fn = None, skip=1):
     """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff"""
     # Set some basic MPI variables
     nprocs = MPI.COMM_WORLD.Get_size()
@@ -161,18 +108,20 @@ def mpiTraj(p4dir, h5fn = None):
 
     # Everyone, get your bearings on the task to be performed
     # Get a sorted list of filenames for the pmovie files
-    fns = ls.getp4(p4dir, prefix = "pmovie") # Get list of pmovieXX.p4 files, and get the list sorted in ascending time step order
+    fns = ls.getp4(p4dir, prefix = "pmovie")[::skip] # Get list of pmovieXX.p4 files, and get the list sorted in ascending time step order
     nframes = len(fns) # Number of pmovie frames to prepare for
 
     # Rank0: Read in the first file and get reference data, spread that around  
     if rank == 0: # Rank 0, start working on that HDF5
         # Read the first frame, to get info like the length
         print "Rank 0 speaking, I'm reading in the first frame. Everyone else sit tight."
-        data_ref, _ = sortOne(fns[0])
+        data_ref, stats_ref = sortOne(fns[0])
         print "Ok, I'm going to spread that around, now."
     else:
         data_ref = None
+        stats_ref = None # These "None" declarations are essential if we are to broadcast
     data_ref = comm.bcast(data_ref, root=0)
+    stats_ref = comm.bcast(stats_ref, root=0)
     
     nparts = len(data_ref) # Number of particles extracted from this first frame (which will determine the rest, as well)
 
@@ -226,9 +175,11 @@ def mpiTraj(p4dir, h5fn = None):
             ix = myframes[i] # The index that refers to the entire list (of all files)
             print "Rank", rank, ": working on file", ix
             fn = fns[ix]
-            datnew, stats, goodcdt = crunchOne(fn, data_ref)
+            dattmp, stats = sortOne(fn) # Read (and sort) pmovie file
+            datnew, goodcdt = fillGaps(dattmp, stats, data_ref, stats_ref) # fill in missing particles (according to data_ref)
             datdict = {}
             datdict['datnew'] = datnew
             datdict['stats'] = stats
             datdict['goodcdt'] = goodcdt
             comm.send(datdict, dest=0, tag=ix) # Note: comm.isend would give an EOFError, for some reason, so don't use it.
+            data_ref = datnew
