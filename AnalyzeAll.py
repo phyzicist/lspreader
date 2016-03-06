@@ -36,7 +36,7 @@ def stripJunk(name):
         shortname = name
     return shortname
 
-def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, newOnly=True):
+def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, newOnly=True, divsp=1):
     namelist = next(os.walk(p4root))[1] # Looks for all files in this list
     Utot_Jcm = 25.585283 # J/cm; Total energy of the laser. TODO: READ THIS FROM LSP OR SOMETHING!!! Only valid for 3x10^18 W/cm^2 sim.
     for name in namelist:
@@ -51,7 +51,7 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chun
                 if pextOn:
                     pextanalysis.pextFull(p4dir, outdir=outdir, shortname=shortname, Utot_Jcm = Utot_Jcm) # Particle extraction analysis
                 if fldsclOn:
-                    data = ls.readFldScl(p4dir) # Read all the files involved in matching field/scalar analysis into a single data array.
+                    data = ls.readFldScl(p4dir, divsp=divsp) # Read all the files involved in matching field/scalar analysis into a single data array.
                     print 'Data keys:', data.keys()
                     #freqanalysis.freqBatch2(data, outdir=outdir, shortname=shortname, alltime=True)
                     sp.plotDens(data, outdir=outdir, shortname=shortname, alltime=True)

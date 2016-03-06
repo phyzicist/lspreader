@@ -427,19 +427,20 @@ def read(fname,**kw):
             raise NotImplementedError("Other file types not implemented yet!");
     return d;
 
-def stitch2D(doms, fld_id):
+def stitch2D(doms, fld_id, divsp=1):
     """ Stitch a simple 2D lsp sim together, where we have N domains all built up along the Z dimension, and a flat Y dimension.
       Such as with Chris' 2D sims of the back-reflected plasma
       Inputs:
         doms: an output of fld_reader3, which is a list of N items, containing each the fields data for that domain
         fld_id: the string identifying the field component, e.g. "Ex" or "Bz"
+        divsp: integer, divisor by which to reduce the spatial resolution (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
       Outputs:
         fld: A 2D array which contains the field component data
      xgv, zgv: 1D arrays of the X or Z coordinate along the axis, in centimeters
     """
 
     fld_cat = np.squeeze(doms[0][fld_id])
-    xgv = doms[0]['xgv']
+    xgv = doms[0]['xgv'][::divsp]
     zgv_cat = doms[0]['zgv']
     
     for i in range(1,len(doms)): # Domains are concatenated along the z dimension
@@ -449,8 +450,8 @@ def stitch2D(doms, fld_id):
         zgv_tmp = doms[i]['zgv'][1:]
         zgv_cat = np.concatenate((zgv_cat,zgv_tmp),0)
     
-    zgv = zgv_cat
-    fld = fld_cat
+    zgv = zgv_cat[::divsp]
+    fld = fld_cat[::divsp]
     return fld, xgv, zgv
 
 def pseek(file):

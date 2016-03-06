@@ -58,12 +58,13 @@ from pext import quantities
 ## Mean electron density
 #edens = np.mean(data['RhoN10'],0)
 
-## PEXTTEXT
-#p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
-#outdir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
-#pextarr = pa.pextFull(p4dir, outdir = outdir, shortname = 'test', Utot_Jcm = 25)
+# PEXTTEXT
+p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
+outdir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
+shortname = 'test'
+pextarr = pa.pextFull(p4dir, outdir = outdir, shortname = shortname, Utot_Jcm = 25.585283)
 
 
-## PMOVIE TEST
-fn = r"C:\Users\Scott\Documents\temp\mar1test\hres_osc\pmovie1.p4.gz"
-frames = rd.read_movie2(fn)
+### PMOVIE TEST
+#fn = r"C:\Users\Scott\Documents\temp\mar1test\hres_osc\pmovie1.p4.gz"
+#frames = rd.read_movie2(fn)
