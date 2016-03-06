@@ -75,13 +75,13 @@ def getFldScl(p4dir):
     
     return fns_fld, fns_scl
 
-def readFldScl(p4dir, divsp=1):
+def readFldScl(p4dir, divsp=1, divt=1):
     """ Read matching field and scalar files (default fld_ids) in a directory into a single data array """
     ## READ MATCHING FIELDS AND SCALARS INTO DATA ARRAY
     fns_fld, fns_scl = getFldScl(p4dir)
     
-    data_fld = fields2D(fns_fld, divsp=divsp)
-    data_scl = scalars2D(fns_scl, divsp=divsp)
+    data_fld = fields2D(fns_fld[::divt], divsp=divsp)
+    data_scl = scalars2D(fns_scl[::divt], divsp=divsp)
     
     # Sanity check that times, xgv, and zgv are essentially identical between the two
     if np.max(np.abs(data_scl['xgv'] - data_fld['xgv'])) + np.max(np.abs(data_scl['zgv'] - data_fld['zgv'])) + np.max(np.abs(data_scl['times'] - data_fld['times'])) > 0.000001:
