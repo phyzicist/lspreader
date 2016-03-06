@@ -451,7 +451,7 @@ def stitch2D(doms, fld_id, divsp=1):
         zgv_cat = np.concatenate((zgv_cat,zgv_tmp),0)
     
     zgv = zgv_cat[::divsp]
-    fld = fld_cat[::divsp]
+    fld = fld_cat[::divsp,::divsp]
     return fld, xgv, zgv
 
 def pseek(file):
