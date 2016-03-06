@@ -140,8 +140,8 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
         # Open the HDF5 file, and step over the p4 files
         with h5py.File(h5fn, "w") as f:
             if chtype == 'traj':
-                print "CHUNK CHOICE: Trajectories fast, frames slow. (chunked)"
-                chunks = (nframes, 5,)
+                print "CHUNK CHOICE: Trajectories fast, frames slow. (contiguous, axes flipped)"
+                chunks = None
             elif chtype == 'frames':
                 print "CHUNK CHOICE: Frames fast, trajectories slow. (contiguous)"
                 chunks = None
@@ -168,15 +168,19 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
                 badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
                 datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
                 t4 = dt.now()
-                try:
+                if chtype == 'traj':
+                    f['t'][i] = stats['t']
+                    f['step'][i] = stats['step']
+                    f['gone'][:,i] = badcdt # Flag the particles that were missing
+                    for k in goodkeys:
+                        f[k][:,i] = datnew[k]
+                else:
                     f['t'][i] = stats['t']
                     f['step'][i] = stats['step']
                     f['gone'][i] = badcdt # Flag the particles that were missing
                     for k in goodkeys:
                         f[k][i] = datnew[k]
-                except Exception, err:
-                    print(traceback.format_exc())
-            
+                        
                 t5 = dt.now()
                 print "Seconds on receipt, analysis, storage: ", (t3 - t2).total_seconds(), (t4 - t3).total_seconds(), (t5 - t4).total_seconds()
                 data_ref = datnew # The new array becomes the reference for next iteration
