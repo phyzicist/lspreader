@@ -77,7 +77,7 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chun
                 print "Error noted. Directory: " + shortname
                 pass # Move right along.
 
-def analyzeSome(p4root, outroot, shortnames, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True):
+def analyzeSome(p4root, outroot, shortnames, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, divsp=1):
     namelist = next(os.walk(p4root))[1] # Looks for all files in this list
     Utot_Jcm = 25.585283 # J/cm; Total energy of the laser. TODO: READ THIS FROM LSP OR SOMETHING!!! Only valid for 3x10^18 W/cm^2 sim.
     for name in namelist:
