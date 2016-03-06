@@ -141,7 +141,7 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
         with h5py.File(h5fn, "w") as f:
             if chtype == 'traj':
                 print "CHUNK CHOICE: Trajectories fast, frames slow. (chunked)"
-                chunks = (nframes, 5)
+                chunks = (nframes, 5,)
             elif chtype == 'frames':
                 print "CHUNK CHOICE: Frames fast, trajectories slow. (contiguous)"
                 chunks = None
