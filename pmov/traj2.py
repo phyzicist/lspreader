@@ -152,10 +152,15 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
             # Allocate the HDF5 datasets
             f.create_dataset("t", (nframes,), dtype='f')
             f.create_dataset("step", (nframes,), dtype='int32')
-            f.create_dataset("gone", (nframes, nparts,), dtype='bool', chunks=chunks)
-            for k in goodkeys:
-                f.create_dataset(k, (nframes, nparts,), dtype='f', chunks=chunks)
-            
+            if chtype == 'traj': # Clunky workaround to not understanding chunking
+                f.create_dataset("gone", (nparts, nframes,), dtype='bool', chunks=chunks)
+                for k in goodkeys:
+                    f.create_dataset(k, (nparts, nframes,), dtype='f', chunks=chunks)
+            else:
+                f.create_dataset("gone", (nframes, nparts,), dtype='bool', chunks=chunks)
+                for k in goodkeys:
+                    f.create_dataset(k, (nframes, nparts,), dtype='f', chunks=chunks)
+        
             # Now, iterate over the files (collect their data and save to the HDF5)
             for i in range(nframes):
                 print "Rank 0: Collecting file ", i, " of ", nframes   
@@ -168,7 +173,7 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
                 badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
                 datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
                 t4 = dt.now()
-                if chtype == 'traj':
+                if chtype == 'traj': # Clunky workaround to not understanding chunking
                     f['t'][i] = stats['t']
                     f['step'][i] = stats['step']
                     f['gone'][:,i] = badcdt # Flag the particles that were missing
