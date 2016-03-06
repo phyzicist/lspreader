@@ -117,6 +117,8 @@ def analyzeSome(p4root, outroot, shortnames, pextOn=True, fldsclOn = True, freqO
             except:
                 # Report error and proceed
                 print "Error noted. Directory: " + shortname
+                print(traceback.format_exc())
+                print "Moving on..."
                 pass # Move right along.
         
 if __name__=='__main__':
