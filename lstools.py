@@ -75,13 +75,13 @@ def getFldScl(p4dir):
     
     return fns_fld, fns_scl
 
-def readFldScl(p4dir, divsp=1, divt=1):
+def readFldScl(p4dir, divsp=1, divt=1, pool=None):
     """ Read matching field and scalar files (default fld_ids) in a directory into a single data array """
     ## READ MATCHING FIELDS AND SCALARS INTO DATA ARRAY
     fns_fld, fns_scl = getFldScl(p4dir)
     
-    data_fld = fields2D(fns_fld[::divt], divsp=divsp)
-    data_scl = scalars2D(fns_scl[::divt], divsp=divsp)
+    data_fld = fields2D(fns_fld[::divt], divsp=divsp, pool=pool)
+    data_scl = scalars2D(fns_scl[::divt], divsp=divsp, pool=pool)
     
     # Sanity check that times, xgv, and zgv are essentially identical between the two
     if np.max(np.abs(data_scl['xgv'] - data_fld['xgv'])) + np.max(np.abs(data_scl['zgv'] - data_fld['zgv'])) + np.max(np.abs(data_scl['times'] - data_fld['times'])) > 0.000001:
@@ -200,7 +200,7 @@ def scalars2D(fns, fld_ids = ['RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'Rho
     """ A wrapper for fields2D, with default inputs better suited for scalar filenames input."""
     # ['RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'] Each corresponding to density of species 1, 2, 3..., 11
     # ['RhoN2', 'RhoN10',  'RhoN11']  # oxygen+, electrons, protons in our sims  
-    return fields2D(fns, fld_ids = fld_ids, divsp=1, pool = pool)
+    return fields2D(fns, fld_ids = fld_ids, divsp=divsp, pool = pool)
     
 def readOne(args):
     """ Helper function for multiprocessing Pool.map() call of Parallel read for fields2D. Reads in the fields from one file."""
