@@ -17,7 +17,7 @@ import os
 from datetime import datetime as dt
 import time
 import scipy.constants as sc
-
+import traceback
 try:
     from mpi4py import MPI
 except:
@@ -168,11 +168,15 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
                 badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
                 datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
                 t4 = dt.now()
-                f['t'][i] = stats['t']
-                f['step'][i] = stats['step']
-                f['gone'][i] = badcdt # Flag the particles that were missing
-                for k in goodkeys:
-                    f[k][i] = datnew[k]
+                try:
+                    f['t'][i] = stats['t']
+                    f['step'][i] = stats['step']
+                    f['gone'][i] = badcdt # Flag the particles that were missing
+                    for k in goodkeys:
+                        f[k][i] = datnew[k]
+                except Exception, err:
+                    print(traceback.format_exc())
+            
                 t5 = dt.now()
                 print "Seconds on receipt, analysis, storage: ", (t3 - t2).total_seconds(), (t4 - t3).total_seconds(), (t5 - t4).total_seconds()
                 data_ref = datnew # The new array becomes the reference for next iteration
