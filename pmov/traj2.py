@@ -144,7 +144,7 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
                 chunks = (nframes, 5)
             elif chtype == 'frames':
                 print "CHUNK CHOICE: Frames fast, trajectories slow. (contiguous)"
-                chunks = False
+                chunks = None
             else:
                 print "CHUNK CHOICE: Frames medium slow, trajectories medium slow. (auto-chunked)"
                 chunks = True
