@@ -21,6 +21,7 @@ import numpy as np
 import sftools as sf
 import lstools as ls
 import scottplots as sp
+import traceback
 
 def stripJunk(name):
     """ Strips a date string off the end of a folder name, giving a "shorter" version of the name.
@@ -75,6 +76,8 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chun
             except:
                 # Report error and proceed
                 print "Error noted. Directory: " + shortname
+                print(traceback.format_exc())
+                print "Moving on..."
                 pass # Move right along.
 
 def analyzeSome(p4root, outroot, shortnames, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, divsp=1, divt=1):
