@@ -140,10 +140,13 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
         # Open the HDF5 file, and step over the p4 files
         with h5py.File(h5fn, "w") as f:
             if chtype == 'traj':
+                print "CHUNK CHOICE: Trajectories fast, frames slow. (chunked)"
                 chunks = (nframes, 5)
             elif chtype == 'frames':
+                print "CHUNK CHOICE: Frames fast, trajectories slow. (contiguous)"
                 chunks = False
             else:
+                print "CHUNK CHOICE: Frames medium slow, trajectories medium slow. (auto-chunked)"
                 chunks = True
             
             # Allocate the HDF5 datasets
