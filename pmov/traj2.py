@@ -93,7 +93,7 @@ def fillGaps(data, stats, data_ref, stats_ref):
 
     return data_new, goodcdt  # Return the data array, with all particles now present (gaps are filled)
 
-def mpiTraj(p4dir, h5fn = None, skip=1):
+def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
     """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff"""
     # Set some basic MPI variables
     nprocs = MPI.COMM_WORLD.Get_size()
@@ -139,7 +139,13 @@ def mpiTraj(p4dir, h5fn = None, skip=1):
         goodkeys = ['xi', 'zi', 'x', 'z', 'ux', 'uy', 'uz','q']
         # Open the HDF5 file, and step over the p4 files
         with h5py.File(h5fn, "w") as f:
-            chunks = (100, np.int(nparts/300.0))
+            if chtype == 'traj':
+                chunks = (nframes, 5)
+            elif chtype == 'frames':
+                chunks = False
+            else:
+                chunks = True
+            
             # Allocate the HDF5 datasets
             f.create_dataset("t", (nframes,), dtype='f')
             f.create_dataset("step", (nframes,), dtype='int32')
