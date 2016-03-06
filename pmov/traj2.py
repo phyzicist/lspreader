@@ -139,12 +139,13 @@ def mpiTraj(p4dir, h5fn = None, skip=1):
         goodkeys = ['xi', 'zi', 'x', 'z', 'ux', 'uy', 'uz','q']
         # Open the HDF5 file, and step over the p4 files
         with h5py.File(h5fn, "w") as f:
+            chunks = (100, np.int(nparts/300.0))
             # Allocate the HDF5 datasets
             f.create_dataset("t", (nframes,), dtype='f')
             f.create_dataset("step", (nframes,), dtype='int32')
-            f.create_dataset("gone", (nframes, nparts,), dtype='bool')
+            f.create_dataset("gone", (nframes, nparts,), dtype='bool', chunks=chunks)
             for k in goodkeys:
-                f.create_dataset(k, (nframes, nparts,), dtype='f')
+                f.create_dataset(k, (nframes, nparts,), dtype='f', chunks=chunks)
             
             # Now, iterate over the files (collect their data and save to the HDF5)
             for i in range(nframes):
