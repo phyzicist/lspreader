@@ -211,6 +211,8 @@ def readOne(args):
     flds_label = args[2]
     divsp = args[3]
 
+    print fn
+    
     doms, header = rd.read_flds2(fn, flds=flds_label)
 
     time = header['timestamp']
