@@ -93,7 +93,7 @@ def fillGaps(data, stats, data_ref, stats_ref):
 
     return data_new, goodcdt  # Return the data array, with all particles now present (gaps are filled)
 
-def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
+def mpiTraj(p4dir, h5fn = None, skip=1, chtype='auto'):
     """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff"""
     # Set some basic MPI variables
     nprocs = MPI.COMM_WORLD.Get_size()
@@ -143,7 +143,7 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='traj'):
                 print "CHUNK CHOICE: Trajectories fast, frames slow. (contiguous, axes flipped)"
                 chunks = None
             elif chtype == 'frames':
-                print "CHUNK CHOICE: Frames fast, trajectories slow. (contiguous)"
+                print "CHUNK CHOICE: Frames fast, trajectories slow. (contiguous) DOES NOT WORK!!"
                 chunks = None
             else:
                 print "CHUNK CHOICE: Frames medium slow, trajectories medium slow. (auto-chunked)"

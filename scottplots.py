@@ -96,9 +96,9 @@ def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel
     ax.set_xlabel(r'X ($\mu m$)')
     ax.set_ylabel(r'Z ($\mu m$)')
     ax.set_title(title, fontsize=20)
-    ax.text(np.min(xgv) + 1, np.max(zgv) - 3, tstring, fontsize=24, color='white')
-    ax.text(np.max(xgv) - 6, np.min(zgv) + 2, fld_id, fontsize=44, color='white')
-    ax.text(np.min(xgv) + 1, np.min(zgv) + 2, sticker, fontsize=44, color='white')
+    ax.text(0.05, 0.95, tstring, fontsize=24, color='white', transform=ax.transAxes, horizontalalignment='left', verticalalignment='top') # Upper left within axis (transform=ax.transAxes sets it into axis units 0 to 1)
+    ax.text(0.95, 0.03, fld_id, fontsize=44, color='white', transform=ax.transAxes, horizontalalignment='right', verticalalignment='bottom') # Lower right within axis
+    ax.text(0.05, 0.03, sticker, fontsize=44, color='white', transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom') # Lower left within axis
     cbar = fig.colorbar(im, label=clabel)
     im.set_clim(vmin=cmin, vmax=cmax)
     if len(edens) > 1: # Did the user specify an electron density array?
