@@ -93,7 +93,7 @@ def fillGaps(data, stats, data_ref, stats_ref):
 
     return data_new, goodcdt  # Return the data array, with all particles now present (gaps are filled)
 
-def mpiTraj(p4dir, h5fn = None, skip=1, chtype='auto'):
+def mpiTraj(p4dir, h5fn = None, skip=1):
     """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff"""
     # Set some basic MPI variables
     nprocs = MPI.COMM_WORLD.Get_size()
@@ -139,27 +139,13 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='auto'):
         goodkeys = ['xi', 'zi', 'x', 'z', 'ux', 'uy', 'uz','q']
         # Open the HDF5 file, and step over the p4 files
         with h5py.File(h5fn, "w") as f:
-            if chtype == 'traj':
-                print "CHUNK CHOICE: Trajectories fast, frames slow. (contiguous, axes flipped)"
-                chunks = None
-            elif chtype == 'frames':
-                print "CHUNK CHOICE: Frames fast, trajectories slow. (contiguous) DOES NOT WORK!!"
-                chunks = None
-            else:
-                print "CHUNK CHOICE: Frames medium slow, trajectories medium slow. (auto-chunked)"
-                chunks = True
-            
+
             # Allocate the HDF5 datasets
             f.create_dataset("t", (nframes,), dtype='f')
             f.create_dataset("step", (nframes,), dtype='int32')
-            if chtype == 'traj': # Clunky workaround to not understanding chunking
-                f.create_dataset("gone", (nparts, nframes,), dtype='bool', chunks=chunks)
-                for k in goodkeys:
-                    f.create_dataset(k, (nparts, nframes,), dtype='f', chunks=chunks)
-            else:
-                f.create_dataset("gone", (nframes, nparts,), dtype='bool', chunks=chunks)
-                for k in goodkeys:
-                    f.create_dataset(k, (nframes, nparts,), dtype='f', chunks=chunks)
+            f.create_dataset("gone", (nframes, nparts,), dtype='bool', chunks=True) # Chunking makes later retrieval along _both_ dimensions reasonably quick
+            for k in goodkeys:
+                f.create_dataset(k, (nframes, nparts,), dtype='f', chunks=True)
         
             # Now, iterate over the files (collect their data and save to the HDF5)
             for i in range(nframes):
@@ -173,18 +159,12 @@ def mpiTraj(p4dir, h5fn = None, skip=1, chtype='auto'):
                 badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
                 datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
                 t4 = dt.now()
-                if chtype == 'traj': # Clunky workaround to not understanding chunking
-                    f['t'][i] = stats['t']
-                    f['step'][i] = stats['step']
-                    f['gone'][:,i] = badcdt # Flag the particles that were missing
-                    for k in goodkeys:
-                        f[k][:,i] = datnew[k]
-                else:
-                    f['t'][i] = stats['t']
-                    f['step'][i] = stats['step']
-                    f['gone'][i] = badcdt # Flag the particles that were missing
-                    for k in goodkeys:
-                        f[k][i] = datnew[k]
+
+                f['t'][i] = stats['t']
+                f['step'][i] = stats['step']
+                f['gone'][i] = badcdt # Flag the particles that were missing
+                for k in goodkeys:
+                    f[k][i] = datnew[k]
                         
                 t5 = dt.now()
                 print "Seconds on receipt, analysis, storage: ", (t3 - t2).total_seconds(), (t4 - t3).total_seconds(), (t5 - t4).total_seconds()

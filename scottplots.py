@@ -105,7 +105,7 @@ def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel
         addCrit(ax, edens, xgv, zgv) # Highlight the critical density surface
     if len(vec) > 1: # Did the user specify a poynting vector to plot overtop as quivers?
         addQuiv(ax, vec, xgv, zgv)
-    fig.text(0.99, 0.01, rfooter, horizontalalignment='right')
+    fig.text(0.99, 0.01, rfooter, horizontalalignment='right') # Lower right in figure units
     return fig
 
 def emFFT(data, kind = "EB", trange = (60, 1.0e9)):
