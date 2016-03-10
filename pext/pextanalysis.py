@@ -171,7 +171,7 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None, s
 
     ## Z-ORIGINATION PLOT
     try:
-        pextarr['zi']
+        pextarr['xi'] # Fail fast if this pext file doesn't have origins
         fig = plt.figure(10)
         plt.clf()
         zmax = np.max(pextarr['z']*1e4) # The time of the end of the sim, presumably. Draw a vertical line at this time.
@@ -183,18 +183,14 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None, s
         picYt = histvals
         picXt = histedges[1:] - (histedges[1] - histedges[0])/2
         plt.plot(picXt, picYt)
-        ax.set_ylabel('Origination of charge, >120 keV (a.u.)')
+        ax.set_ylabel('Origination of charge, $>$120 keV (a.u.)')
         ax.set_xlabel('Z ($\mu m$)')
         ax.set_xlim(zrange[0], zrange[1])
         plt.title('Origination, Z slice')
         plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
         fig.savefig(os.path.join(plotdir, shortname + ' - Origination Z.png'))
-    except:
-        pass
 
     ## X-ORIGINATION PLOT
-    try:
-        pextarr['xi']
         fig = plt.figure(10)
         plt.clf()
         zmax = np.max(pextarr['x']*1e4) # The time of the end of the sim, presumably. Draw a vertical line at this time.
@@ -206,13 +202,63 @@ def plotme(pextarr, outdir='.', shortname='Sim', mksub=False, Utot_Jcm = None, s
         picYt = histvals
         picXt = histedges[1:] - (histedges[1] - histedges[0])/2
         plt.plot(picXt, picYt)
-        ax.set_ylabel('Origination of charge, >120 keV (a.u.)')
+        ax.set_ylabel('Origination of charge, $>$120 keV (a.u.)')
         ax.set_xlabel('X ($\mu m$)')
         ax.set_xlim(zrange[0], zrange[1])
         plt.title('Origination, X slice')
         plt.figtext(0.99, 0.01, shortname, horizontalalignment='right')
         fig.savefig(os.path.join(plotdir, shortname + ' - Origination X.png'))
+    
+
+    ## X/Z (2D) ORIGINATION COLORMAP
+        pextarr['xi'] # Fail fast if this pext file doesn't have origins
+        xdims = np.array([-8, -2]) # In microns
+        zdims = np.array([-3, 3]) # In microns
+        cdt_z = np.logical_and(np.abs(d['phi']) > np.deg2rad(180 - 40), d['KE'] > 0.12)
+        H_now, xedges, yedges = np.histogram2d(pextarr['xi'][cdt_z]*1e4, pextarr['zi'][cdt_z]*1e4, weights=d['q'][cdt_z], range = [xdims, zdims], bins=(100,100))
+    
+        cmax = np.max(H_now[:])
+        fig = plt.figure(11)
+        plt.clf()
+        ax = fig.add_subplot(111)
+        ax.set_title('Origination of charge $>$120 keV (a.u.)')
+        X, Y = np.meshgrid(xedges, yedges)
+        im = ax.pcolorfast(X, Y, H_now.swapaxes(0,1), cmap='viridis', vmin=0, vmax=cmax)
+        plt.axis('equal')
+        plt.xlim(xdims)
+        plt.ylim(zdims)
+        plt.xlabel("X ($\mu$m)")
+        plt.ylabel("Z ($\mu$m)")
+        cbar = fig.colorbar(im, label="$>$120 keV Electrons/volume (a.u.)")
+        #ax.text(np.min(X[:]) + 1, np.max(Y[:]) - 3, tstring, fontsize=24, color='white')
+        #plt.figtext(0.01, 0.02, Qstring, horizontalalignment='left')
+        plt.figtext(1 - 0.01, 0.02, shortname, horizontalalignment='right')
+        fig.savefig(os.path.join(plotdir, shortname + ' - Origination 2D (120 keV).png'))
+        
+        # Make a 2 MeV version
+        cdt_z = np.logical_and(np.abs(d['phi']) > np.deg2rad(180 - 40), d['KE'] > 1.5)
+        H_now, xedges, yedges = np.histogram2d(pextarr['xi'][cdt_z]*1e4, pextarr['zi'][cdt_z]*1e4, weights=d['q'][cdt_z], range = [xdims, zdims], bins=(150,150))
+    
+        cmax = np.max(H_now[:])
+        fig = plt.figure(12)
+        plt.clf()
+        ax = fig.add_subplot(111)
+        ax.set_title('Origination of charge $>$1.5 MeV (a.u.)')
+        X, Y = np.meshgrid(xedges, yedges)
+        im = ax.pcolorfast(X, Y, H_now.swapaxes(0,1), cmap='viridis', vmin=0, vmax=cmax)
+        plt.axis('equal')
+        plt.xlim(xdims)
+        plt.ylim(zdims)
+        plt.xlabel("X ($\mu$m)")
+        plt.ylabel("Z ($\mu$m)")
+        cbar = fig.colorbar(im, label="$>$1.5 MeV Electrons/volume (a.u.)")
+        #ax.text(np.min(X[:]) + 1, np.max(Y[:]) - 3, tstring, fontsize=24, color='white')
+        #plt.figtext(0.01, 0.02, Qstring, horizontalalignment='left')
+        plt.figtext(1 - 0.01, 0.02, shortname, horizontalalignment='right')
+        fig.savefig(os.path.join(plotdir, shortname + ' - Origination 2D (1_5 MeV).png'))
+        
     except:
+        print "ORIGINATION PLOTS FAILED. Particle extraction file does not contain initial conditions (SAK_EXTRACT_IPP) (or, some other error in these plots.) Moving on to other plots."
         pass
     
     ## BACKWARD ELECTRON SPECTRUM LINE PLOT
