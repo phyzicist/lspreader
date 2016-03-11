@@ -93,7 +93,7 @@ def fillGaps(data, stats, data_ref, stats_ref):
 
     return data_new, goodcdt  # Return the data array, with all particles now present (gaps are filled)
 
-def mpiTraj(p4dir, h5fn = None, skip=1):
+def mpiTraj(p4dir, h5fn = None, skip=1, start=0, stop=None):
     """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff"""
     # Set some basic MPI variables
     nprocs = MPI.COMM_WORLD.Get_size()
@@ -108,7 +108,7 @@ def mpiTraj(p4dir, h5fn = None, skip=1):
 
     # Everyone, get your bearings on the task to be performed
     # Get a sorted list of filenames for the pmovie files
-    fns = ls.getp4(p4dir, prefix = "pmovie")[::skip] # Get list of pmovieXX.p4 files, and get the list sorted in ascending time step order
+    fns = ls.getp4(p4dir, prefix = "pmovie")[start:stop:skip] # Get list of pmovieXX.p4 files, and get the list sorted in ascending time step order
     nframes = len(fns) # Number of pmovie frames to prepare for
 
     # Rank0: Read in the first file and get reference data, spread that around  
