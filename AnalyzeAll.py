@@ -37,7 +37,7 @@ def stripJunk(name):
         shortname = name
     return shortname
 
-def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, newOnly=True, divsp=1, divt=1):
+def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, newOnly=True, chk_fs = 40, divsp=1, divt=1):
     namelist = next(os.walk(p4root))[1] # Looks for all files in this list
     Utot_Jcm = 25.585283 # J/cm; Total energy of the laser. TODO: READ THIS FROM LSP OR SOMETHING!!! Only valid for 3x10^18 W/cm^2 sim.
     for name in namelist:
@@ -59,7 +59,7 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chun
                     sp.plotEM(data, outdir=outdir, shortname=shortname, alltime=True)
                     if chunksOn:                    
                     ## Split into chunks, analyze that.
-                        chk_fs = 40#fs How many femtoseconds per (large-sized) data chunk for analysis?
+                        #chk_fs = 40#fs How many femtoseconds per (large-sized) data chunk for analysis?
                         freqchunks = ls.chunkData(data, chk_fs) + ls.chunkData(data, chk_fs, offset_fs = chk_fs/2.0)
                         denschunks = ls.chunkData(data, chk_fs/2.0) # Same number of chunks as bigchunks, but less long in time.
                         print "Iterating over density chunks."
@@ -80,7 +80,7 @@ def analyzeAll(p4root, outroot, pextOn=True, fldsclOn = True, freqOn=False, chun
                 print "Moving on..."
                 pass # Move right along.
 
-def analyzeSome(p4root, outroot, shortnames, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, divsp=1, divt=1, pool=None):
+def analyzeSome(p4root, outroot, shortnames, pextOn=True, fldsclOn = True, freqOn=False, chunksOn=True, divsp=1, divt=1, chk_fs = 40, pool=None):
     namelist = next(os.walk(p4root))[1] # Looks for all files in this list
     Utot_Jcm = 25.585283 # J/cm; Total energy of the laser. TODO: READ THIS FROM LSP OR SOMETHING!!! Only valid for 3x10^18 W/cm^2 sim.
     for name in namelist:
@@ -101,7 +101,7 @@ def analyzeSome(p4root, outroot, shortnames, pextOn=True, fldsclOn = True, freqO
                     sp.plotEM(data, outdir=outdir, shortname=shortname, alltime=True)
                     if chunksOn:                    
                     ## Split into chunks, analyze that.
-                        chk_fs = 40#fs How many femtoseconds per (large-sized) data chunk for analysis?
+                        #chk_fs = 40#fs How many femtoseconds per (large-sized) data chunk for analysis?
                         freqchunks = ls.chunkData(data, chk_fs) + ls.chunkData(data, chk_fs, offset_fs = chk_fs/2.0)
                         denschunks = ls.chunkData(data, chk_fs/2.0) # Same number of chunks as bigchunks, but less long in time.
                         print "Iterating over density chunks."
