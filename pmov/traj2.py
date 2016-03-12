@@ -82,7 +82,7 @@ def fillGaps(data, stats, data_ref, stats_ref):
     data_new = np.copy(data_ref) # Make a deep copy of the reference array, as your new output array
     data_new[goodcdt] = data # Fill in all particles that were present in your data (the missing particles will stay what they were in the reference data)
 
-    # Now, correct for any bad particles (broken trajectories)
+    # Now, correct for any bad particles (broken trajectories) (THIS HAS AN ERROR! SHOULD NOT USE Yi, etc.)
     dr = np.sqrt((data_new['xi'] - data_ref['xi'])**2 + (data_new['yi'] - data_ref['yi'])**2 + (data_new['zi'] - data_ref['zi'])**2)            
     print "Dr shape:", dr.shape
     goodcdt[dr > drmax] = False
