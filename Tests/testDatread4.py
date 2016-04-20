@@ -2,6 +2,8 @@
 """
 Created on Wed Mar 02 10:33:43 2016
 
+TWO-Exponential fit
+
 @author: Scott
 """
 
@@ -16,7 +18,7 @@ def func(x, a, b): # Curve fitting exponential function, which must end at 0
 #def func(x, a, b, c, d): # Curve fitting third-order polynomial function
 #    return a + b * x + c * x**2 + d * x**3
 
-fn = r"C:\Users\Scott\Documents\LSP\Water columns\FLASH sims\f15best.dat"
+fn = r"C:\Users\Scott\Documents\LSP\Water columns\FLASH sims\zmar31f-30.dat"
 
 xgv = np.genfromtxt(fn, skip_header=4, skip_footer=404)
 zgv = np.genfromtxt(fn, skip_header=5, skip_footer=403)

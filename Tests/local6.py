@@ -44,25 +44,29 @@ from pext import quantities
 #denschunks = ls.chunkData(data, chk_fs/2.0) # Same number of chunks as bigchunks, but less long in time.
 
 
-#### DENSITY VISUAL TEST
-#p4dir = r'C:\Users\Scott\Documents\temp\mar1test\a50f10lres6i'
-#data = ls.readFldScl(p4dir)
-#sp.plotDens(data, outdir=p4dir, shortname = '', alltime=False)
-#
-#xgv = data['xgv']*1e4 # x values in microns
-#zgv = data['zgv']*1e4
-#dx = np.mean(np.diff(xgv))# dx in microns
-#dz = np.mean(np.diff(zgv))
+### DENSITY VISUAL TEST
+p4dir = r'C:\Users\Scott\Documents\temp\newcoltests'
+data = ls.readFldScl(p4dir)
+sp.plotDens(data, outdir=p4dir, shortname = '', alltime=False)
 
-### CALCULATIONS
-## Mean electron density
-#edens = np.mean(data['RhoN10'],0)
+xgv = data['xgv']*1e4 # x values in microns
+zgv = data['zgv']*1e4
+dx = np.mean(np.diff(xgv))# dx in microns
+dz = np.mean(np.diff(zgv))
 
+## CALCULATIONS
+# Mean electron density
+edens = np.mean(data['RhoN10'],0)
+
+plt.figure(10)
+#plt.clf()
+plt.plot(xgv, edens[edens.shape[0]/2])
+plt.yscale('log')
 # PEXTTEXT
-p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
-outdir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
-shortname = 'test'
-pextarr = pa.pextFull(p4dir, outdir = outdir, shortname = shortname, Utot_Jcm = 25.585283)
+#p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
+#outdir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
+#shortname = 'test'
+#pextarr = pa.pextFull(p4dir, outdir = outdir, shortname = shortname, Utot_Jcm = 25.585283)
 
 
 ### PMOVIE TEST
