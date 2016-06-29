@@ -37,7 +37,7 @@ def twoscale(x, l1 = 1.0, l2 = 20.0, n2 = 1.6*0.285e21/2.65, xc = -4.6):
     y[x < x2] = y2[x < x2]
     return y
 
-def threescale(x, l0 = 0.2, l1 = 1.0, l2 = 20.0, n0 = 9e21/2.65, n2 = 1.6*0.285e21/2.65, xc = -4.6):
+def threescale(x, l0 = 0.9, l1 = 3.1, l2 = 7.2, n0 = 9e21/2.65, n2 = 1.6*0.285e21/2.65, xc = -4.6):
     """
     x: 1D array of X values on which to calculate
     xc: 1D X value of critical density
@@ -92,29 +92,35 @@ def write2DLSP(fname, xgv, zgv, D):
         np.savetxt(f, xgv[None], delimiter = ' ') # xgv[None] changes the dimensions of xgv from (100,) to (1, 100); this lets us save it as a row rather than column
         np.savetxt(f, zgv[None], delimiter = ' ')
         np.savetxt(f, D, delimiter = ' ')
-        
-xgv = np.linspace(-20, 10, 900)
-zgv = np.linspace(-20, 10, 901)
 
-X, Z = np.meshgrid(xgv, zgv)
-#y2 = twoscale(xgv, l1 = 3.1, l2 = 7.2)
-y2 = threescale(xgv, l0 = 0.9, l1 = 3.1, l2 = 7.2)
-#y2 = threescale(xgv, l0 = 0.9, l1 = 3.1, l2 = 0.1)
-D = np.zeros(X.shape)
-for i in range(len(zgv)):
-    D[i,:] = y2
+def writeThreeScale(fname, l0, l1, l2):
+    xgv = np.linspace(-20, 10, 900)
+    zgv = np.linspace(-20, 10, 901)
+    
+    X, Z = np.meshgrid(xgv, zgv)
+    #y2 = twoscale(xgv, l1 = 3.1, l2 = 7.2)
+    y1D = threescale(xgv, l0 = l0, l1 = l1, l2 = l2)
+    #y2 = threescale(xgv, l0 = 0.9, l1 = 3.1, l2 = 0.1)
+    D = np.zeros(X.shape) # Density array
+    for i in range(len(zgv)):
+        D[i,:] = y1D
+    
+    write2DLSP(fname, xgv, zgv, D)
+    
+    return xgv, zgv, y1D
 
-fn = r"C:\Users\Scott\Documents\LSP\Water columns\Dual exponential tests\mycol2D.dat"
-write2DLSP(fn, xgv, zgv, D)
-
-
-plt.figure(1)
-plt.clf()
-#plt.plot(xgv1, edens2[edens2.shape[0]/2]/2.65)
-#plt.plot(xgv1, edens1[edens1.shape[0]/2]/2.65)
-plt.plot(xgv, y2)
-plt.ylim(0.1e20, 1e24)
-plt.hlines(1.71e21/2.65, -20, 10, linestyle='--')
-#plt.ylim(0.01, 4)
-#plt.hlines(nc, -20, 20)
-plt.yscale('log')
+if __name__ == '__main__':
+    
+    fn = r"C:\Users\Scott\Documents\LSP\Water columns\Dual exponential tests\mycol2D.dat"
+    xgv, zgv, y1D = writeThreeScale(fn, 0.9, 3.1, 7.2)
+    
+    plt.figure(1)
+    plt.clf()
+    #plt.plot(xgv1, edens2[edens2.shape[0]/2]/2.65)
+    #plt.plot(xgv1, edens1[edens1.shape[0]/2]/2.65)
+    plt.plot(xgv, y1D)
+    plt.ylim(0.1e20, 1e24)
+    plt.hlines(1.71e21/2.65, -20, 10, linestyle='--')
+    #plt.ylim(0.01, 4)
+    #plt.hlines(nc, -20, 20)
+    plt.yscale('log')
