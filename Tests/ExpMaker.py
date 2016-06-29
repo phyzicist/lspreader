@@ -37,7 +37,7 @@ def twoscale(x, l1 = 1.0, l2 = 20.0, n2 = 1.6*0.285e21/2.65, xc = -4.6):
     y[x < x2] = y2[x < x2]
     return y
 
-def threescale(x, l0 = 0.2, l1 = 1.0, l2 = 20.0, n1 = 5e21/2.65, n2 = 1.6*0.285e21/2.65, xc = -4.6):
+def threescale(x, l0 = 0.2, l1 = 1.0, l2 = 20.0, n0 = 9e21/2.65, n2 = 1.6*0.285e21/2.65, xc = -4.6):
     """
     x: 1D array of X values on which to calculate
     xc: 1D X value of critical density
@@ -48,15 +48,23 @@ def threescale(x, l0 = 0.2, l1 = 1.0, l2 = 20.0, n1 = 5e21/2.65, n2 = 1.6*0.285e
     TODO:
         * Do I need to round off the edges? Unclear
     """
-    ns = 1.0e23/2.65 # Solid density (accounts for scaling in LSP load)
+    ns = 3*1.0e23/2.65 # Solid density / shock density (accounts for scaling in LSP load)
     nc = 1.71e21/2.65 # Critical density (accounts for scaling in LSP load)
     
     # Calculate the new scale
     y = exp1(x, nc, l1, xc)
+    
     x2 = x[np.argmax(y > n2)] # X value to switch to slow scale length
     y2 = exp1(x, n2, l2, x2)
-    y[y>ns] = ns
+
+    x0 = x[np.argmax(y > n0)] # X value to switch to steep scale length
+    y0 = exp1(x, n0, l0, x0)
+
+
     y[x < x2] = y2[x < x2]
+    y[x > x0] = y0[x > x0]
+    y[y > ns] = ns
+
     return y
 
 
@@ -85,19 +93,12 @@ def write2DLSP(fname, xgv, zgv, D):
         np.savetxt(f, zgv[None], delimiter = ' ')
         np.savetxt(f, D, delimiter = ' ')
         
-# Calc again
-x = np.linspace(-20, 10, 900) # Define X
-y = twoscale(x, l1 = 3.1, l2 = 7.2)
-
-fn = r"C:\Users\Scott\Documents\LSP\Water columns\Dual exponential tests\mycol.dat"
-write1DLSP(fn, x, y)
-#y = signal.savgol_filter(y, 11, 3)
-
 xgv = np.linspace(-20, 10, 900)
 zgv = np.linspace(-20, 10, 901)
 
 X, Z = np.meshgrid(xgv, zgv)
-y2 = twoscale(xgv, l1 = 3.1, l2 = 7.2)
+#y2 = twoscale(xgv, l1 = 3.1, l2 = 7.2)
+y2 = threescale(xgv, l0 = 0.9, l1 = 3.1, l2 = 0.1)
 D = np.zeros(X.shape)
 for i in range(len(zgv)):
     D[i,:] = y2
@@ -106,13 +107,13 @@ fn = r"C:\Users\Scott\Documents\LSP\Water columns\Dual exponential tests\mycol2D
 write2DLSP(fn, xgv, zgv, D)
 
 
-
 plt.figure(1)
 plt.clf()
 plt.plot(xgv1, edens2[edens2.shape[0]/2]/2.65)
 plt.plot(xgv1, edens1[edens1.shape[0]/2]/2.65)
 plt.plot(xgv, y2)
 plt.ylim(0.1e20, 1e24)
+plt.hlines(1.71e21/2.65, -20, 10, linestyle='--')
 #plt.ylim(0.01, 4)
 #plt.hlines(nc, -20, 20)
 plt.yscale('log')

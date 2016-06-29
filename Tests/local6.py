@@ -45,7 +45,7 @@ from pext import quantities
 
 
 ### DENSITY VISUAL TEST
-p4dir = r'C:\Users\Scott\Documents\temp\newcoltests'
+p4dir = r'C:\Users\Scott\Documents\temp\newcoltests\dTNSA3\20Tplots'
 data = ls.readFldScl(p4dir)
 sp.plotDens(data, outdir=p4dir, shortname = '', alltime=False)
 
@@ -66,7 +66,7 @@ plt.yscale('log')
 #p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
 #outdir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
 #shortname = 'test'
-#pextarr = pa.pextFull(p4dir, outdir = outdir, shortname = shortname, Utot_Jcm = 25.585283)
+pextarr = pa.pextFull(p4dir, outdir = p4dir, shortname = '', Utot_Jcm = 25.585283)
 
 
 ### PMOVIE TEST

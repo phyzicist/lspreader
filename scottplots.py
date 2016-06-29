@@ -290,7 +290,7 @@ def plotDens(data, outdir='.', shortname = '', alltime=False):
     
     # Mean oxygen ionization state
     old_settings = np.seterr(divide='ignore', invalid='ignore') # Set to ignore divide by zero error. (We will divide by zero where no ions exist)
-    ionstate = np.mean((0*data['RhoN1'] + 1*data['RhoN2'] + 2*data['RhoN3'] + 3*data['RhoN4'] + 4*data['RhoN5'] + 5*data['RhoN6'] + 6*data['RhoN7'] + 7*data['RhoN8'])/(data['RhoN1'] + data['RhoN2'] + data['RhoN3'] + data['RhoN4'] + data['RhoN5'] + data['RhoN6'] + data['RhoN7'] + data['RhoN8']), 0)
+    ionstate = np.mean((0*data['RhoN1'] + 1*data['RhoN2'] + 2*data['RhoN3'] + 3*data['RhoN4'] + 4*data['RhoN5'] + 5*data['RhoN6'] + 6*data['RhoN7'] + 7*data['RhoN8'] + 8*data['RhoN9'])/(data['RhoN1'] + data['RhoN2'] + data['RhoN3'] + data['RhoN4'] + data['RhoN5'] + data['RhoN6'] + data['RhoN7'] + data['RhoN8'] + data['RhoN9']), 0)
     ionstate = np.nan_to_num(ionstate)
     np.seterr(**old_settings)  # reset divide by zero error to prior settings
 

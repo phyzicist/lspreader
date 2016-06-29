@@ -80,7 +80,7 @@ if __name__ == "__main__":
     zdims = (-20, 20)#um # Z limits to simulation grid space, in microns
     zres = 16 # Laser wavelengths per cell, in Z direction 
     skipz = 5 # Z skip interval for field/scalar dumps
-    
+
     # Pre-plasma spatial/density
     pc_xdims = (-30, 10)#um # X limits to simulation particle creation space, in microns
     pc_zdims = (-15, 15)#um # Z limits to simulation particle creation space, in microns
@@ -89,9 +89,9 @@ if __name__ == "__main__":
     # Laser
     sinedat = 'sine700points.dat' # filename of .dat defining laser oscillations through time, which will be copied from this folder into the output folder
     fwhm = 30#fs # Gaussian temporal FWHM of laser, in fs
-    Imax = 1.5e18#W/cm2 # Peak intensity of laser, in W/cm^2
+    Imax = 1.13e18#W/cm2 # Peak intensity of laser, in W/cm^2
     wlen = 800#nm # Laser wavelength, in nm
-    spot = 2.26#um # Laser spot size, in microns
+    spot = 3.0#um # Laser spot size, in microns
 
     # P4 outputs:
     fld = True # True if flds*.p4 outputs desired
