@@ -74,7 +74,7 @@ def write1DLSP(fname, x, y):
     x = x * 1e-4
     
     with open(fname, 'w') as f:
-        f.write('# 1D LSP dat file (function type 30)\n')
+        f.write('# 1D LSP dat file (function type 30). Created by python function "write2DLSP". \n')
         f.write('# X (cm), Y\n')
         np.savetxt(f,np.array([-x[::-1],y[::-1]]).T,fmt='%.8e',)
 
@@ -93,9 +93,9 @@ def write2DLSP(fname, xgv, zgv, D):
         np.savetxt(f, zgv[None], delimiter = ' ')
         np.savetxt(f, D, delimiter = ' ')
 
-def writeThreeScale(fname, l0, l1, l2):
-    xgv = np.linspace(-20, 10, 900)
-    zgv = np.linspace(-20, 10, 901)
+def writeThreeScale(fname, l0, l1, l2, zmin=-10, zmax=10, xmin=-20, xmax=10, npts=900):
+    xgv = np.linspace(xmin, xmax, npts)
+    zgv = np.linspace(zmin, zmax, npts + 1)
     
     X, Z = np.meshgrid(xgv, zgv)
     #y2 = twoscale(xgv, l1 = 3.1, l2 = 7.2)
@@ -110,7 +110,6 @@ def writeThreeScale(fname, l0, l1, l2):
     return xgv, zgv, y1D
 
 if __name__ == '__main__':
-    
     fn = r"C:\Users\Scott\Documents\LSP\Water columns\Dual exponential tests\mycol2D.dat"
     xgv, zgv, y1D = writeThreeScale(fn, 0.9, 3.1, 7.2)
     
