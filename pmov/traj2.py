@@ -8,7 +8,7 @@ Scott's implementation of pmovie sorting
 
 Changelog:
 2016-07-06 Updated hashing to use Gregory's. Also, now fills in particles with their initial conditions (rather than most recent).
-
+2016-07-06 Added a pre-agreed-upon random shuffling to the fillGaps() step, so that contiguous blocks in the HDF5 contain random particles
 TODO:
 * Compute kinetic energy and angle for each particle at each step and add to the HDF5
 
@@ -149,12 +149,15 @@ def sortOne(fn, hashd=None):
 
     return data, stats, hashd
 
-def fillGaps(data, data_ref):
-    """ Fill gaps (missing particles) in "data" with particles from "data_ref". Fill in missing particles in data. That is, those present in data_ref but not in data will be taken from data_ref and inserted into data.
+def fillGaps(data, data_ref, shuff):
+    """ Fill gaps (missing particles) in "data" with particles from "data_ref". Fill in missing particles in data.
+    That is, those present in data_ref but not in data will be taken from data_ref and inserted into data.
+    Also, shuffles the deck according to a random, but pre-agreed, permutation.
     Inputs:
         Note - inputs and outputs are all 1D numpy array with several dtype fields, equivalent to the output of one frame of lspreader's read_pmovie(), but sorted by initial particle position
         data: sorted data array with missing particles
         data_ref: sorted data array with all particles (the template, e.g. from previous time step) (equal to in length or longer than data)
+        shuff: An array the same length of data_ref, with indices shuffled. Get via "shuff=np.random.permutation(len(data_ref))"
     Outputs:
         data_new: sorted data array which is a blend of data_ref and data, where missing particles have been replaced.
     """
@@ -178,7 +181,7 @@ def fillGaps(data, data_ref):
 
     print "Fraction missing:", 1 - float(len(goodcdt[goodcdt]))/float(len(goodcdt))
 
-    return data_new, goodcdt  # Return the data array, with all particles now present (gaps are filled)
+    return data_new[shuff], goodcdt[shuff]  # Return the data array, with all particles now present (gaps are filled), and shuffled
 
 def mpiTraj(p4dir, h5fn = None, skip=1, start=0, stop=None):
     """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff"""
@@ -203,12 +206,15 @@ def mpiTraj(p4dir, h5fn = None, skip=1, start=0, stop=None):
         # Read the first frame, to get info like the length
         print "Rank 0 speaking, I'm reading in the first frame. Everyone else sit tight."
         data_ref, _, hashd = sortOne(fns[0])
+        shuff = np.random.permutation(len(data_ref))
         print "Ok, I'm going to spread that around, now."
     else:
         data_ref = None
         hashd = None # These "None" declarations are essential if we are to broadcast
+        shuff = None
     data_ref = comm.bcast(data_ref, root=0)
     hashd = comm.bcast(hashd, root=0)
+    shuff = comm.bcast(shuff, root=0)
     
     nparts = len(data_ref) # Number of particles extracted from this first frame (which will determine the rest, as well)
 
@@ -244,7 +250,7 @@ def mpiTraj(p4dir, h5fn = None, skip=1, start=0, stop=None):
                 stats = datdict['stats']
                 goodcdt = datdict['goodcdt']
                 badcdt = np.logical_not(goodcdt) # Flip the sign of good condit
-                datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
+                #datnew[badcdt] = data_ref[badcdt] # Fill in the missing particles
                 t4 = dt.now()
 
                 f['t'][i] = stats['t']
@@ -266,7 +272,7 @@ def mpiTraj(p4dir, h5fn = None, skip=1, start=0, stop=None):
             print "Rank", rank, ": working on file", ix
             fn = fns[ix]
             dattmp, stats, _ = sortOne(fn, hashd=hashd) # Read (and sort) pmovie file
-            datnew, goodcdt = fillGaps(dattmp, data_ref) # fill in missing particles (according to data_ref)
+            datnew, goodcdt = fillGaps(dattmp, data_ref, shuff) # fill in missing particles (according to data_ref)
             datdict = {}
             datdict['datnew'] = datnew
             datdict['stats'] = stats
