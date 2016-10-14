@@ -74,9 +74,9 @@ def rebin(a, new_shape):
 
     
 ## CHARGE DENSITY CALCULATION
-fns = [r"C:\Users\Scott\Documents\temp\7-5 videos\1p5 test\sclr1.p4", r"C:\Users\Scott\Documents\temp\7-5 videos\1p5 test\sclr2101.p4"]
+fns = [r"C:\Users\Scott\Documents\temp\oct2016\curtest_rho1\sclr1.p4", r"C:\Users\Scott\Documents\temp\oct2016\curtest_rho1\sclr820.p4"]
 #fns = [r"C:\Users\Scott\Documents\temp\7-5 videos\1p5 test\sclr1007.p4"]
-data = ls.scalars2D(fns)
+data = ls.scalars2D(fns, fld_ids = ['Rho', 'RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'])
 
 xgv = data['xgv']*1e4 # x values in microns
 zgv = data['zgv']*1e4
@@ -87,6 +87,7 @@ dz = np.mean(np.diff(zgv))
 data['RhoPos'] = 1 * data['RhoN11'] + 1 * data['RhoN2'] + 2 * data['RhoN3'] + 3 * data['RhoN4'] + 4 * data['RhoN5'] + 5 * data['RhoN6'] + 6 * data['RhoN7'] + 7 * data['RhoN8'] + 8 * data['RhoN9']
 data['RhoNeg'] = 1 * data['RhoN10']
 data['RhoNet'] = data['RhoPos'] - data['RhoNeg']
+
 # Add up electrons, protons, and each species of ions (following list in the .lsp file for species numbers)
 #pnet = np.mean(1 * data['RhoN11'] + 1 * data['RhoN2'] + 2 * data['RhoN3'] + 3 * data['RhoN4'] + 4 * data['RhoN5'] + 5 * data['RhoN6'] + 6 * data['RhoN7'] + 7 * data['RhoN8'] + 8 * data['RhoN9'], 0)
 #nnet = np.mean(1 * data['RhoN10'], 0)
@@ -94,6 +95,7 @@ data['RhoNet'] = data['RhoPos'] - data['RhoNeg']
 #qnet = pnet - nnet
 #qnet = data['RhoNet'][1] - data['RhoNet'][0]
 qnet = data['RhoNet'][1]
+qnet2 = data['Rho'][1]*1e-6/1.6e-19
 
 edens = data['RhoNeg'][1]
 pdens = data['RhoPos'][1] # Positive charge density, in 
@@ -103,6 +105,7 @@ plt.clf()
 #plt.plot(xgv, qnet[qnet.shape[0]/2])
 plt.plot(xgv, np.mean(qnet,0), alpha=0.2)
 plt.plot(xgv, savgol_filter(np.mean(qnet,0), 81, 3))
+plt.plot(xgv, np.mean(qnet2,0), alpha=0.2)
 
 #plt.plot(xgv, nnet[qnet.shape[0]/2])
 plt.ylim([-1e19, 1e19])
@@ -112,9 +115,13 @@ plt.axhline(y=0,linestyle="--", color='black')
 
 fig = sp.mypcolor(qnet, xgv, zgv, cmin=-0.2e21, cmax=0.2e21, cmap='RdBu', title='Qnet')
 fig = sp.mypcolor(edens, xgv, zgv, cmax=1e21, title='Edens')
+fig = sp.mypcolor(qnet2, xgv, zgv, cmin=-0.2e21, cmax=0.2e21, cmap='RdBu', title='Qnet2')
 
-qnetsmall = rebin(qnet[0:960,0:960], (40,40))
+qnetsmall = rebin(qnet[0:400,0:400], (40,40))
 sp.mypcolor(qnetsmall, xgv, zgv, cmin=-1e20, cmax=1e20, cmap='RdBu', title='Qnet Small')
 
-edenssmall = rebin(edens[0:960,0:960], (40,40))
-sp.mypcolor(edenssmall, xgv, zgv, cmax=1e21, title='Edens Small')
+qnet2small = rebin(qnet2[0:400,0:400], (40,40))
+sp.mypcolor(qnet2small, xgv, zgv, cmin=-5e20, cmax=5e20, cmap='RdBu', title='Qnet2 Small')
+
+#edenssmall = rebin(edens[0:960,0:960], (40,40))
+#sp.mypcolor(edenssmall, xgv, zgv, cmax=1e21, title='Edens Small')

@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # Create the cylinder (rho map)
     l = 5 # Column's line charge density (coulombs/m)
     rho = l/(np.pi*rc**2) # Column's volumetric charge density (coulombs/m^3)
-    nx = ny = 200 # Number of points in each dimension
+    nx = ny = 100 # Number of points in each dimension
     xgv = np.linspace(-30e-6, 30e-6, nx)
     ygv = np.linspace(-30e-6, 30e-6, ny)
     X, Y = np.meshgrid(xgv, ygv)
@@ -66,31 +66,37 @@ if __name__ == "__main__":
     yref = 0.0
     R0 = np.sqrt((X - xref)**2 + (Y - yref)**2) # Radius of each pixel with respect to the designated reference point
 
-    vfunc = np.vectorize(myfunc, excluded=[2,3,4,5])
-    V = vfunc(X, Y, X, Y, R0, L)
+    method1 = True
     
-    #V = np.zeros_like(Rc)
-
-    Xflat = X.flatten()
-    Yflat = Y.flatten()
-    Vflat = V.flatten()
-    Lflat = L.flatten()
-    R0flat = R0.flatten()
-    Riflat = np.zeros_like(R0flat)
-
-#    for xval, yval, pot in np.nditer([X, Y, V], op_flags=[['readonly'],['readonly'],['readwrite']]): # TODO: Move into external loop for speed?
-#        #print np.sum(Xflat)
-#        #print np.sum(Yflat)
-#              
-#        Ri = np.sqrt((Xflat - xval)**2 + (Yflat - yval)**2) # Radius with respect to this point
-#        ct = (Ri > 0)
-#        #print Ri.shape
-#        #print xval, yval
-#        #print X[0]
-#        #print np.sum(Xflat - 1.5e-6)
-#        #print(len(Ri) - np.sum(ct))
-#        pot[...] = np.sum((Lflat[ct]/(2*np.pi*sc.epsilon_0)) * np.log(R0flat[ct]/Ri[ct])) # Potential at this particular point
-#        #pot[...] = np.sqrt(xval**2 + yval**2)        
+    if method1 == True:
+        vfunc = np.vectorize(myfunc, excluded=[2,3,4,5])
+        V = vfunc(X, Y, X, Y, R0, L)
+        
+    if method1 == False:
+        V = np.zeros_like(Rc)
+    
+        Xflat = X.flatten()
+        Yflat = Y.flatten()
+        Vflat = V.flatten()
+        Lflat = L.flatten()
+        R0flat = R0.flatten()
+        Riflat = np.zeros_like(R0flat)
+    
+        for xval, yval, pot, Xflat2, Yflat2 in np.nditer([X, Y, V, X, Y], op_flags=[['readonly'],['readonly'],['readwrite'],['readonly', 'no_broadcast'], ['readonly','no_broadcast']], flags=['external_loop']): # TODO: Move into external loop for speed?
+            #print np.sum(Xflat)
+            #print np.sum(Yflat)
+            print Xflat2.shape
+            Ri = np.sqrt((Xflat2 - xval)**2 + (Yflat2 - yval)**2) # Radius with respect to this point
+            print Ri.shape
+            ct = (Ri > 0)
+            print len(Ri) - ct
+                    #print Ri.shape
+                    #print xval, yval
+                    #print X[0]
+                    #print np.sum(Xflat - 1.5e-6)
+                    #print(len(Ri) - np.sum(ct))
+            #pot[...] = np.sum((Lflat[ct]/(2*np.pi*sc.epsilon_0)) * np.log(R0flat[ct]/Ri[ct])) # Potential at this particular point
+                    #pot[...] = np.sqrt(xval**2 + yval**2)        
 
 #    for xval, yval, pot in np.nditer([X, Y, V], op_flags=[['readonly'],['readonly'],['readwrite']], flags=['external_loop']): # TODO: Move into external loop for speed?
 #        #print np.sum(Xflat)
@@ -115,7 +121,8 @@ if __name__ == "__main__":
 #        print xval, yval
 #        Ri = np.sqrt((X - xval)**2 + (Y - yval)**2) # Radius with respect to this point
 #        V2[0,j] = np.sum((L/(2*np.pi*sc.epsilon_0)) * np.log(R0/Ri)) # Potential at this particular point
-        
+
+    # Calculate a single one
     xval = -30.0e-6
     yval = -30.0e-6
     Ri = np.sqrt((X - xval)**2 + (Y - yval)**2) # Radius with respect to this point

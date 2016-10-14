@@ -23,7 +23,53 @@ import sftools as sf
 from pext import pextanalysis as pa
 import scipy.constants as sc
 from pext import quantities
-    
+   
+def rebin(a, new_shape):
+    """
+    Copied directly from: http://stackoverflow.com/questions/8090229/resize-with-averaging-or-rebin-a-numpy-2d-array
+    and https://gist.github.com/zonca/1348792
+    ONLY WORKS WHEN INDICES ARE EVEN
+
+    Resizes a 2d array by averaging or repeating elements, 
+    new dimensions must be integral factors of original dimensions
+    Parameters
+    ----------
+    a : array_like
+        Input array.
+    new_shape : tuple of int
+        Shape of the output array
+    Returns
+    -------
+    rebinned_array : ndarray
+        If the new shape is smaller of the input array, the data are averaged, 
+        if the new shape is bigger array elements are repeated
+    See Also
+    --------
+    resize : Return a new array with the specified shape.
+    Examples
+    --------
+    >>> a = np.array([[0, 1], [2, 3]])
+    >>> b = rebin(a, (4, 6)) #upsize
+    >>> b
+    array([[0, 0, 0, 1, 1, 1],
+           [0, 0, 0, 1, 1, 1],
+           [2, 2, 2, 3, 3, 3],
+           [2, 2, 2, 3, 3, 3]])
+    >>> c = rebin(b, (2, 3)) #downsize
+    >>> c
+    array([[ 0. ,  0.5,  1. ],
+           [ 2. ,  2.5,  3. ]])
+    """
+    M, N = a.shape
+    print M, N
+    m, n = new_shape
+    print m, n
+    if m<M:
+        print m, M/m, n, N/n
+        return a.reshape((m,M/m,n,N/n)).mean(3).mean(1)
+    else:
+        return np.repeat(np.repeat(a, m/M, axis=0), n/N, axis=1)
+
 #p4root = r'C:\Users\Scott\Documents\temp\sclrtest\lspdump'
 #outroot = r'C:\Users\Scott\Documents\temp\sclrtest\analysis'
 #aa.analyzeSome(p4root, outroot, ['a50f-14_mres_so'])
@@ -45,9 +91,10 @@ from pext import quantities
 
 
 ### DENSITY VISUAL TEST
-p4dir = r'C:\Users\Scott\Documents\temp\newcoltests\dTNSA3\20Tplots'
+p4dir = r"C:\Users\Scott\Documents\temp\oct2016\curtest_rho1"
 data = ls.readFldScl(p4dir)
-sp.plotDens(data, outdir=p4dir, shortname = '', alltime=False)
+fns_fld, fns_scl = ls.getFldScl(p4dir)
+data = ls.fields2D(fns_fld, fld_ids = ['Jx', 'Jy', 'Jz'])
 
 xgv = data['xgv']*1e4 # x values in microns
 zgv = data['zgv']*1e4
@@ -56,12 +103,15 @@ dz = np.mean(np.diff(zgv))
 
 ## CALCULATIONS
 # Mean electron density
-edens = np.mean(data['RhoN10'],0)
+#Jzdens = np.mean(data['Jz'],0)
 
-plt.figure(10)
-#plt.clf()
-plt.plot(xgv, edens[edens.shape[0]/2])
-plt.yscale('log')
+Jzdens = data['Jx'][-1]
+fig = sp.mypcolor(Jzdens, xgv, zgv, cmin=-8e11, cmax=8e11, cmap='RdBu',)
+
+
+Jzdenssmall = rebin(Jzdens[0:400,0:400], (40,40))
+sp.mypcolor(Jzdenssmall, xgv, zgv, cmin=-8e11, cmax=8e11, cmap='RdBu', title='Jzdens Small')
+
 # PEXTTEXT
 #p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'
 #outdir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'

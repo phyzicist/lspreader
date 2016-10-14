@@ -62,24 +62,24 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'test' # NO SPACES/slashes ALLOWED! Short name for simulation
-    title = 'Hotwater in 2D I = 3.0e18 W cm-2 (30 fs), Courant-enforced, foc +15um past surface, lam/16' # Simulation title
+    shortname = 'curtest1' # NO SPACES/slashes ALLOWED! Short name for simulation
+    title = 'Hotwater in 2D I = 3.0e18 W cm-2 (30 fs), Courant-enforced, foc +15um past surface, lam/8' # Simulation title
 
     scale = 2.8#um # Exponential scale length of pre-plasma
     focx = 5.06077384923#um # X position of best laser focus, in microns
 
     # Simulation temporal
     t_f = 400#fs # maximum time, in fs
-    tres = 16 # Laser cycles per timestep (only applies if this number beats 0.9x Courant limit)
-    skipt = 1 # time skip interval for field/scalar dumps. First one is always dumped.
+    tres = 8 # Laser cycles per timestep (only applies if this number beats 0.9x Courant limit)
+    skipt = 20 # time skip interval for field/scalar dumps. First one is always dumped.
     
     # Grid spatial
     xdims = (-35, 15)#um # X limits to simulation grid space, in microns
-    xres = 16 # Laser wavelengths per cell, in X direction
-    skipx = 5 # X skip interval for field/scalar dumps
+    xres = 8 # Laser wavelengths per cell, in X direction
+    skipx = 1 # X skip interval for field/scalar dumps
     zdims = (-20, 20)#um # Z limits to simulation grid space, in microns
-    zres = 16 # Laser wavelengths per cell, in Z direction 
-    skipz = 5 # Z skip interval for field/scalar dumps
+    zres = 8 # Laser wavelengths per cell, in Z direction 
+    skipz = 1 # Z skip interval for field/scalar dumps
 
     # Pre-plasma spatial/density
     pc_xdims = (-30, 10)#um # X limits to simulation particle creation space, in microns
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     # Laser
     sinedat = 'sine700points.dat' # filename of .dat defining laser oscillations through time, which will be copied from this folder into the output folder
     fwhm = 30#fs # Gaussian temporal FWHM of laser, in fs
-    Imax = 1.13e18#W/cm2 # Peak intensity of laser, in W/cm^2
+    Imax = 3.0e18#W/cm2 # Peak intensity of laser, in W/cm^2
     wlen = 800#nm # Laser wavelength, in nm
     spot = 3.0#um # Laser spot size, in microns
 
