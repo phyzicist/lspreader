@@ -62,7 +62,7 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'curtest1' # NO SPACES/slashes ALLOWED! Short name for simulation
+    shortname = 'curtest2' # NO SPACES/slashes ALLOWED! Short name for simulation
     title = 'Hotwater in 2D I = 3.0e18 W cm-2 (30 fs), Courant-enforced, foc +15um past surface, lam/8' # Simulation title
 
     scale = 2.8#um # Exponential scale length of pre-plasma
