@@ -136,12 +136,17 @@ def readFldScl2(p4dir, fld_ids=['Ex','Ey','Ez','Bx','By','Bz','Jx','Jy','Jz'], s
     return data
 
 
-shortname = r'curtest_240fs_slabcomb'
+#shortname = r'curtest_240fs_slabcomb'
+shortname = r'x_0p9_3p1_7p2'
 
-outroot = r'C:\Users\Scott\Documents\temp\oct2016\OUTS' # For outputs
+#outroot = r'C:\Users\Scott\Documents\temp\oct2016\OUTS' # For outputs
+outroot = r"/users/PAS1066/osu0240/analysis/XTS_cur"
 outdir = sf.subdir(outroot, shortname)
 
-p4dir = os.path.join(r'C:\Users\Scott\Documents\temp\oct2016', shortname)
+#p4dir = os.path.join(r'C:\Users\Scott\Documents\temp\oct2016', shortname)
+p4root = r"/fs/scratch/osu0240/OCT2016/XTS_cur-2016-10-16_1212"
+p4dir = os.path.join(p4root, shortname)
+
 full=True
 
 #shortname = r'curtest_240fs_slabcomb'
