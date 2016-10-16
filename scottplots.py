@@ -74,7 +74,7 @@ def addQuiv(ax, vec, xgv, zgv, divsp = 8):
     qu = ax.quiver(X, Z, Vx, Vz, pivot='mid', units='xy', scale_units='xy', scale=0.3, color='white')
     return qu
 
-def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel = '', fld_id = '', sticker ='', rfooter = '', cmap='viridis', edens = np.zeros(0), vec = np.zeros(0)):
+def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel = '', fld_id = '', sticker ='', rfooter = '', cmap='viridis', edens = np.zeros(0), vec = np.zeros(0), fig=None, color='white'):
     """ A custom-tailored wrapper for pcolorfast(). Somewhat general, meant for any 2D sim colorplot.
     Inputs:
         C: 2D NumPy array, the data to be visualized
@@ -87,7 +87,8 @@ def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel
     
     if not cmax:
         cmax = np.max(C)
-    fig = plt.figure()
+    if not fig:
+        fig = plt.figure()
     plt.clf() # Clear the figure
     ax = plt.subplot(111)
     xr = [xgv[0],xgv[-1]] # min and max of xgv, needed for pcolorfast
@@ -96,9 +97,9 @@ def mypcolor(C, xgv, zgv, cmin = 0,  cmax = None, title='', tstring = '', clabel
     ax.set_xlabel(r'X ($\mu m$)')
     ax.set_ylabel(r'Z ($\mu m$)')
     ax.set_title(title, fontsize=20)
-    ax.text(0.05, 0.95, tstring, fontsize=24, color='white', transform=ax.transAxes, horizontalalignment='left', verticalalignment='top') # Upper left within axis (transform=ax.transAxes sets it into axis units 0 to 1)
-    ax.text(0.95, 0.03, fld_id, fontsize=44, color='white', transform=ax.transAxes, horizontalalignment='right', verticalalignment='bottom') # Lower right within axis
-    ax.text(0.05, 0.03, sticker, fontsize=44, color='white', transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom') # Lower left within axis
+    ax.text(0.05, 0.95, tstring, fontsize=24, color=color, transform=ax.transAxes, horizontalalignment='left', verticalalignment='top') # Upper left within axis (transform=ax.transAxes sets it into axis units 0 to 1)
+    ax.text(0.95, 0.03, fld_id, fontsize=44, color=color, transform=ax.transAxes, horizontalalignment='right', verticalalignment='bottom') # Lower right within axis
+    ax.text(0.05, 0.03, sticker, fontsize=44, color=color, transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom') # Lower left within axis
     cbar = fig.colorbar(im, label=clabel)
     im.set_clim(vmin=cmin, vmax=cmax)
     if len(edens) > 1: # Did the user specify an electron density array?

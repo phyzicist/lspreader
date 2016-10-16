@@ -89,28 +89,40 @@ def rebin(a, new_shape):
 #freqchunks = ls.chunkData(data, chk_fs) + ls.chunkData(data, chk_fs, offset_fs = chk_fs/2.0)
 #denschunks = ls.chunkData(data, chk_fs/2.0) # Same number of chunks as bigchunks, but less long in time.
 
+full=False
 
-### DENSITY VISUAL TEST
-p4dir = r"C:\Users\Scott\Documents\temp\oct2016\curtest_rho1"
-data = ls.readFldScl(p4dir)
-fns_fld, fns_scl = ls.getFldScl(p4dir)
-data = ls.fields2D(fns_fld, fld_ids = ['Jx', 'Jy', 'Jz'])
-
-xgv = data['xgv']*1e4 # x values in microns
-zgv = data['zgv']*1e4
-dx = np.mean(np.diff(xgv))# dx in microns
-dz = np.mean(np.diff(zgv))
-
-## CALCULATIONS
-# Mean electron density
-#Jzdens = np.mean(data['Jz'],0)
-
-Jzdens = data['Jx'][-1]
-fig = sp.mypcolor(Jzdens, xgv, zgv, cmin=-8e11, cmax=8e11, cmap='RdBu',)
+if full:
+    p4dir = r'C:\Users\Scott\Documents\temp\oct2016\curtest_grid2wire'
+    fns_fld, fns_scl = ls.getFldScl(p4dir)
+    data = ls.fields2D(fns_fld, fld_ids = ['Jx', 'Jy', 'Jz', 'Ex', 'Ey', 'Ez', 'Bx', 'By', 'Bz'])
+    
+    xgv = data['xgv']*1e4 # x values in microns
+    zgv = data['zgv']*1e4
+    dx = np.mean(np.diff(xgv))# dx in microns
+    dz = np.mean(np.diff(zgv))
 
 
+i=6
+Jxdens = data['Jx'][i]
+fig = plt.figure(1)
+fig = sp.mypcolor(Jxdens, xgv, zgv, fig=fig, cmin=-8e10, cmax=8e10, cmap='RdBu', title='Jxdens')
+
+Jzdens = data['Jz'][i]
+fig = plt.figure(2)
+fig = sp.mypcolor(Jzdens, xgv, zgv, fig=fig, cmin=-8e10, cmax=8e10, cmap='RdBu', title='Jzdens')
+
+fig = plt.figure(3)
 Jzdenssmall = rebin(Jzdens[0:400,0:400], (40,40))
-sp.mypcolor(Jzdenssmall, xgv, zgv, cmin=-8e11, cmax=8e11, cmap='RdBu', title='Jzdens Small')
+sp.mypcolor(Jzdenssmall, xgv, zgv, fig=fig, cmin=-8e11, cmax=8e11, cmap='RdBu', title='Jxdens Small')
+
+
+Ez = data['Ez'][i]
+fig = plt.figure(4)
+fig = sp.mypcolor(Ez, xgv, zgv, fig=fig, cmin=-3e7, cmax=3e7, cmap='RdBu', title="Ez")
+
+By = data['By'][i]
+fig = plt.figure(5)
+fig = sp.mypcolor(By, xgv, zgv, cmin=-3e7, cmax=3e7, fig=fig, cmap='RdBu', title="By")
 
 # PEXTTEXT
 #p4dir = r'C:\Users\Scott\Documents\temp\mar1test\hres_osc'

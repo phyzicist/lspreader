@@ -93,7 +93,7 @@ def getPot(Xv, Yv, X, Y, Rho, xref=-30.0e-6, yref=0.0):
     return Vv
 
 ## CHARGE DENSITY CALCULATION
-fns = [r"C:\Users\Scott\Documents\temp\oct2016\curtest_rho1\sclr1.p4", r"C:\Users\Scott\Documents\temp\oct2016\curtest_rho1\sclr420.p4"]
+fns = [r"C:\Users\Scott\Documents\temp\oct2016\curtest_7p2\sclr1.p4.gz", r"C:\Users\Scott\Documents\temp\oct2016\curtest_7p2\sclr989.p4.gz"]
 #fns = [r"C:\Users\Scott\Documents\temp\7-5 videos\1p5 test\sclr1007.p4"]
 data = ls.scalars2D(fns, fld_ids = ['Rho', 'RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'])
 
