@@ -10,7 +10,7 @@ try:
     import lspreader2 as rd
 except:
     print "Modifying path to include LSPreader"
-    readerpath = r'C:\Users\Scott\Documents\Programming\Python\lspreader'
+    readerpath = [r'C:\Users\Scott\Documents\Programming\Python\lspreader', r'/home/feister.7/lsp/lspreader']
     sys.path.append(readerpath) # Add the LSP reader as taking precedence after all but the current directory
     import lspreader2 as rd
 
