@@ -34,10 +34,10 @@ def getPot(Xv, Yv, X, Y, Rho, xref=-30.0e-6, yref=0.0):
     Vv = vfunc(Xv, Yv, X, Y, R0, L)
 
     return Vv
+
     
 if __name__ == "__main__":
     print("Hello.")
-    
     
     # Create the cylinder (rho map)
     rc = 3.0e-6 # Set cylinder radius as 3 microns

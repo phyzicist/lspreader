@@ -39,7 +39,7 @@ def example2():
     X, Y = np.mgrid[-1.5:1.55:0.02, -1.5:1.55:0.02]
     C = np.sin(X + Y) + np.sin(2 * X - Y) + np.cos(3 * X + 4 * Y)    
     
-    # Generate fake scatter points data    
+    # Generate fake scatter points data
     npts = 100 # Number of points
     xpts = 2*(0.5 - np.random.rand(100))
     ypts = 2*(0.5 - np.random.rand(100))
