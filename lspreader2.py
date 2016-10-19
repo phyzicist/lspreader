@@ -440,7 +440,7 @@ def stitch2D(doms, fld_id, divsp=1, splitax="z"):
      TODO: Make this generalized to 3D
     """
 
-    if splitax == "z":
+    if splitax == "z": # ZSPLIT lsp option
         fld_cat = np.squeeze(doms[0][fld_id])
         xgv = doms[0]['xgv'][::divsp]
         zgv_cat = doms[0]['zgv']
@@ -454,12 +454,11 @@ def stitch2D(doms, fld_id, divsp=1, splitax="z"):
         
         zgv = zgv_cat[::divsp]
         fld = fld_cat[::divsp,::divsp]
-    elif splitax == "x":
+    elif splitax == "x": # XSPLIT lsp option
         fld_cat = np.squeeze(doms[0][fld_id])
         xgv_cat = doms[0]['xgv']
         zgv = doms[0]['zgv'][::divsp]
-        
-        for i in range(1,len(doms)): # Domains are concatenated along the z dimension
+        for i in range(1,len(doms)): # Domains are concatenated along the x dimension
             fld_tmp = np.squeeze(doms[i][fld_id])[:,1:]
             fld_cat = np.concatenate((fld_cat,fld_tmp),1)
     

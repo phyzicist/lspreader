@@ -191,7 +191,7 @@ def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], divsp=1, pool = Non
             doms, header = rd.read_flds2(fn, flds=flds)
             data['times'][i] = header['timestamp']
             for k in fld_ids: # Iterate over the requested fields, stitching then adding them to fldDict arrays
-                fld, _, _ = rd.stitch2D(doms, k, divsp = divsp)
+                fld, _, _ = rd.stitch2D(doms, k, divsp = divsp, splitax=splitax)
                 data[k][i,:,:] = fld
 
     return data

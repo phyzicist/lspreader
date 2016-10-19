@@ -4,13 +4,15 @@ Created on Tue Jan 19 09:57:20 2016
 
 @author: Scott
 """
+import matplotlib
+matplotlib.use("Agg")
 
 import sys
 try:
     import lspreader2 as rd
 except:
     print "Modifying path to include LSPreader"
-    readerpath = [r'C:\Users\Scott\Documents\Programming\Python\lspreader', r'/users/PAS1066/osu0240/lsp/lspreader']
+    readerpath = r'/users/PAS1066/osu0240/lsp/lspreader'
     sys.path.append(readerpath) # Add the LSP reader as taking precedence after all but the current directory
     import lspreader2 as rd
 
@@ -116,13 +118,14 @@ def getPot(Xv, Yv, X, Y, Rho, xref=-30.0e-6, yref=0.0):
 
     return Vv
 
-def readFldScl2(p4dir, fld_ids=['Ex','Ey','Ez','Bx','By','Bz','Jx','Jy','Jz'], scl_ids=['Rho', 'RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'], divsp=1, divt=1, pool=None):
+def readFldScl2(p4dir, fld_ids=['Ex','Ey','Ez','Bx','By','Bz','Jx','Jy','Jz'], scl_ids=['Rho', 'RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'], divsp=1, divt=1, offt=0, pool=None, splitax='z'):
     """ Read matching field and scalar files (default fld_ids) in a directory into a single data array """
     ## READ MATCHING FIELDS AND SCALARS INTO DATA ARRAY
     fns_fld, fns_scl = ls.getFldScl(p4dir)
     
-    data_fld = ls.fields2D(fns_fld[::divt], fld_ids=fld_ids, divsp=divsp, pool=pool)
-    data_scl = ls.scalars2D(fns_scl[::divt], fld_ids=scl_ids, divsp=divsp, pool=pool)
+    print("Splitax in readFldScl2: " + str(splitax))
+    data_fld = ls.fields2D(fns_fld[offt::divt], fld_ids=fld_ids, divsp=divsp, pool=pool, splitax=splitax)
+    data_scl = ls.scalars2D(fns_scl[offt::divt], fld_ids=scl_ids, divsp=divsp, pool=pool, splitax=splitax)
     
     # Sanity check that times, xgv, and zgv are essentially identical between the two
     if np.max(np.abs(data_scl['xgv'] - data_fld['xgv'])) + np.max(np.abs(data_scl['zgv'] - data_fld['zgv'])) + np.max(np.abs(data_scl['times'] - data_fld['times'])) > 0.000001:
@@ -136,22 +139,25 @@ def readFldScl2(p4dir, fld_ids=['Ex','Ey','Ez','Bx','By','Bz','Jx','Jy','Jz'], s
     return data
 
 
-#shortname = r'curtest_240fs_slabcomb'
-shortname = r'x_0p9_3p1_7p2'
+shortname = r'curtest_240fs_slabpinch'
+#shortname = r'x_0p9_3p1_7p2'
 
 #outroot = r'C:\Users\Scott\Documents\temp\oct2016\OUTS' # For outputs
-outroot = r"/users/PAS1066/osu0240/analysis/XTS_cur"
+#outroot = r"/users/PAS1066/osu0240/analysis/XTS_cur"
+outroot = r"/users/PAS1066/osu0240/analysis"
 outdir = sf.subdir(outroot, shortname)
 
 #p4dir = os.path.join(r'C:\Users\Scott\Documents\temp\oct2016', shortname)
-p4root = r"/fs/scratch/osu0240/OCT2016/XTS_cur-2016-10-16_1212"
-p4dir = os.path.join(p4root, shortname)
+#p4root = r"/fs/scratch/osu0240/OCT2016/XTS_cur-2016-10-16_1212"
+#p4dir = os.path.join(p4root, shortname)
+p4dir = r"/fs/scratch/osu0240/OCT2016/curtest_240fs_slabpinch-2016-10-18_2206"
+
+splitax = 'x' # Axis split 'x' or 'z' (see lsp file; XSPLIT or ZSPLIT)
 
 full=True
 
-#shortname = r'curtest_240fs_slabcomb'
 if full:
-    data = readFldScl2(p4dir)
+    data = readFldScl2(p4dir, offt=2, divt=3, splitax=splitax)
 
     xgv = data['xgv']*1e4 # x values in microns
     zgv = data['zgv']*1e4
@@ -159,10 +165,10 @@ if full:
     dz = np.mean(np.diff(zgv))
 
 
-for i in range(len(data)):
+for i in range(len(data['times'])):
     pltdir = outdir
     meantime = data['times'][i]*1e6
-    tstring = 't=' + "{:.1f}".format(meantime) + " ns"
+    tstring = 't=' + "{:.1f}".format(meantime) + " fs"
     tlabel = "{:.0f}".format(round(meantime*10)).zfill(5) # Make the file label be '00512.*' for t = 51.2342 fs
     
     edens = data['RhoN10'][i]
@@ -227,7 +233,6 @@ for i in range(len(data)):
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Electric By'), tlabel + '.png'))
     
     
-    
     rho = data['Rho'][i] # Charge density, from microcoulombs/cm^3
     rhoSI = rho * 1e-6 * (1e2)**3 # Charge density, in Coulombs/m^3
     
@@ -239,10 +244,10 @@ for i in range(len(data)):
     
     rhoSIsmall, xgvsmall, zgvsmall = rebin2D(rhoSI, xgv, zgv, 150)
     Xs, Zs = np.meshgrid(xgvsmall, zgvsmall)
-    Vs = getPot(Xs*1e-6, Zs*1e-6, Xs*1e-6, Zs*1e-6, rhoSIsmall, xref=+5.0e-6)
+    Vs = getPot(Xs*1e-6, Zs*1e-6, Xs*1e-6, Zs*1e-6, rhoSIsmall, xref=-17.0e-6)
     
     fig = plt.figure(7)
-    fig = sp.mypcolor(Vs/1e6, xgvsmall, zgvsmall, fig=fig, cmin=-0.5, cmax=5.5, tstring=tstring, rfooter=shortname, title="Voltage (MV)", cmap='viridis')
+    fig = sp.mypcolor(Vs/1e6, xgvsmall, zgvsmall, fig=fig, cmin=-0.5, cmax=2.0, tstring=tstring, rfooter=shortname, title="Voltage (MV)", cmap='viridis', color='red')
     plt.axis("equal")
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Potential map'), tlabel + '.png'))
     
@@ -252,7 +257,7 @@ for i in range(len(data)):
     plt.clf()
     ax = fig.add_subplot(111, projection='3d')
     ax.plot_surface(Xs, Zs, -Vs/1e6, cmap='viridis')
-    ax.set_zlim(-5.0, 0.2)
+    ax.set_zlim(-2.0, 0.2)
     ax.set_zlabel("Well depth (MeV)")
     ax.set_xlabel("X (um)")
     ax.set_ylabel("Z (um)")
@@ -260,4 +265,25 @@ for i in range(len(data)):
     ax.text(0.05, 0.95, 0.05, tstring, fontsize=24, color='black', transform=ax.transAxes, horizontalalignment='left', verticalalignment='top') # Upper left within axis (transform=ax.transAxes sets it into axis units 0 to 1)
     fig.text(0.99, 0.01, rfooter, horizontalalignment='right') # Lower right in figure units
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Potential 3D'), tlabel + '.png'))
+
+    print("xgvsmall shape: " + str(xgvsmall.shape))
+    print("zgvsmall shape: " + str(zgvsmall.shape))
+    print("Vs shape: " + str(Vs.shape))
+    slc = Vs[np.abs(zgvsmall) < 5.0,:]
+    print("Slc shape: " + str(slc.shape))
+    lineout = -np.mean(slc,0)/1e6
+    print("lineout shape: " + str(lineout.shape))
+
+    fig = plt.figure(9)
+    rfooter = shortname
+    plt.clf()
+    ax = fig.add_subplot(111)
+    ax.plot(xgvsmall, lineout)
+    ax.set_ylim(-2.0, 0.2)
+    ax.set_ylabel("(Mean) Well depth (MeV)")
+    ax.set_xlabel("X (um)")
+    ax.set_title(r"Electron potential well (Z=0 +/- 5 um)")
+    ax.text(0.05, 0.95, tstring, fontsize=24, color='black', transform=ax.transAxes, horizontalalignment='left', verticalalignment='top') # Upper left within axis (transform=ax.transAxes sets it into axis units 0 to 1)
+    fig.text(0.99, 0.01, rfooter, horizontalalignment='right') # Lower right in figure units
+    fig.savefig(os.path.join(sf.subdir(pltdir, 'Potential lineout'), tlabel + '.png'))
 
