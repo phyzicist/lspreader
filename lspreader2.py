@@ -427,7 +427,7 @@ def read(fname,**kw):
             raise NotImplementedError("Other file types not implemented yet!");
     return d;
 
-def stitch2D(doms, fld_id, divsp=1):
+def stitch2D(doms, fld_id, divsp=1, splitax="z"):
     """ Stitch a simple 2D lsp sim together, where we have N domains all built up along the Z dimension, and a flat Y dimension.
       Such as with Chris' 2D sims of the back-reflected plasma
       Inputs:
@@ -437,21 +437,39 @@ def stitch2D(doms, fld_id, divsp=1):
       Outputs:
         fld: A 2D array which contains the field component data
      xgv, zgv: 1D arrays of the X or Z coordinate along the axis, in centimeters
+     TODO: Make this generalized to 3D
     """
 
-    fld_cat = np.squeeze(doms[0][fld_id])
-    xgv = doms[0]['xgv'][::divsp]
-    zgv_cat = doms[0]['zgv']
+    if splitax == "z":
+        fld_cat = np.squeeze(doms[0][fld_id])
+        xgv = doms[0]['xgv'][::divsp]
+        zgv_cat = doms[0]['zgv']
+        
+        for i in range(1,len(doms)): # Domains are concatenated along the z dimension
+            fld_tmp = np.squeeze(doms[i][fld_id])[1:,:]
+            fld_cat = np.concatenate((fld_cat,fld_tmp),0)
     
-    for i in range(1,len(doms)): # Domains are concatenated along the z dimension
-        fld_tmp = np.squeeze(doms[i][fld_id])[1:,:]
-        fld_cat = np.concatenate((fld_cat,fld_tmp),0)
-
-        zgv_tmp = doms[i]['zgv'][1:]
-        zgv_cat = np.concatenate((zgv_cat,zgv_tmp),0)
+            zgv_tmp = doms[i]['zgv'][1:]
+            zgv_cat = np.concatenate((zgv_cat,zgv_tmp),0)
+        
+        zgv = zgv_cat[::divsp]
+        fld = fld_cat[::divsp,::divsp]
+    elif splitax == "x":
+        fld_cat = np.squeeze(doms[0][fld_id])
+        xgv_cat = doms[0]['xgv']
+        zgv = doms[0]['zgv'][::divsp]
+        
+        for i in range(1,len(doms)): # Domains are concatenated along the z dimension
+            fld_tmp = np.squeeze(doms[i][fld_id])[:,1:]
+            fld_cat = np.concatenate((fld_cat,fld_tmp),1)
     
-    zgv = zgv_cat[::divsp]
-    fld = fld_cat[::divsp,::divsp]
+            xgv_tmp = doms[i]['xgv'][1:]
+            xgv_cat = np.concatenate((xgv_cat,xgv_tmp),1)
+        
+        xgv = xgv_cat[::divsp]
+        fld = fld_cat[::divsp,::divsp]
+    else:
+        raise Exception("Unsupported split axis: " + splitax)
     return fld, xgv, zgv
 
 def pseek(file):

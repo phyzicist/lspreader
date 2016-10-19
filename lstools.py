@@ -75,13 +75,13 @@ def getFldScl(p4dir):
     
     return fns_fld, fns_scl
 
-def readFldScl(p4dir, divsp=1, divt=1, pool=None):
+def readFldScl(p4dir, divsp=1, divt=1, pool=None, splitax='z'):
     """ Read matching field and scalar files (default fld_ids) in a directory into a single data array """
     ## READ MATCHING FIELDS AND SCALARS INTO DATA ARRAY
     fns_fld, fns_scl = getFldScl(p4dir)
     
-    data_fld = fields2D(fns_fld[::divt], divsp=divsp, pool=pool)
-    data_scl = scalars2D(fns_scl[::divt], divsp=divsp, pool=pool)
+    data_fld = fields2D(fns_fld[::divt], divsp=divsp, pool=pool, splitax=splitax)
+    data_scl = scalars2D(fns_scl[::divt], divsp=divsp, pool=pool, splitax=splitax)
     
     # Sanity check that times, xgv, and zgv are essentially identical between the two
     if np.max(np.abs(data_scl['xgv'] - data_fld['xgv'])) + np.max(np.abs(data_scl['zgv'] - data_fld['zgv'])) + np.max(np.abs(data_scl['times'] - data_fld['times'])) > 0.000001:
@@ -138,7 +138,7 @@ def chunkData(data, chk_fs, offset_fs = 0):
         chunks.append(chunk)
     return chunks
 
-def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], divsp=1, pool = None):
+def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], divsp=1, pool = None, splitax="z"):
     """ Read in the flds*.p4(.gz) files in the list fns, stitching them together assuming 2D assumptions, and create output arrays. The read-in occurs in parallel if the input parameter pool is set (Pool of multiprocessing threads e.g. via Pool(10)). 
     Inputs:        
         divsp: integer, divisor by which to reduce the spatial resolution (e.g. divsp = 2 reduces field dimensions from 300x200 to 150x100)
@@ -159,7 +159,7 @@ def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], divsp=1, pool = Non
     
     ## Pre-allocate the NumPy arrays inside an output dict called 'data'
     data = {} # define 'data' as a python dictionary that will store all the data read in, including fields, as NumPy arrays    
-    _, xgv, zgv = rd.stitch2D(doms, fld_ids[0], divsp = divsp) # Extract the interesting fields and stitch together for a template
+    _, xgv, zgv = rd.stitch2D(doms, fld_ids[0], divsp = divsp, splitax=splitax) # Extract the interesting fields and stitch together for a template
     data['times'] = np.zeros((nfiles,))
     data['xgv'] = xgv
     data['zgv'] = zgv
@@ -196,11 +196,11 @@ def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], divsp=1, pool = Non
 
     return data
 
-def scalars2D(fns, fld_ids = ['RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'], divsp=1, pool = None): 
+def scalars2D(fns, fld_ids = ['RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'], divsp=1, pool = None, splitax='z'): 
     """ A wrapper for fields2D, with default inputs better suited for scalar filenames input."""
     # ['RhoN1', 'RhoN2', 'RhoN3',  'RhoN4', 'RhoN5', 'RhoN6', 'RhoN7', 'RhoN8', 'RhoN9', 'RhoN10',  'RhoN11'] Each corresponding to density of species 1, 2, 3..., 11
     # ['RhoN2', 'RhoN10',  'RhoN11']  # oxygen+, electrons, protons in our sims  
-    return fields2D(fns, fld_ids = fld_ids, divsp=divsp, pool = pool)
+    return fields2D(fns, fld_ids = fld_ids, divsp=divsp, pool = pool, splitax=splitax)
     
 def readOne(args):
     """ Helper function for multiprocessing Pool.map() call of Parallel read for fields2D. Reads in the fields from one file."""
