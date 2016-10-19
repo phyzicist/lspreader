@@ -464,7 +464,7 @@ def stitch2D(doms, fld_id, divsp=1, splitax="z"):
             fld_cat = np.concatenate((fld_cat,fld_tmp),1)
     
             xgv_tmp = doms[i]['xgv'][1:]
-            xgv_cat = np.concatenate((xgv_cat,xgv_tmp),1)
+            xgv_cat = np.concatenate((xgv_cat,xgv_tmp),0)
         
         xgv = xgv_cat[::divsp]
         fld = fld_cat[::divsp,::divsp]
