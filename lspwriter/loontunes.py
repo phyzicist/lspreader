@@ -399,8 +399,8 @@ def slabcomb():
     ax = plt.subplot(111)
     im = ax.pcolorfast((xmin, xmax), (zmin, zmax), D, vmin=0, vmax=n_crit, cmap='viridis')
     cbar = fig.colorbar(im, label=clabel)
-    
-if __name__ == "__main__":
+
+def slabpinch():
     zmin=-10
     zmax=10
     xmin=-30
@@ -437,6 +437,53 @@ if __name__ == "__main__":
     D[ct] = 50*n_crit
     
     fname = r"C:\Users\Scott\Documents\LSP\LSPwrite submissions\curtest1\slabpinch.dat"
+    write2DLSP(fname, xgv, zgv, D/2.65)
+    clabel = "Density"
+    fig = plt.figure(1)
+    plt.clf()
+    ax = plt.subplot(111)
+    im = ax.pcolorfast((xmin, xmax), (zmin, zmax), D, vmin=0, vmax=n_crit, cmap='viridis')
+    cbar = fig.colorbar(im, label=clabel)
+    plt.axis("equal")
+    
+
+if __name__ == "__main__":
+    zmin=-10
+    zmax=10
+    xmin=-30
+    xmax=10
+    npts=900
+    nx = nz = npts
+    xgv = np.linspace(xmin, xmax, nx)
+    zgv = np.linspace(zmin, zmax, nz)
+    X, Z = np.meshgrid(xgv, zgv)
+    
+    D = np.zeros_like(X)
+    
+    x_crit = -17
+    x_right = -14
+    scale = 2.8
+    n_crit = critDens(800)
+    ct = (X < x_right) & (np.abs(Z) < 5.)
+    D[ct] = n_crit * np.exp(-(-(X[ct] - x_crit))/scale)
+    D[(D < 0.2*n_crit) & ct] = 0.2*n_crit
+    
+
+    # Middle bands
+    zbands = np.array([-3,3]) # Location of bands
+    bandwid = 0.2 # Width of bands
+    
+    x_sink = 3.0 # Location of the current sink
+    ct1 = np.min(np.abs(np.tile(Z, (len(zbands),1,1)) - zbands[:,np.newaxis,np.newaxis]), 0) < bandwid/2.
+    ct2 = (X >= x_right) & (X < x_sink)
+    ct = ct1 & ct2
+    D[ct] = 0.8*n_crit
+    
+    # Right sink
+    ct = (X > x_sink)
+    D[ct] = 0.8*n_crit
+    
+    fname = r"C:\Users\Scott\Documents\LSP\LSPwrite submissions\curtest1\slabpinch_mdens.dat"
     write2DLSP(fname, xgv, zgv, D/2.65)
     clabel = "Density"
     fig = plt.figure(1)
