@@ -62,7 +62,7 @@ def fileSub(template, outfile, dictionary):
     
 if __name__ == "__main__":
     ## USER, DEFINE THE SIMULATION WITH HIGH-LEVEL VARIABLES (Units are microns, nm, etc.)
-    shortname = 'curtest2' # NO SPACES/slashes ALLOWED! Short name for simulation
+    shortname = 'test' # NO SPACES/slashes ALLOWED! Short name for simulation
     title = 'Hotwater in 2D I = 3.0e18 W cm-2 (30 fs), Courant-enforced, foc +15um past surface, lam/8' # Simulation title
 
     scale = 2.8#um # Exponential scale length of pre-plasma
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     # Laser
     sinedat = 'sine700points.dat' # filename of .dat defining laser oscillations through time, which will be copied from this folder into the output folder
     fwhm = 60#fs # Gaussian temporal FWHM of laser, in fs
-    Imax = 1.5e18#W/cm2 # Peak intensity of laser, in W/cm^2
+    Imax = 1.0e20#W/cm2 # Peak intensity of laser, in W/cm^2
     wlen = 800#nm # Laser wavelength, in nm
     spot = 3.0#um # Laser spot size, in microns
 
