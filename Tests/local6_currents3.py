@@ -139,7 +139,7 @@ def readFldScl2(p4dir, fld_ids=['Ex','Ey','Ez','Bx','By','Bz','Jx','Jy','Jz'], s
     return data
 
 
-shortname = r'curtest_240fs_slabpinch'
+shortname = r'curtest_240fs_slabpinch_mdens'
 #shortname = r'x_0p9_3p1_7p2'
 
 #outroot = r'C:\Users\Scott\Documents\temp\oct2016\OUTS' # For outputs
@@ -150,14 +150,14 @@ outdir = sf.subdir(outroot, shortname)
 #p4dir = os.path.join(r'C:\Users\Scott\Documents\temp\oct2016', shortname)
 #p4root = r"/fs/scratch/osu0240/OCT2016/XTS_cur-2016-10-16_1212"
 #p4dir = os.path.join(p4root, shortname)
-p4dir = r"/fs/scratch/osu0240/OCT2016/curtest_240fs_slabpinch-2016-10-18_2206"
+p4dir = r"/fs/scratch/osu0240/OCT2016/curtest_240fs_slabpinch_mdens-2016-10-19_0205"
 
 splitax = 'x' # Axis split 'x' or 'z' (see lsp file; XSPLIT or ZSPLIT)
 
 full=True
 
 if full:
-    data = readFldScl2(p4dir, offt=2, divt=3, splitax=splitax)
+    data = readFldScl2(p4dir, offt=0, divt=1, splitax=splitax)
 
     xgv = data['xgv']*1e4 # x values in microns
     zgv = data['zgv']*1e4
@@ -242,9 +242,9 @@ for i in range(len(data['times'])):
     fig.savefig(os.path.join(sf.subdir(pltdir, 'Charge density'), tlabel + '.png'))
     
     
-    rhoSIsmall, xgvsmall, zgvsmall = rebin2D(rhoSI, xgv, zgv, 150)
+    rhoSIsmall, xgvsmall, zgvsmall = rebin2D(rhoSI, xgv, zgv, 200)
     Xs, Zs = np.meshgrid(xgvsmall, zgvsmall)
-    Vs = getPot(Xs*1e-6, Zs*1e-6, Xs*1e-6, Zs*1e-6, rhoSIsmall, xref=-17.0e-6)
+    Vs = getPot(Xs*1e-6, Zs*1e-6, Xs*1e-6, Zs*1e-6, rhoSIsmall, xref=+12.0e-6)
     
     fig = plt.figure(7)
     fig = sp.mypcolor(Vs/1e6, xgvsmall, zgvsmall, fig=fig, cmin=-0.5, cmax=2.0, tstring=tstring, rfooter=shortname, title="Voltage (MV)", cmap='viridis', color='red')
