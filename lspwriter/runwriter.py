@@ -89,7 +89,7 @@ if __name__ == "__main__":
     # Laser
     sinedat = 'sine700points.dat' # filename of .dat defining laser oscillations through time, which will be copied from this folder into the output folder
     fwhm = 60#fs # Gaussian temporal FWHM of laser, in fs
-    Imax = 1.0e20#W/cm2 # Peak intensity of laser, in W/cm^2
+    Imax = 3.0e20#W/cm2 # Peak intensity of laser, in W/cm^2
     wlen = 800#nm # Laser wavelength, in nm
     spot = 3.0#um # Laser spot size, in microns
 
