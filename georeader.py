@@ -95,11 +95,16 @@ def read_volumes(fn):
     return d
     
 if __name__ == "__main__":
-    fn_grid = r"C:\Users\Scott\Documents\temp\oct2016\test3D_0\grid.p4"
+    fn_grid = r"C:\Users\Scott\Documents\POTWELL\Test Data\test3D_0\grid.p4"
     d_grid = read_grid(fn_grid)
     
-    fn_regs = r"C:\Users\Scott\Documents\temp\oct2016\test3D_0\regions.p4"
+    fn_regs = r"C:\Users\Scott\Documents\POTWELL\Test Data\test3D_0\regions.p4"
     d_regs = read_regions(fn_regs)
 
-    fn_vols =  r"C:\Users\Scott\Documents\temp\oct2016\test3D_0\volumes.p4"
+    fn_vols =  r"C:\Users\Scott\Documents\POTWELL\Test Data\test3D_0\volumes.p4"
     d_vols = read_volumes(fn_vols)
+    
+    
+    dx = np.diff(d_grid['grids'][0]['xgv'])
+    dy = np.diff(d_grid['grids'][0]['ygv'])
+    dz = np.diff(d_grid['grids'][0]['zgv'])
