@@ -12,6 +12,7 @@ from plaswriter import critDens
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
+from scipy.ndimage.filters import gaussian_filter
 
 def ccutwire():
     zmin=-10
@@ -479,7 +480,54 @@ def stagesthree():
     im = ax.pcolorfast((xmin, xmax), (zmin, zmax), D, vmin=0, vmax=n_crit, cmap='viridis')
     cbar = fig.colorbar(im, label=clabel)
     plt.axis("equal")
+
+def stagesthreefuzz():
+    zmin=-10
+    zmax=10
+    xmin=-30
+    xmax=10
+    npts=900
+    nx = nz = npts
+    xgv = np.linspace(xmin, xmax, nx)
+    zgv = np.linspace(zmin, zmax, nz)
+    X, Z = np.meshgrid(xgv, zgv)
     
+    D = np.zeros_like(X)
+    n_crit = critDens(800)
+    
+    x_wid = 1.0
+    x_widb = 10.0
+    x_cent = -28
+    ct1 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.) & (np.abs(Z) < 5.)
+    ct1b = (X < x_cent + x_widb/2.) & (X > x_cent - x_widb/2.) & (Z > 5.) & (Z < 7.)
+    x_cent = -13.0
+    ct2 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.) & (np.abs(Z) < 5.)
+    ct2b = (X < x_cent + x_widb/2.) & (X > x_cent - x_widb/2.) & (Z < -5.) & (Z > -7.)
+    x_cent = +2.0
+    ct3 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.) & (np.abs(Z) < 5.)
+    ct3b = (X < x_cent + x_widb/2.) & (X > x_cent - x_widb/2.) & (Z > 5.) & (Z < 7.)
+    
+    ct = (ct1 | ct2 | ct3) | (ct1b | ct2b | ct3b)
+    D[ct] = 2.65e23 # Solid density target worth of electrons
+    
+    myscl = np.array([float(xmax - xmin)/nx, float(zmax - zmin)/nz])
+    #D = gaussian_filter(D, radblur)
+    Dblr1 = gaussian_filter(D, 0.1 / myscl)
+    Dblr2 = gaussian_filter(D, 0.4 / myscl)
+    D[np.abs(Z) < 6.0] = Dblr1[np.abs(Z) < 6.0]
+    D[np.abs(Z) > 6.0] = Dblr2[np.abs(Z) > 6.0]
+
+
+    fname = r"C:\Users\Scott\Documents\LSP\LSPwrite submissions\curtest1\stagesthreefuzz.dat"
+    write2DLSP(fname, xgv, zgv, D/2.65)
+    clabel = "Density"
+    fig = plt.figure(1)
+    plt.clf()
+    ax = plt.subplot(111)
+    im = ax.pcolorfast((xmin, xmax), (zmin, zmax), D, vmin=0, vmax=n_crit, cmap='viridis')
+    cbar = fig.colorbar(im, label=clabel)
+    plt.axis("equal")
+
 if __name__ == "__main__":
     zmin=-10
     zmax=10
@@ -492,19 +540,36 @@ if __name__ == "__main__":
     X, Z = np.meshgrid(xgv, zgv)
     
     D = np.zeros_like(X)
+    n_crit = critDens(800)
     
-    x_wid = 4.0
+    x_wid = 5.0
+    x_widb = 12.0
+    x_widc = 15.0
     x_cent = -28
-    ct1 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.)
+    ct1 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.) & (np.abs(Z) < 3.5)
+    ct1b = (X < x_cent + x_widb/2.) & (X > x_cent - x_widb/2.) & (Z > 3.5) & (Z < 4.5)
+    #ct1c = (X < x_cent + x_widc/2.) & (X > x_cent - x_widc/2.) & (Z > 4.5) & (Z < 5)
     x_cent = -13.0
-    ct2 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.)
+    ct2 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.) & (np.abs(Z) < 3.5)
+    ct2b = (X < x_cent + x_widb/2.) & (X > x_cent - x_widb/2.) & (Z < -3.5) & (Z > -4.5)
+    #ct2c = (X < x_cent + x_widc/2.) & (X > x_cent - x_widc/2.) & (Z < -4.5) & (Z > -5)
     x_cent = +2.0
-    ct3 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.)
+    ct3 = (X < x_cent + x_wid/2.) & (X > x_cent - x_wid/2.) & (np.abs(Z) < 3.5)
+    ct3b = (X < x_cent + x_widb/2.) & (X > x_cent - x_widb/2.) & (Z > 3.5) & (Z < 4.5)
+    #ct3c = (X < x_cent + x_widc/2.) & (X > x_cent - x_widc/2.) & (Z > 4.5) & (Z < 5)
     
-    ct = (ct1 | ct2 | ct3) & (np.abs(Z) < 5.)
+    ct = (ct1 | ct2 | ct3) | (ct1b | ct2b | ct3b)# | (ct1c | ct2c | ct3c) 
     D[ct] = 2.65e23 # Solid density target worth of electrons
     
-    fname = r"C:\Users\Scott\Documents\LSP\LSPwrite submissions\curtest1\stagesthree2.dat"
+    myscl = np.array([float(xmax - xmin)/nx, float(zmax - zmin)/nz])
+    #D = gaussian_filter(D, radblur)
+    Dblr1 = gaussian_filter(D, 0.1 / myscl)
+    Dblr2 = gaussian_filter(D, 0.2 / myscl)
+    D[np.abs(Z) < 4.0] = Dblr1[np.abs(Z) < 4.0]
+    D[np.abs(Z) > 4.0] = Dblr2[np.abs(Z) > 4.0]
+
+
+    fname = r"C:\Users\Scott\Documents\LSP\LSPwrite submissions\curtest1\stagesthreefuzz.dat"
     write2DLSP(fname, xgv, zgv, D/2.65)
     clabel = "Density"
     fig = plt.figure(1)
