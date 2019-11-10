@@ -5,13 +5,18 @@ Created on Thu Mar 03 17:31:13 2016
 Scott's implementation of pmovie sorting.
 Adapted from code by Gregory Ngmirmang
 
-@author: Scott
-
 Changelog:
+2019-11-09 Brought into line with Python3 conventions, and generalized to work with 1D/2D/3D sims
 2016-07-06 Updated hashing to use Gregory's. Also, now fills in particles with their initial conditions (rather than most recent).
 2016-07-06 Added a pre-agreed-upon random shuffling to the fillGaps() step, so that contiguous blocks in the HDF5 contain random particles
-TODO:
-* Compute kinetic energy and angle for each particle at each step and add to the HDF5
+
+Example usage.
+1. Write a script, "MyScript.py", with contents such as:
+    from pmov.traj import mpiTraj 
+    p4dir = "/fs/scratch/PAS1066/GroupShare/Generation_904_11_7_2019/904/0"
+    mpiTraj(p4dir)
+    
+2. Run the script in parallel from command line. E.g. "mpirun -np 8 python MyScript.py" --> Generates traj.h5 file containing trajcetories, in the p4dir.
 
 """
 
@@ -210,15 +215,7 @@ def fillGaps(data, data_ref, shuff):
     return data_new[shuff], goodcdt[shuff]  # Return the data array, with all particles now present (gaps are filled), and shuffled
 
 def mpiTraj(p4dir, h5fn = None, skip=1, start=0, stop=None):
-    """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff
-    Example usage.
-    1. Write your script, "MyScript.py":
-        from pmov.traj import mpiTraj 
-        p4dir = "/fs/scratch/PAS1066/GroupShare/Generation_904_11_7_2019/904/0"
-        mpiTraj(p4dir)
-        
-    2. Run script from command line. "mpirun -np 8 python MyScript.py" --> Generates traj.h5 file in the p4dir.
-    """
+    """ Assume we have greater than one processor. Rank 0 will do the hdf5 stuff"""
     
     # Set some basic MPI variables
     nprocs = MPI.COMM_WORLD.Get_size()
