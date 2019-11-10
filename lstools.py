@@ -24,7 +24,7 @@ import re
 try:
     from mpi4py import MPI
 except:
-    print "WARNING: MPI4PY FAILED TO LOAD. DO NOT CALL PARALLEL FUNCTIONS."
+    print("WARNING: MPI4PY FAILED TO LOAD. DO NOT CALL PARALLEL FUNCTIONS.")
 
 def getp4(folder, prefix = 'flds'):
     """ Get a sorted list of full path filenames for all files 'fldsXXX.p4(.gz)' (for prefix = 'flds') in a folder, sorted by number XXX"""
@@ -170,7 +170,7 @@ def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], divsp=1, pool = Non
 
     ## Read in the files
     if pool: # OPTION A: PARALLEL READ OF FILES INTO DATA DICT
-        print "Using parallel pool to read", len(fns), "files. (This could take a little while.)"
+        print("Using parallel pool to read " + str(len(fns)) + " files. (This could take a little while.)")
         args_iter = zip(fns, [fld_ids]*nfiles, [flds]*nfiles, [divsp]*nfiles) # Make a list nfiles long, with tuples of (filename, fld_ids, flds)
         outs = pool.map(readOne, args_iter)
         flds1, times = zip(*outs)
@@ -180,13 +180,13 @@ def fields2D(fns, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], divsp=1, pool = Non
         for i in range(len(fld_ids)):
             k = fld_ids[i]
             data[k] = flds1[:,i,:,:] # Save the field elements into the data dict
-        print "Done reading files."
+        print("Done reading files.")
 
     else: # OPTION B: SERIAL READ OF FILES INTO DATA DICT
-        print "Reading the files in serial."        
+        print("Reading the files in serial.")      
         # Read in all the data and fill up the NumPy arrays
         for i in range(nfiles): # Iterate over the files
-            print "Reading file", i, "of", nfiles        
+            print("Reading file " + str(i) + " of " + str(nfiles))   
             fn = fns[i]
             doms, header = rd.read_flds2(fn, flds=flds)
             data['times'][i] = header['timestamp']
@@ -211,7 +211,7 @@ def readOne(args):
     flds_label = args[2]
     divsp = args[3]
 
-    print fn
+    print(fn)
     
     doms, header = rd.read_flds2(fn, flds=flds_label)
 
@@ -251,16 +251,16 @@ def h5fields2D(folder, h5path=None, fld_ids = ['Ex','Ey','Ez','Bx','By','Bz'], p
         h5path = os.path.join(folder, 'fields2D.hdf5')
     fns = getp4(folder)
     nfiles = len(fns)
-    print 'Total number of files:', len(fns)
+    print('Total number of files: ' + str(len(fns)))
 
-    print "Opening the HDF5 file"
+    print("Opening the HDF5 file")
     with h5py.File(h5path,'w') as f:
         # Read all the files into RAM
-        print "Reading files into NumPy arrays in RAM"
+        print("Reading files into NumPy arrays in RAM")
         data = fields2D(fns, fld_ids=fld_ids, pool=pool)
         # Build the HDF5 file, assuming every element in "data" is a NumPy array
-        print "Saving arrays in RAM to HDF5"
+        print("Saving arrays in RAM to HDF5")
         for k in data:
             f.create_dataset(k, data = data[k], compression='gzip', compression_opts=4)
-    print "All done!"
+    print("All done!")
     return h5path

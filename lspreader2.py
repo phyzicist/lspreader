@@ -341,7 +341,7 @@ def read_movie(file, header):
         frames.append(d);
     for i,d in enumerate(frames):
         N = d['pnum'];
-        lt=[('ip','>i4')]+zip(params,['>f4']*nparams);
+        lt = [('ip','>i4')] + list(zip(params,['>f4']*nparams));
         file.seek(d['pos']);
         arr=np.frombuffer(file.read(N*4*len(lt)),dtype=np.dtype(lt),count=N);
         arr.flags.writeable = True;
@@ -473,4 +473,4 @@ def stitch2D(doms, fld_id, divsp=1, splitax="z"):
 
 def pseek(file):
     # Print out the current file seek position ("file.tell")
-    print "Current file seek position: " + str(file.tell())
+    print("Current file seek position: " + str(file.tell()))
